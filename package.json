@@ -1,0 +1,27 @@
+{
+  "name": "mycryptotrading",
+  "version": "0.1.0",
+  "description": "My Crypto Heroes の世界で交易店を営む、スマホ向けの店舗経営・取引ゲーム（非公式二次創作）",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "sync-assets": "node scripts/sync-assets.mjs",
+    "predev": "node scripts/sync-assets.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/sync-assets.mjs",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "pretest": "node scripts/sync-assets.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc",
+    "sim": "vitest run tests/economy-sim.test.ts --silent=false --reporter=verbose"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "pngjs": "^7.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  }
+}

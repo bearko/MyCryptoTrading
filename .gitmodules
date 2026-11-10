@@ -1,0 +1,3 @@
+[submodule "vendor/mycryptoheroes"]
+	path = vendor/mycryptoheroes
+	url = https://github.com/bearko/mycryptoheroes.git
