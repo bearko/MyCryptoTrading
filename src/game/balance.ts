@@ -4,9 +4,9 @@ export const B = {
   startRep: 30,
   startStock: 4,
 
-  /** shelf slots; each upgrade adds `shelfStep` */
-  startCapacity: 8,
-  shelfStep: 2,
+  /** the shelf is a grid; each good takes a footprint on it. Each upgrade adds a row */
+  gridCols: 6,
+  startRows: 4,
   shelfCost: [200, 400, 700, 1100],
 
   /** market value by rarity (index 1–5), before condition */
@@ -48,10 +48,11 @@ export const B = {
   tipRep: 3,
   payAskRep: 0,
 
-  /** selling: markup over the fair price, and how often it is accepted */
+  /** selling: markup over the fair price, and how often it is accepted (in between: a straight line) */
   markupTiers: [0, 0.15, 0.3, 0.5],
   markupChance: [1, 0.8, 0.5, 0.22],
-  markupRep: [1, 0, 0, -1],
+  /** reputation for a sale: at the fair price or under, up to +30%, above that */
+  saleRep: [1, 0, -1],
 
   /** reputation shifts every chance by (rep - 50) / repDivisor */
   repDivisor: 250,

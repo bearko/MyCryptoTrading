@@ -11,19 +11,19 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
   while (s.phase !== 'lost' && !s.owned && s.day <= maxDays) {
     // morning: restock from the wholesaler when the shelf is thin
     s.wholesale.forEach((o, i) => {
-      if (s.stock.length < 4 && s.gum - o.price > 60) G.buyWholesale(s, i);
+      if (s.stock.length < 4 && s.gum - o.price > 60) G.buyWholesale(s, cat, i);
     });
     G.openShop(s, cat);
     while (s.phase === 'open') {
       const v = G.currentVisitor(s)!;
-      if (v.kind === 'sell') serveSeller(s, style);
+      if (v.kind === 'sell') serveSeller(s, cat, style);
       else serveBuyer(s, cat, style);
       G.callNext(s, cat);
     }
     // evening
     const reserve = G.daysToRent(s) <= 2 && !s.owned ? s.rent : 0;
     const cost = G.shelfCost(s);
-    if (cost !== null && s.stock.length >= s.capacity - 1 && s.gum - cost > reserve + 150) G.upgradeShelf(s);
+    if (cost !== null && G.freeCells(s, cat) < 6 && s.gum - cost > reserve + 150) G.upgradeShelf(s);
     if (G.isRentDay(s) && s.gum < s.rent) {
       // sell stock back to cover the rent
       for (const item of [...s.stock]) {
@@ -37,7 +37,7 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
   return s;
 }
 
-function serveSeller(s: GameState, style: Style): void {
+function serveSeller(s: GameState, cat: Catalog, style: Style): void {
   const v = G.currentVisitor(s)!;
   const reserve = G.daysToRent(s) <= 1 && !s.owned ? s.rent : 0;
   if (style === 'careful' && v.temper < 2) {
@@ -45,7 +45,7 @@ function serveSeller(s: GameState, style: Style): void {
     while (!v.done && !v.haggled && v.patience > 1) G.haggle(s, tier);
   }
   if (v.done) return;
-  if (s.gum - v.ask >= reserve && !G.buyBlock(s, v.ask)) G.acceptAsk(s, false);
+  if (s.gum - v.ask >= reserve && !G.buyBlock(s, cat, v.itemId, v.ask)) G.acceptAsk(s, cat, false);
   else G.pass(s);
 }
 
@@ -60,14 +60,15 @@ function serveBuyer(s: GameState, cat: Catalog, style: Style): void {
   if (style === 'careful') {
     // the highest markup that fits the budget and still has decent odds, while patience lasts
     for (let t = B.markupTiers.length - 1; t > 0; t--) {
-      if (G.salePrice(cat, item, t) <= v.budget && G.markupChance(s, v, t) >= 0.45) {
+      const quote = G.quoteSale(s, cat, v, [item.uid], t);
+      if (quote.over === 0 && quote.chance >= 0.45) {
         tier = t;
         break;
       }
     }
   }
   while (!v.done) {
-    const result = G.offer(s, cat, item.uid, v.patience > 1 ? tier : 0);
+    const result = G.sell(s, cat, [item.uid], v.patience > 1 ? tier : 0);
     if (result === 'refused') tier = Math.max(0, tier - 1);
     else if (result !== 'sold') break;
   }

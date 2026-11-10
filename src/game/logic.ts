@@ -2,6 +2,7 @@ import { B } from './balance';
 import type { Catalog, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randRange } from './rng';
+import { SHAPES, TURNED, type Shape } from './shapes';
 import { emptySummary, type GameState, type StockItem, type Visitor, type Want } from './state';
 
 const clamp = (v: number, min: number, max: number): number => Math.min(max, Math.max(min, v));
@@ -30,7 +31,17 @@ function chance(s: GameState, base: number, temper: number): number {
   return clamp(base + B.temperMod[temper] + (s.rep - 50) / B.repDivisor, 0.05, 0.95);
 }
 export const discountChance = (s: GameState, v: Visitor, tier: number): number => chance(s, B.discountChance[tier], v.temper);
-export const markupChance = (s: GameState, v: Visitor, tier: number): number => chance(s, B.markupChance[tier], v.temper);
+
+/** How often a customer accepts paying `markup` over the fair price (0.15 = +15%). */
+function markupBase(markup: number): number {
+  const xs = B.markupTiers;
+  const ys = B.markupChance;
+  if (markup <= xs[0] + 1e-9) return 1;
+  for (let i = 1; i < xs.length; i++) {
+    if (markup <= xs[i]) return ys[i - 1] + ((ys[i] - ys[i - 1]) * (markup - xs[i - 1])) / (xs[i] - xs[i - 1]);
+  }
+  return ys[ys.length - 1];
+}
 
 export function matches(cat: Catalog, want: Want, itemId: number): boolean {
   const item = cat.itemById.get(itemId)!;
@@ -38,6 +49,72 @@ export function matches(cat: Catalog, want: Want, itemId: number): boolean {
   if (want.type === 'rarity') return item.rarity >= want.min;
   return true;
 }
+
+// ---------------------------------------------------------------- the shelf grid
+
+export const shapeOf = (cat: Catalog, itemId: number, rot = false): Shape => (rot ? TURNED : SHAPES)[cat.itemById.get(itemId)!.shape];
+
+/** Cells taken on the shelf, as "x,y" keys. `ignoreUid` leaves one good out (the one being moved). */
+function takenCells(s: GameState, cat: Catalog, ignoreUid = -1): Set<string> {
+  const taken = new Set<string>();
+  for (const stock of s.stock) {
+    if (stock.uid === ignoreUid) continue;
+    for (const [cx, cy] of shapeOf(cat, stock.itemId, stock.rot).cells) taken.add(`${stock.x + cx},${stock.y + cy}`);
+  }
+  return taken;
+}
+
+function fitsAt(s: GameState, shape: Shape, x: number, y: number, taken: Set<string>): boolean {
+  return shape.cells.every(([cx, cy]) => x + cx >= 0 && x + cx < B.gridCols && y + cy >= 0 && y + cy < s.rows && !taken.has(`${x + cx},${y + cy}`));
+}
+
+export function canPlace(s: GameState, cat: Catalog, itemId: number, x: number, y: number, rot: boolean, ignoreUid = -1): boolean {
+  return fitsAt(s, shapeOf(cat, itemId, rot), x, y, takenCells(s, cat, ignoreUid));
+}
+
+export interface Slot {
+  x: number;
+  y: number;
+  rot: boolean;
+}
+
+/**
+ * First free spot for a good, scanning row by row: as it is first, then turned.
+ * Null when it does not fit anywhere. `only` limits the search to one orientation.
+ */
+export function findSlot(s: GameState, cat: Catalog, itemId: number, ignoreUid = -1, only?: boolean): Slot | null {
+  const taken = takenCells(s, cat, ignoreUid);
+  for (const rot of only === undefined ? [false, true] : [only]) {
+    const shape = shapeOf(cat, itemId, rot);
+    for (let y = 0; y <= s.rows - shape.h; y++) {
+      for (let x = 0; x <= B.gridCols - shape.w; x++) {
+        if (fitsAt(s, shape, x, y, taken)) return { x, y, rot };
+      }
+    }
+  }
+  return null;
+}
+
+export function moveStock(s: GameState, cat: Catalog, uid: number, x: number, y: number): boolean {
+  const stock = s.stock.find((it) => it.uid === uid);
+  if (!stock || !canPlace(s, cat, stock.itemId, x, y, stock.rot, uid)) return false;
+  stock.x = x;
+  stock.y = y;
+  return true;
+}
+
+/** Turns a good a quarter turn: where it stands if it fits, else at the first spot that takes it. */
+export function turnStock(s: GameState, cat: Catalog, uid: number): boolean {
+  const stock = s.stock.find((it) => it.uid === uid);
+  if (!stock) return false;
+  const rot = !stock.rot;
+  const slot = canPlace(s, cat, stock.itemId, stock.x, stock.y, rot, uid) ? { x: stock.x, y: stock.y, rot } : findSlot(s, cat, stock.itemId, uid, rot);
+  if (!slot) return false;
+  Object.assign(stock, slot);
+  return true;
+}
+
+export const freeCells = (s: GameState, cat: Catalog): number => B.gridCols * s.rows - takenCells(s, cat).size;
 
 // ---------------------------------------------------------------- calendar and rent
 
@@ -66,8 +143,12 @@ function rollRarity(s: GameState, heroBonus: number): number {
   );
 }
 
-function addStock(s: GameState, itemId: number, cond: number, paid: number): void {
-  s.stock.push({ uid: s.nextUid++, itemId, cond, paid });
+/** Puts a good on the shelf at the first free spot. False when it does not fit. */
+function addStock(s: GameState, cat: Catalog, itemId: number, cond: number, paid: number): boolean {
+  const slot = findSlot(s, cat, itemId);
+  if (!slot) return false;
+  s.stock.push({ uid: s.nextUid++, itemId, cond, paid, ...slot });
+  return true;
 }
 
 function startMorning(s: GameState, cat: Catalog): void {
@@ -85,12 +166,12 @@ function startMorning(s: GameState, cat: Catalog): void {
 
 export function newGame(seed: number, cat: Catalog): GameState {
   const s: GameState = {
-    v: 1,
+    v: 2,
     rng: seed | 0,
     day: 1,
     gum: B.startGum,
     rep: B.startRep,
-    capacity: B.startCapacity,
+    rows: B.startRows,
     shelfLevel: 0,
     stock: [],
     nextUid: 1,
@@ -109,18 +190,18 @@ export function newGame(seed: number, cat: Catalog): GameState {
   };
   for (let i = 0; i < B.startStock; i++) {
     const item = pick(s, cat.itemsByRarity[i < 3 ? 1 : 2]);
-    addStock(s, item.id, 1, 0);
+    addStock(s, cat, item.id, 1, 0);
   }
   startMorning(s, cat);
   return s;
 }
 
-export function buyWholesale(s: GameState, index: number): boolean {
+export function buyWholesale(s: GameState, cat: Catalog, index: number): boolean {
   const offer = s.wholesale[index];
-  if (s.phase !== 'morning' || !offer || offer.sold || s.gum < offer.price || s.stock.length >= s.capacity) return false;
+  if (s.phase !== 'morning' || !offer || offer.sold || s.gum < offer.price) return false;
+  if (!addStock(s, cat, offer.itemId, offer.cond, offer.price)) return false;
   s.gum -= offer.price;
   offer.sold = true;
-  addStock(s, offer.itemId, offer.cond, offer.price);
   s.today.spend += offer.price;
   return true;
 }
@@ -133,7 +214,7 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
   const temper = pickWeighted(s, B.temperWeights);
   let sellerShare: number = B.sellerShare;
   if (s.stock.length === 0) sellerShare = 0.85;
-  else if (s.stock.length >= s.capacity) sellerShare = 0.2;
+  else if (freeCells(s, cat) < 4) sellerShare = 0.2;
   const base = { heroId: hero.id, temper, patience: B.temperPatience[temper], haggled: false, mood: 'neutral' as const, done: false };
 
   if (rand(s) < sellerShare) {
@@ -204,20 +285,20 @@ function strike(s: GameState, v: Visitor, refusal: string): void {
 // ---------------------------------------------------------------- buying from a customer
 
 export type BuyBlock = 'gum' | 'shelf' | null;
-export function buyBlock(s: GameState, price: number): BuyBlock {
-  if (s.stock.length >= s.capacity) return 'shelf';
+export function buyBlock(s: GameState, cat: Catalog, itemId: number, price: number): BuyBlock {
+  if (!findSlot(s, cat, itemId)) return 'shelf';
   if (s.gum < price) return 'gum';
   return null;
 }
 
 /** Buys the good at the current asking price, or a bit over it (`tip`) to earn goodwill. */
-export function acceptAsk(s: GameState, tip: boolean): boolean {
+export function acceptAsk(s: GameState, cat: Catalog, tip: boolean): boolean {
   const v = currentVisitor(s);
   if (!v || v.done || v.kind !== 'sell') return false;
   const price = tip ? tipPrice(v) : v.ask;
-  if (buyBlock(s, price)) return false;
+  if (buyBlock(s, cat, v.itemId, price)) return false;
   s.gum -= price;
-  addStock(s, v.itemId, v.cond, price);
+  addStock(s, cat, v.itemId, v.cond, price);
   s.today.spend += price;
   s.today.bought += 1;
   s.totals.bought += 1;
@@ -246,27 +327,61 @@ export function haggle(s: GameState, tier: number): boolean {
 
 // ---------------------------------------------------------------- selling to a customer
 
-export type OfferResult = 'sold' | 'refused' | 'left' | 'nomatch' | 'over' | 'invalid';
+export interface SaleQuote {
+  /** the goods at the fair price */
+  fair: number;
+  /** the price the shop names */
+  asked: number;
+  /** what the customer actually pays: never more than the budget */
+  paid: number;
+  /** how far the named price is over the budget (0 when it fits) */
+  over: number;
+  /** how often the customer agrees */
+  chance: number;
+  /** false when a good on the counter is not what the customer wants */
+  matches: boolean;
+}
 
-export function offer(s: GameState, cat: Catalog, uid: number, tier: number): OfferResult {
+/** Works out a sale of the goods on the counter at a markup tier, without doing it. */
+export function quoteSale(s: GameState, cat: Catalog, v: Visitor, uids: readonly number[], tier: number): SaleQuote {
+  const goods = uids.map((uid) => s.stock.find((x) => x.uid === uid)).filter((x): x is StockItem => !!x);
+  const fair = goods.reduce((sum, x) => sum + salePrice(cat, x, 0), 0);
+  const asked = goods.reduce((sum, x) => sum + salePrice(cat, x, tier), 0);
+  const paid = Math.min(asked, v.budget);
+  const markup = fair > 0 ? paid / fair - 1 : 0;
+  return {
+    fair,
+    asked,
+    paid,
+    over: Math.max(0, asked - v.budget),
+    chance: chance(s, markupBase(markup), v.temper),
+    matches: goods.length > 0 && goods.every((x) => matches(cat, v.want, x.itemId)),
+  };
+}
+
+export type SellResult = 'sold' | 'refused' | 'left' | 'nomatch' | 'invalid';
+
+/**
+ * Sells the goods on the counter. A price over the budget is allowed: the customer pays the budget
+ * and the rest is lost. A refusal costs patience.
+ */
+export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: number): SellResult {
   const v = currentVisitor(s);
-  const index = s.stock.findIndex((x) => x.uid === uid);
-  if (!v || v.done || v.kind !== 'buy' || index < 0) return 'invalid';
-  const stock = s.stock[index];
-  if (!matches(cat, v.want, stock.itemId)) {
+  if (!v || v.done || v.kind !== 'buy' || uids.length === 0 || uids.some((uid) => !s.stock.some((x) => x.uid === uid))) return 'invalid';
+  const quote = quoteSale(s, cat, v, uids, tier);
+  if (!quote.matches) {
     v.line = lines.noMatch();
     return 'nomatch';
   }
-  const price = salePrice(cat, stock, tier);
-  if (price > v.budget) return 'over';
-  if (rand(s) < markupChance(s, v, tier)) {
-    s.gum += price;
-    s.stock.splice(index, 1);
-    s.today.revenue += price;
-    s.today.sold += 1;
-    s.totals.sold += 1;
-    s.totals.bestSale = Math.max(s.totals.bestSale, price);
-    addRep(s, B.markupRep[tier]);
+  if (rand(s) < quote.chance) {
+    s.gum += quote.paid;
+    s.stock = s.stock.filter((x) => !uids.includes(x.uid));
+    s.today.revenue += quote.paid;
+    s.today.sold += uids.length;
+    s.totals.sold += uids.length;
+    s.totals.bestSale = Math.max(s.totals.bestSale, quote.paid);
+    const markup = quote.paid / quote.fair - 1;
+    addRep(s, markup <= 1e-9 ? B.saleRep[0] : markup <= 0.3 ? B.saleRep[1] : B.saleRep[2]);
     v.done = true;
     v.mood = 'happy';
     v.line = lines.dealBuyer(v.temper);
@@ -274,6 +389,12 @@ export function offer(s: GameState, cat: Catalog, uid: number, tier: number): Of
   }
   strike(s, v, lines.markupNg(v.temper));
   return v.done ? 'left' : 'refused';
+}
+
+/** The customer turns down a good that is not what they asked for (no penalty). */
+export function refuseGood(s: GameState): void {
+  const v = currentVisitor(s);
+  if (v && !v.done) v.line = lines.noMatch();
 }
 
 /** Sends the customer away without a deal. No penalty. */
@@ -301,7 +422,7 @@ export function upgradeShelf(s: GameState): boolean {
   if (cost === null || s.gum < cost) return false;
   s.gum -= cost;
   s.shelfLevel += 1;
-  s.capacity += B.shelfStep;
+  s.rows += 1;
   return true;
 }
 

@@ -52,6 +52,27 @@ function kindOf(stats) {
   return 'agi';
 }
 
+// The footprint a good takes on the shelf grid, by what kind of thing it is (its series name).
+// Shapes are defined in src/game/shapes.ts.
+// Checked top to bottom; the first match wins (so ステアリング is matched before リング, ブルーベリー before ブル).
+const SHAPE_WORDS = {
+  t4: ['クラヴィア', 'ハープ', 'オルゴール', 'お花見弁当', 'ラーメン', 'ハンバーガー', 'パンジャンドラム', 'ステアリング', 'スコーピオン', 'ビートル', 'リミュラス'],
+  s1: ['リング', 'ネックレス', 'メダル', 'ギョク', 'ベリー', 'ルビー', 'タンジェリン', 'ライム', 'グレープ', 'グラファイト', 'セージ', '懐中時計', 'モノクル', 'コンパス', 'タリスマン', 'リボン', 'りんご', '梨', '財布', 'チャクラム', '手裏剣', 'パンケーキ', 'いちごケーキ', 'マジックカード', 'スイーツ', 'バッタ', 'ハチ', 'モス', '蝶々', '象蟲', 'Sweet', 'プランツインセクト', 'アンモナイト', 'ロンギスクアマ', 'スカル', 'キューティー', '鏡'],
+  v3: ['ブレード', '魔法剣', 'カタナ', 'ハルバード', 'レイピア', 'スタッフ', 'ホーキ', 'スピア', 'ジャベリン', 'ソード', 'ユミ', 'ステッキ', 'オリフラム', 'メイス', 'アックス', 'シックル', '傘', 'ウィップ', 'フレイル', 'ハンマー', 'マレット', 'グンバイ'],
+  v2: ['ナイフ', 'ワンド', 'ペン', 'スクロール', 'サケ', 'グラス', 'ゴブレット', 'ブーツ', 'サイハイ', 'センス', 'オフダ', '筆パレ', 'マラカス', 'ランタン', 'フルート', '猫じゃらし', '日本人形', '雪だるま', '盆栽', 'マンドラゴラ', '液浸標本', 'ツノ', '鋏'],
+  h2: ['マスケット', 'リボルバー', 'アルケブス', 'ハンドカノン', 'レーザーガン', 'ボウガン', 'ベルト', 'ホルン', 'イカダ', 'ブーメラン', 'ヴァイオリン', 'シタール', 'お寿司', 'スネーク', 'メリケンサック', '二輪車', 'スワンボート', 'シップ'],
+  sq: ['アーマー', 'ヨロイ', 'シールド', 'ホース', 'タイガー', 'ドラゴン', 'ブル', 'エレファント', 'サウルス', 'ノドン', 'トプス', 'メガロドン', 'ゴーレム', 'モアイ', '機甲兵', '観覧車', 'パンダマシン', 'ペガサス', '宇宙船', '合体ロボ', 'ドールハウス', 'アクアリウム', '天体模型', 'ライオン', 'キメラ', 'ドラム', 'RYU', 'ETHEREMON'],
+  l3: ['ハット', 'カブト', 'クラウン', 'マント', 'ガントレット', 'クロー', '羽織', 'ボンネット', '椅子', 'ブック', 'リソグラフィ', 'ツインブレード', 'パロット', 'ルースター', 'モンキー', 'ドッグ', 'タートル', 'カエル', '妖精', 'ピエロ', 'ニコ', 'サモンボード', 'トラップ'],
+};
+const FALLBACK_SHAPES = ['s1', 's1', 's1', 'v2', 'h2', 'l3'];
+function shapeOf(series, id) {
+  for (const [shape, words] of Object.entries(SHAPE_WORDS)) if (words.some((w) => series.includes(w))) return shape;
+  // everything else is small (jewels, fruit, medals, trinkets …); the series decides, so a set shares a shape
+  let hash = 0;
+  for (const ch of series || String(id)) hash = (hash * 31 + ch.codePointAt(0)) >>> 0;
+  return FALLBACK_SHAPES[hash % FALLBACK_SHAPES.length];
+}
+
 const items = readJson('Data/Extensions/extensions.json')
   .filter((e) => e.is_dictionary_visible && e.rarity?.id >= 1 && e.rarity.id <= 5)
   .map((e) => ({
@@ -61,6 +82,7 @@ const items = readJson('Data/Extensions/extensions.json')
     rarity: e.rarity.id,
     kind: kindOf(e.max_level_stats),
     series: e.series?.name?.ja ?? '',
+    shape: shapeOf(e.series?.name?.ja ?? '', e.id),
     img: use(e.image_file_path),
   }));
 
@@ -77,14 +99,7 @@ const heroes = readJson('Data/Heroes/heroes.json')
     img: use(h.image_file_path),
   }));
 
-// ---------------------------------------------------------------- shopkeeper, icons, backdrop
-const keeper = {
-  idle: use('Image/Characters/chris_09_idle.png'),
-  smile: use('Image/Characters/chris_05_smile.png'),
-  cheer: use('Image/Characters/chris_03_cheer.png'),
-  sad: use('Image/Characters/chris_08_sad.png'),
-  think: use('Image/Characters/chris_01_arms_crossed.png'),
-};
+// ---------------------------------------------------------------- icons, backdrop
 const icons = { gum: use('Image/Icons/gum.png') };
 
 /** Halves a large backdrop (box filter) so phones do not download a 1000×1500 image. */
@@ -112,5 +127,5 @@ function halve(relPath) {
 const backdrop = halve('Image/Backgrounds/1002.png');
 
 mkdirSync(dirname(outCatalog), { recursive: true });
-writeFileSync(outCatalog, JSON.stringify({ items, heroes, keeper, icons, backdrop }));
+writeFileSync(outCatalog, JSON.stringify({ items, heroes, icons, backdrop }));
 console.log(`[sync-assets] ${items.length} goods, ${heroes.length} customers, ${copied} files copied`);

@@ -5,6 +5,8 @@ My Crypto Heroes の世界で交易店を営む、スマホ（縦持ち）向け
 安く買い取り、欲しがる客に高く売って GUM を稼ぎます。7 日ごとに上がる家賃を払いながら、店の権利書を買い取ればクリアです。
 
 - 客は「売りに来た人」と「買いに来た人」。値切りや上乗せは、断られると相手の我慢が減り、怒って帰ることもあります
+- 売るときは、棚の品をカウンターへドラッグして置き、客のウィンドウで売上を確かめて販売します
+- 品は種類ごとに棚で使うマス目の形が違います。並べ替えと回転で置き場所を作ります
 - 良心的な商いで評判が上がると、客が増え、値の張る品が集まります
 - ルールと数字、今後の予定は [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md)
 
@@ -25,7 +27,7 @@ npm run sim        # ボットに遊ばせて、クリアまでの日数と破�
 
 ```
 src/
-  game/     ルール（balance.ts に経済の数字、logic.ts に取引・家賃、lines.ts に客のせりふ）
+  game/     ルール（balance.ts に経済の数字、logic.ts に取引・棚・家賃、shapes.ts にマス目の形、lines.ts に客のせりふ）
   ui/       画面（app.ts）
   style.css
 scripts/    素材の同期
@@ -45,9 +47,8 @@ Cloudflare Workers の静的アセットとして配信します（`wrangler.jso
 
 - ヒーロー、エクステンション、背景、アイコン: My Crypto Heroes（© MCH Co.,Ltd.）。
   [bearko/mycryptoheroes](https://github.com/bearko/mycryptoheroes) に整理されたものを使用しています。
-- クリスくん ドット絵：こじもこ。
 
-ソースコードと文書は [MIT License](LICENSE) です。マイクリの素材（画像）とクリスくんのドット絵は対象外です。
+ソースコードと文書は [MIT License](LICENSE) です。マイクリの素材（画像）は対象外です。
 
 本作は非公式の二次創作です。マイクリ画像の利用は [MCH デザインガイドライン](https://medium.com/mycryptoheroes/mch-design-guideline-ja-99ff0970ccdc) に従い、
 非営利の範囲に限ります。営利目的での利用（有償販売など）は事前に MCH Co.,Ltd. への連絡が必要です。

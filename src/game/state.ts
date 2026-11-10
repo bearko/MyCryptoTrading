@@ -7,6 +7,11 @@ export interface StockItem {
   cond: number;
   /** what the shop paid for it */
   paid: number;
+  /** top-left cell of its footprint on the shelf grid */
+  x: number;
+  y: number;
+  /** turned a quarter turn on the shelf */
+  rot: boolean;
 }
 
 export type Want = { type: 'kind'; kind: Kind } | { type: 'rarity'; min: number } | { type: 'any' };
@@ -50,13 +55,14 @@ export interface DaySummary {
 export type Phase = 'morning' | 'open' | 'evening' | 'won' | 'lost';
 
 export interface GameState {
-  v: 1;
+  v: 2;
   rng: number;
   day: number;
   gum: number;
   /** 0–100 */
   rep: number;
-  capacity: number;
+  /** rows of the shelf grid (columns are fixed) */
+  rows: number;
   shelfLevel: number;
   stock: StockItem[];
   nextUid: number;

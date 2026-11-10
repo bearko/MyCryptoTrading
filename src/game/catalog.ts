@@ -1,4 +1,5 @@
 import raw from '../generated/catalog.json';
+import type { ShapeId } from './shapes';
 
 export type Kind = 'phy' | 'int' | 'agi';
 
@@ -11,6 +12,8 @@ export interface Item {
   rarity: number;
   kind: Kind;
   series: string;
+  /** footprint on the shelf grid (see shapes.ts) */
+  shape: ShapeId;
   img: string;
 }
 
@@ -27,7 +30,6 @@ export interface Hero {
 export interface Catalog {
   items: Item[];
   heroes: Hero[];
-  keeper: Record<'idle' | 'smile' | 'cheer' | 'sad' | 'think', string>;
   icons: { gum: string };
   backdrop: string;
   itemById: Map<number, Item>;
@@ -36,7 +38,7 @@ export interface Catalog {
   itemsByRarity: Item[][];
 }
 
-export function buildCatalog(data: Pick<Catalog, 'items' | 'heroes' | 'keeper' | 'icons' | 'backdrop'>): Catalog {
+export function buildCatalog(data: Pick<Catalog, 'items' | 'heroes' | 'icons' | 'backdrop'>): Catalog {
   const itemsByRarity: Item[][] = [[], [], [], [], [], []];
   for (const item of data.items) itemsByRarity[item.rarity].push(item);
   return {
@@ -47,7 +49,7 @@ export function buildCatalog(data: Pick<Catalog, 'items' | 'heroes' | 'keeper' |
   };
 }
 
-export const catalog: Catalog = buildCatalog(raw as Pick<Catalog, 'items' | 'heroes' | 'keeper' | 'icons' | 'backdrop'>);
+export const catalog: Catalog = buildCatalog(raw as Pick<Catalog, 'items' | 'heroes' | 'icons' | 'backdrop'>);
 
 export const RARITY_JA = ['', 'コモン', 'アンコモン', 'レア', 'エピック', 'レジェンダリー'];
 export const KIND_JA: Record<Kind, string> = { phy: '武具（PHY）', int: '知具（INT）', agi: '軽具（AGI）' };
