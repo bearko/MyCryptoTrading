@@ -16,24 +16,34 @@ export interface StockItem {
 
 export type Want = { type: 'kind'; kind: Kind } | { type: 'rarity'; min: number } | { type: 'any' };
 
+/** One good a customer has brought to sell. */
+export interface Offer {
+  itemId: number;
+  cond: number;
+  /** the current asking price */
+  ask: number;
+}
+
 export interface Visitor {
   heroId: number;
   /** 0 気さく / 1 ふつう / 2 頑固 */
   temper: number;
   patience: number;
   kind: 'sell' | 'buy';
-  /** seller: the good on offer and the current asking price */
-  itemId: number;
-  cond: number;
-  ask: number;
-  /** a seller's price can be talked down only once */
+  /** seller: the goods still on offer (bought ones are removed) */
+  offers: Offer[];
+  /** seller: discount for taking everything they brought at once (0.1 = 10% off); 0 after a partial buy */
+  bundleRate: number;
+  /** a seller's prices can be talked down only once */
   haggled: boolean;
   /** buyer */
   want: Want;
+  /** buyer: what they can still spend */
   budget: number;
   /** what the customer is saying right now */
   line: string;
   mood: 'neutral' | 'happy' | 'annoyed';
+  /** the customer is leaving: sent away, everything bought, budget spent, or out of patience */
   done: boolean;
 }
 
@@ -55,7 +65,7 @@ export interface DaySummary {
 export type Phase = 'morning' | 'open' | 'evening' | 'won' | 'lost';
 
 export interface GameState {
-  v: 2;
+  v: 3;
   rng: number;
   day: number;
   gum: number;

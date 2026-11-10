@@ -4,9 +4,9 @@ import type { Want } from './state';
 
 /** What customers say. Indexed by temper (0 気さく / 1 ふつう / 2 頑固) where it matters. */
 const SELL_OPEN = [
-  ['これ、買い取ってもらえるかな？', '旅の荷物を軽くしたくてね。いくらになる？', 'いい品だよ。見ていってくれ！'],
-  ['こちらを売りたいのですが。', '買い取りをお願いできますか。', 'この品、引き取ってもらえますか。'],
-  ['値は決めてある。まける気はないぞ。', '目利きなら価値が分かるはずだ。', 'この額で買え。話はそれからだ。'],
+  ['買い取ってもらえるかな？', '旅の荷物を軽くしたくてね。見ていってよ。', 'いい品だよ。見ていってくれ！'],
+  ['売りたい品があるのですが。', '買い取りをお願いできますか。', '引き取ってもらえますか。'],
+  ['値は決めてある。まける気はないぞ。', '目利きなら価値が分かるはずだ。', 'この値で買え。話はそれからだ。'],
 ];
 const BUY_OPEN = ['{want}を探しているんだ。', '{want}は置いてあるかい？', '{want}が要る。予算は見てのとおりだ。'];
 const HAGGLE_OK = ['まあ、いいだろう。その値で手を打とう。', '仕方ないね。それでいいよ。', '……分かった。持っていけ。'];
@@ -14,7 +14,8 @@ const HAGGLE_NG = ['それは安すぎるよ。', 'その値では手放せま�
 const MARKUP_NG = ['うーん、その値段は出せないな。', '少し高すぎますね。', '足元を見るつもりか。'];
 const LEAVE_ANGRY = ['もういい、ほかを当たるよ。', '失礼します。', '二度と来るか！'];
 const DEAL_SELLER = ['助かったよ、ありがとう！', '確かに。ではこれで。', 'ふん、大事に扱えよ。'];
-const DEAL_SELLER_TIP = ['こんなに？ いい店だね、みんなに話しておくよ！', '色をつけてくださるとは。ご恩は忘れません。', '……見直したぞ。'];
+const MORE_SELLER = ['残りもどうだい？', '残りの品もいかがですか。', '残りも買うのか、買わないのか。'];
+const MORE_BUYER = ['まだ予算があるんだ。ほかには？', 'ほかにも見せていただけますか。', 'まだ買える。次を出せ。'];
 const DEAL_BUYER = ['いい買い物ができた！', 'ありがとうございます。', '悪くない品だ。'];
 const PASS = ['そうか、残念だ。', 'では、またの機会に。', 'ふん。'];
 const NO_MATCH = 'それは探している物と違うな。';
@@ -32,7 +33,9 @@ export const lines = {
   haggleNg: (temper: number) => HAGGLE_NG[temper],
   markupNg: (temper: number) => MARKUP_NG[temper],
   leaveAngry: (temper: number) => LEAVE_ANGRY[temper],
-  dealSeller: (temper: number, tip: boolean) => (tip ? DEAL_SELLER_TIP : DEAL_SELLER)[temper],
+  dealSeller: (temper: number) => DEAL_SELLER[temper],
+  moreSeller: (temper: number) => MORE_SELLER[temper],
+  moreBuyer: (temper: number) => MORE_BUYER[temper],
   dealBuyer: (temper: number) => DEAL_BUYER[temper],
   pass: (temper: number) => PASS[temper],
   noMatch: () => NO_MATCH,
