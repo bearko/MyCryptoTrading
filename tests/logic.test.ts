@@ -48,7 +48,7 @@ describe('game rules', () => {
     until(s, 'sell');
     const v = G.currentVisitor(s)!;
     const before = { gum: s.gum, stock: s.stock.length };
-    expect(G.acceptAsk(s, false)).toBe(true);
+    expect(G.acceptAsk(s, catalog, false)).toBe(true);
     expect(s.gum).toBe(before.gum - v.ask);
     expect(s.stock).toHaveLength(before.stock + 1);
     expect(v.done).toBe(true);
@@ -58,10 +58,10 @@ describe('game rules', () => {
     const s = G.newGame(4, catalog);
     until(s, 'sell');
     s.gum = 0;
-    expect(G.acceptAsk(s, false)).toBe(false);
+    expect(G.acceptAsk(s, catalog, false)).toBe(false);
     s.gum = 100000;
-    s.capacity = s.stock.length;
-    expect(G.acceptAsk(s, false)).toBe(false);
+    s.rows = 0; // no shelf at all
+    expect(G.acceptAsk(s, catalog, false)).toBe(false);
   });
 
   it('a discount can be won only once, and refusals cost patience', () => {
@@ -89,20 +89,82 @@ describe('game rules', () => {
       const v = G.currentVisitor(s)!;
       for (const item of [...s.stock]) {
         const gum = s.gum;
-        const result = G.offer(s, catalog, item.uid, 0);
-        if (!G.matches(catalog, v.want, item.itemId)) expect(result).toBe('nomatch');
-        else if (G.salePrice(catalog, item, 0) > v.budget) expect(result).toBe('over');
-        else expect(result).toBe('sold');
-        if (result === 'sold') {
-          expect(s.gum - gum).toBeGreaterThan(0);
-          expect(s.gum - gum).toBeLessThanOrEqual(v.budget);
-          break;
+        const fair = G.salePrice(catalog, item, 0);
+        const result = G.sell(s, catalog, [item.uid], 0);
+        if (!G.matches(catalog, v.want, item.itemId)) {
+          expect(result).toBe('nomatch');
+          expect(s.gum).toBe(gum);
+          continue;
         }
-        expect(s.gum).toBe(gum);
+        // at the fair price the customer always agrees; over the budget they pay the budget
+        expect(result).toBe('sold');
+        expect(s.gum - gum).toBe(Math.min(fair, v.budget));
+        break;
       }
       G.pass(s);
       G.callNext(s, catalog);
     }
+  });
+
+  it('several goods can be sold at once, and the total is capped by the budget', () => {
+    const s = G.newGame(11, catalog);
+    s.gum = 1_000_000;
+    until(s, 'buy');
+    const v = G.currentVisitor(s)!;
+    v.want = { type: 'any' };
+    v.budget = 10;
+    const uids = s.stock.slice(0, 2).map((x) => x.uid);
+    const quote = G.quoteSale(s, catalog, v, uids, 0);
+    expect(quote.over).toBe(quote.asked - 10);
+    expect(quote.paid).toBe(10);
+    const gum = s.gum;
+    const count = s.stock.length;
+    expect(G.sell(s, catalog, uids, 0)).toBe('sold');
+    expect(s.gum).toBe(gum + 10);
+    expect(s.stock).toHaveLength(count - 2);
+  });
+
+  it('goods on the shelf never overlap and stay inside the grid', () => {
+    const s = G.newGame(12, catalog);
+    s.gum = 1_000_000;
+    for (let n = 0; n < 60; n++) {
+      until(s, 'sell');
+      G.acceptAsk(s, catalog, false);
+      G.callNext(s, catalog);
+    }
+    const seen = new Set<string>();
+    for (const item of s.stock) {
+      for (const [cx, cy] of G.shapeOf(catalog, item.itemId, item.rot).cells) {
+        const key = `${item.x + cx},${item.y + cy}`;
+        expect(seen.has(key)).toBe(false);
+        seen.add(key);
+        expect(item.x + cx).toBeLessThan(B.gridCols);
+        expect(item.y + cy).toBeLessThan(s.rows);
+      }
+    }
+    expect(seen.size).toBeGreaterThan(B.gridCols * s.rows * 0.6); // the shelf really fills up
+    // a good cannot be moved onto another one; moving it to where it already is works
+    const [a, b] = s.stock;
+    const bCell = G.shapeOf(catalog, b.itemId, b.rot).cells[0];
+    const from = { x: a.x, y: a.y };
+    expect(G.moveStock(s, catalog, a.uid, b.x + bCell[0], b.y + bCell[1])).toBe(false);
+    expect({ x: a.x, y: a.y }).toEqual(from);
+    expect(G.moveStock(s, catalog, a.uid, a.x, a.y)).toBe(true);
+  });
+
+  it('a long good is turned to fit a low shelf', () => {
+    const s = G.newGame(13, catalog);
+    s.stock = [];
+    s.rows = 2;
+    s.gum = 1_000_000;
+    const long = catalog.items.find((i) => i.shape === 'v3')!;
+    const slot = G.findSlot(s, catalog, long.id);
+    expect(slot).toEqual({ x: 0, y: 0, rot: true });
+    s.rows = 4;
+    s.stock.push({ uid: 99, itemId: long.id, cond: 1, paid: 0, x: 0, y: 0, rot: false });
+    expect(G.turnStock(s, catalog, 99)).toBe(true);
+    expect(s.stock[0].rot).toBe(true);
+    expect(G.shapeOf(catalog, long.id, true)).toMatchObject({ w: 3, h: 1 });
   });
 
   it('collects rent every seventh night, then raises it', () => {

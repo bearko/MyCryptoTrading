@@ -8,3 +8,5 @@
 - 素材は `vendor/mycryptoheroes`（サブモジュール）から `scripts/sync-assets.mjs` が使うものだけを `public/mch/` に写し、`src/generated/catalog.json` を作る（どちらも Git には入れない）。
 - チェック：`npm test`・`npm run typecheck`・`npm run build`。数字を変えたら `npm run sim`（ボットに 300 回遊ばせて、クリアまでの日数と破産の割合を見る）で確かめ、`docs/GAME_DESIGN.md` の計測結果を直す。
 - 画面は縦持ちのスマホが基準（幅 360〜480px）。ボタンは 44px 以上、ドット絵は `image-rendering: pixelated`。
+- プレイヤー自身（店番）の姿は描かない。客はカウンターの奥に大きく立ち、左から入って右へ出る。
+- 画面は操作のたびに作り直す（`render()`）。ドラッグ中だけは DOM を直接動かし、離したときに作り直す（`src/ui/app.ts` の末尾）。
