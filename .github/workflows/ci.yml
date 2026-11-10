@@ -1,0 +1,34 @@
+name: CI
+
+# 本番のブランチへの PR と push で、テスト・型チェック・ビルドを回す。
+# 公開は Cloudflare Workers Builds が本番のブランチへのマージで行う（ここではしない）。
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # sync-assets（素材の同期）は pretest・prebuild で走る。typecheck は生成カタログを読むので test のあとに
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build
