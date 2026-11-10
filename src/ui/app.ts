@@ -15,10 +15,12 @@ interface Ui {
   haggleOpen: boolean;
   /** goods put on the counter for the customer at the counter (uids of stock) */
   counter: number[];
+  /** a seller's goods pulled to the near side of the counter (indexes into the customer's offers) */
+  picked: number[];
   /** markup tier chosen for the sale */
   tier: number;
   /** the customer window: where it is, its size, and whether it is open */
-  win: { x: number; y: number; big: boolean; open: boolean };
+  win: { x: number; y: number; big: boolean; open: boolean; moved: boolean };
   /** a short note over the counter (money moved, shelf full …) */
   flash: { text: string; tone: 'good' | 'bad' | 'info' } | null;
   /** changes whenever a new customer steps up */
@@ -34,8 +36,9 @@ const ui: Ui = {
   confirmReset: false,
   haggleOpen: false,
   counter: [],
+  picked: [],
   tier: 0,
-  win: { x: 8, y: 106, big: false, open: true },
+  win: { x: 6, y: 60, big: false, open: true, moved: false },
   flash: null,
   enterKey: 0,
 };
@@ -45,6 +48,8 @@ let enteredKey = -1;
 let exitedKey = -1;
 /** size of one shelf cell in px (fits the screen) */
 let cell = 48;
+/** the pending walk-out before the next customer comes in (after the bell) */
+let nextTimer = 0;
 
 const esc = (text: string | number): string =>
   String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -55,6 +60,8 @@ const TEMPER_JA = ['気さく', 'ふつう', '頑固'];
 
 const ICON_SIZE =
   '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="1.5" y="7.5" width="7" height="7" rx="1.5" fill="currentColor"/></svg>';
+const ICON_BELL =
+  '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 3.2a1.6 1.6 0 0 1 1.6 1.6v.5a6 6 0 0 1 4.4 5.8v3.4l1.7 2.6a.9.9 0 0 1-.8 1.4H5.100a.9.9 0 0 1-.8-1.400L6 14.500v-3.400a6 6 0 0 1 4.400-5.800v-.500A1.600 1.600 0 0 1 12 3.200z" fill="currentColor"/><path d="M9.6 19.800h4.800a2.400 2.400 0 0 1-4.800 0z" fill="currentColor"/></svg>';
 const ICON_CLOSE =
   '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
@@ -110,18 +117,34 @@ function scene(g: GameState, v: Visitor): string {
   </section>`;
 }
 
+/** A seller's good as it lies on the counter. Tap or drag it between the far and the near side. */
+function offerTile(v: Visitor, index: number): string {
+  const o = v.offers[index];
+  const item = G.findItem(cat, o.itemId);
+  return `<div class="offer r${item.rarity}" data-offer="${index}" role="button" aria-label="${esc(item.ja)}"><img src="${item.img}" alt="" draggable="false" /><span>${num(o.ask)}</span></div>`;
+}
+
+/**
+ * The counter has two sides. Far side (the customer's): what a seller has brought.
+ * Near side (the shop's): what the shop means to buy, or the goods put out for a buyer. The bell sends
+ * the customer away and calls the next one.
+ */
 function counterBar(g: GameState, v: Visitor): string {
-  let inner: string;
+  let far = '';
+  let near: string;
+  let nearCls = '';
   if (v.done) {
-    inner = btn('next', G.visitorsLeft(g) === 0 ? '店を閉める' : '次のお客さんを呼ぶ', { cls: 'primary' });
+    near = `<div class="counter-note">${G.visitorsLeft(g) === 0 ? 'ベルを鳴らして店を閉める' : 'ベルを鳴らして次のお客さんを呼ぶ'}</div>`;
   } else if (v.kind === 'sell') {
-    const item = G.findItem(cat, v.itemId);
-    inner = `<button class="on-counter r${item.rarity}" data-act="hero"><img src="${item.img}" alt="" /></button>
-      <div class="counter-note">持ち込まれた品<br />言い値 ${gum(v.ask)}</div>`;
+    const rest = G.allPicks(v).filter((i) => !ui.picked.includes(i));
+    far = rest.map((i) => offerTile(v, i)).join('') || '<div class="counter-note">すべて手前にあります</div>';
+    near = ui.picked.map((i) => offerTile(v, i)).join('') || '<div class="counter-note hint-drop">買い取る品を、手前へ（タップかドラッグ）</div>';
+    nearCls = 'take';
   } else if (ui.counter.length === 0) {
-    inner = '<div class="counter-note hint-drop">売る品を、棚からここへドラッグ</div>';
+    near = '<div class="counter-note hint-drop">売る品を、棚からここへドラッグ</div>';
+    nearCls = 'drop';
   } else {
-    inner =
+    near =
       ui.counter
         .map((uid) => {
           const stock = g.stock.find((x) => x.uid === uid)!;
@@ -129,8 +152,12 @@ function counterBar(g: GameState, v: Visitor): string {
           return `<button class="on-counter r${item.rarity}" data-act="uncounter" data-arg="${uid}" aria-label="${esc(item.ja)}を棚へ戻す"><img src="${item.img}" alt="" /></button>`;
         })
         .join('') + '<div class="counter-note">タップで棚へ戻す</div>';
+    nearCls = 'drop';
   }
-  return `<div class="counter ${!v.done && v.kind === 'buy' ? 'drop' : ''}">${inner}</div>`;
+  return `<div class="counter-far">${far}</div>
+    <div class="counter ${nearCls}"><div class="counter-goods">${near}</div>
+      <button class="bell ${v.done ? 'ring' : ''}" data-act="bell" aria-label="${v.done ? '次のお客さんを呼ぶ' : 'このお客さんを帰して、次のお客さんを呼ぶ'}">${ICON_BELL}</button>
+    </div>`;
 }
 
 // ---------------------------------------------------------------- the shelf grid
@@ -174,34 +201,44 @@ function windowBody(g: GameState, v: Visitor): string {
   const who = `<div class="win-row"><span>気質</span><b>${TEMPER_JA[v.temper]}　<span class="pips">我慢 ${pips}</span></b></div>`;
 
   if (v.kind === 'sell') {
-    const block = G.buyBlock(g, cat, v.itemId, v.ask);
-    const why = block === 'shelf' ? '棚に置き場所がありません' : block === 'gum' ? 'GUM が足りません' : '';
-    const profit = Math.round(G.itemValue(cat, v.itemId, v.cond) * B.retail) - v.ask;
+    const goods = v.offers
+      .map((o, i) => {
+        const item = G.findItem(cat, o.itemId);
+        const on = ui.picked.includes(i);
+        return `<div class="offer-line ${on ? 'on' : ''}"><img src="${item.img}" alt="" />
+          <div><b>${esc(item.ja)}</b><small>${RARITY_JA[item.rarity]}・${COND_JA[o.cond]}・相場 ${num(G.itemValue(cat, o.itemId, o.cond))}</small></div>
+          <b class="ask">${num(o.ask)}</b></div>`;
+      })
+      .join('');
+    const some = G.quoteBuy(g, cat, v, ui.picked);
+    const all = G.quoteBuy(g, cat, v, G.allPicks(v));
+    const why = (q: G.BuyQuote): string => (q.block === 'shelf' ? '棚に置き場所なし' : q.block === 'gum' ? 'GUM 不足' : '');
+    const allNote = all.rate > 0 ? `<em class="off">${Math.round(all.rate * 100)}% 引き</em>` : '';
     let actions: string;
     if (ui.haggleOpen && !v.haggled) {
       actions =
         B.discountTiers
-          .map((rate, tier) => btn('haggle', `${Math.round(rate * 100)}% 引き`, { arg: tier, sub: `${gum(G.discountedAsk(v, tier))} 成功 ${pct(G.discountChance(g, v, tier))}` }))
+          .map((rate, tier) => btn('haggle', `${Math.round(rate * 100)}% 引き`, { arg: tier, sub: `成功 ${pct(G.discountChance(g, v, tier))}` }))
           .join('') + btn('haggle-close', 'やめる', { cls: 'ghost' });
     } else {
       actions = [
-        btn('accept', '買う', { cls: 'primary', sub: gum(v.ask), disabled: !!block }),
+        btn('buy-picked', `${some.count}個購入する`, { cls: 'primary', sub: some.count ? (why(some) || gum(some.price)) : '手前に品を置く', disabled: some.count === 0 || !!some.block }),
+        btn('buy-all', 'まとめ買いする', { cls: 'gold', sub: why(all) || gum(all.price), disabled: !!all.block }),
+        btn('take-all', 'すべて手前に', { disabled: ui.picked.length === v.offers.length }),
         btn('haggle-open', v.haggled ? '値切り済み' : '値切る', { disabled: v.haggled }),
-        btn('tip', '色をつける', { sub: `${gum(G.tipPrice(v))} 評判+${B.tipRep}`, disabled: !!G.buyBlock(g, cat, v.itemId, G.tipPrice(v)) }),
-        btn('pass', '見送る', { cls: 'ghost' }),
       ].join('');
     }
     return `${who}
-      <div class="win-row"><span>言い値</span><b>${gum(v.ask)}</b></div>
-      ${itemCard(v.itemId, v.cond, `<div class="item-note ${profit >= 0 ? 'good' : 'bad'}">定価で売れば ${profit >= 0 ? '+' : ''}${profit}</div>`)}
-      ${why ? `<p class="note bad">${why}</p>` : ''}
+      <div class="offer-list">${goods}</div>
+      <div class="win-row total"><span>手前の ${some.count} 個</span><b>${gum(some.price)}</b></div>
+      <div class="win-row"><span>まとめ買い（全 ${all.count} 個）</span><b>${allNote}${gum(all.price)}</b></div>
       <div class="actions">${actions}</div>`;
   }
 
   const head = `<div class="win-row"><span>欲しいもの</span><b>${esc(wantText(v.want))}</b></div>
-    <div class="win-row"><span>予算</span><b>${gum(v.budget)}</b></div>${who}`;
+    <div class="win-row"><span>予算（残り）</span><b>${gum(v.budget)}</b></div>${who}`;
   if (ui.counter.length === 0) {
-    return `${head}<p class="hint">棚の品をカウンターへドラッグすると、売上を試算します。</p><div class="actions one">${btn('pass', '見送る', { cls: 'ghost' })}</div>`;
+    return `${head}<p class="hint">棚の品をカウンターへドラッグすると、売上を試算します。帰ってもらうときはベルを鳴らします。</p>`;
   }
   const q = G.quoteSale(g, cat, v, ui.counter, ui.tier);
   const goods = ui.counter
@@ -224,7 +261,7 @@ function windowBody(g: GameState, v: Visitor): string {
       ${over ? `<div class="win-row bad"><span>予算オーバー</span><b>${num(q.over)} GUM（受け取りは ${num(q.paid)}）</b></div>` : ''}
       ${q.matches ? `<div class="win-row"><span>成功率</span><b>${pct(q.chance)}</b></div>` : '<p class="note bad">希望と違う品は受け取ってもらえません。</p>'}
     </div>
-    <div class="actions one">${btn('sell', 'この金額で販売する', { cls: 'primary', disabled: !q.matches })}${btn('pass', '見送る', { cls: 'ghost' })}</div>`;
+    <div class="actions one">${btn('sell', 'この金額で販売する', { cls: 'primary', disabled: !q.matches })}</div>`;
 }
 
 function customerWindow(g: GameState, v: Visitor): string {
@@ -332,8 +369,10 @@ function helpModal(): string {
     <h2>遊びかた</h2>
     <ol class="help">
       <li>朝、卸売り商から品を仕入れて店を開けます。</li>
-      <li>お客さんは「売りに来た人」と「買いに来た人」。ウィンドウに、言い値や、欲しいもの・予算が出ます。ウィンドウは上の帯をドラッグして動かせます。</li>
-      <li>売るときは、棚の品をカウンターへドラッグし、ウィンドウの「この金額で販売する」を押します。予算を超えた分は支払われません。</li>
+      <li>お客さんは「売りに来た人」と「買いに来た人」。ウィンドウに、持ってきた品と言い値や、欲しいもの・予算が出ます。ウィンドウは上の帯をドラッグして動かせます。</li>
+      <li>買い取るときは、カウンターの奥の品を手前へ移し（タップかドラッグ）、「〇個購入する」を押します。「まとめ買いする」は全部を一度に買い、割引がつくことがあります。</li>
+      <li>売るときは、棚の品をカウンターへドラッグし、ウィンドウの「この金額で販売する」を押します。予算を超えた分は支払われません。予算が残っていれば、続けて売れます。</li>
+      <li>ベルを鳴らすと、いまのお客さんに帰ってもらい、次のお客さんを呼びます。</li>
       <li>品は種類ごとに棚で使うマス目の形が違います。ドラッグで並べ替え、タップして回転させて、置き場所を作りましょう。</li>
       <li>値切りや上乗せは、断られると相手の「我慢」が減り、0 になると怒って帰ります（評判が下がります）。</li>
       <li>良心的な取引で評判（★）が上がると、お客さんが増え、値の張る品も集まります。</li>
@@ -377,6 +416,7 @@ function render(): void {
     measure(g);
     const v = G.currentVisitor(g);
     ui.counter = v && !v.done && v.kind === 'buy' ? ui.counter.filter((uid) => g.stock.some((x) => x.uid === uid)) : [];
+    ui.picked = v && !v.done && v.kind === 'sell' ? ui.picked.filter((i) => i < v.offers.length) : [];
     let top: string;
     if (g.phase === 'open' && v) top = `${scene(g, v)}${counterBar(g, v)}`;
     else top = `<main class="body">${g.phase === 'morning' ? morning(g) : g.phase === 'evening' ? evening(g) : ending(g)}</main>`;
@@ -402,6 +442,10 @@ function render(): void {
 function clampWindow(): void {
   const win = root.querySelector<HTMLElement>('.win');
   if (!win) return;
+  // until the player moves it, the window ends above the counter so the goods on it stay in reach
+  const body = win.querySelector<HTMLElement>('.win-body');
+  const far = root.querySelector<HTMLElement>('.counter-far');
+  if (body && far) body.style.maxHeight = ui.win.moved ? '' : `${Math.max(150, far.offsetTop - ui.win.y - 48)}px`;
   ui.win.x = Math.max(0, Math.min(ui.win.x, root.clientWidth - win.offsetWidth));
   ui.win.y = Math.max(0, Math.min(ui.win.y, root.clientHeight - 44));
   win.style.left = `${ui.win.x}px`;
@@ -451,6 +495,7 @@ function doSell(g: GameState, v: Visitor): void {
   if (result === 'sold') {
     note(`+${num(g.gum - before)} GUM`, 'good');
     ui.counter = [];
+    ui.tier = 0;
   } else if (result === 'left') note('怒って帰ってしまった…', 'bad');
   else if (result === 'refused') note('断られた', 'bad');
   else if (result === 'nomatch') note('希望と違う品がある', 'bad');
@@ -468,9 +513,25 @@ function gameAct(g: GameState, name: string, n: number): void {
       G.openShop(g, cat);
       newCustomer();
       break;
-    case 'next':
-      G.callNext(g, cat);
-      newCustomer();
+    case 'bell':
+      if (v && !v.done) {
+        // send this customer away, let them walk out, then bring the next one in
+        G.pass(g);
+        ui.win.open = false;
+        const key = ui.enterKey;
+        window.clearTimeout(nextTimer);
+        nextTimer = window.setTimeout(() => {
+          if (s !== g || key !== ui.enterKey || !G.currentVisitor(g)?.done) return;
+          G.callNext(g, cat);
+          newCustomer();
+          store.save(g);
+          render();
+        }, 1000);
+      } else {
+        window.clearTimeout(nextTimer);
+        G.callNext(g, cat);
+        newCustomer();
+      }
       break;
     case 'hero':
       if (v && !v.done) ui.win.open = true;
@@ -481,9 +542,16 @@ function gameAct(g: GameState, name: string, n: number): void {
     case 'win-size':
       ui.win.big = !ui.win.big;
       break;
-    case 'accept':
-    case 'tip':
-      if (G.acceptAsk(g, cat, name === 'tip')) note(`−${num(before - g.gum)} GUM${name === 'tip' ? `　評判 +${B.tipRep}` : ''}`, 'info');
+    case 'take-all':
+      if (v) ui.picked = G.allPicks(v);
+      break;
+    case 'buy-picked':
+    case 'buy-all':
+      if (!v) break;
+      if (G.buy(g, cat, name === 'buy-all' ? G.allPicks(v) : ui.picked)) {
+        note(`−${num(before - g.gum)} GUM`, 'info');
+        ui.picked = [];
+      }
       break;
     case 'haggle-open':
       ui.haggleOpen = true;
@@ -509,9 +577,6 @@ function gameAct(g: GameState, name: string, n: number): void {
       break;
     case 'sell-ok':
       if (v) doSell(g, v);
-      break;
-    case 'pass':
-      G.pass(g);
       break;
     case 'dispose':
       if (ui.inspectUid === null) break;
@@ -548,6 +613,7 @@ function newCustomer(): void {
   ui.enterKey += 1;
   ui.haggleOpen = false;
   ui.counter = [];
+  ui.picked = [];
   ui.tier = 0;
   ui.win.open = true;
 }
@@ -556,6 +622,7 @@ function newCustomer(): void {
 
 type Drag =
   | { kind: 'win'; dx: number; dy: number }
+  | { kind: 'offer'; index: number; startX: number; startY: number; active: boolean; ghost: HTMLElement | null; offX: number; offY: number }
   | { kind: 'item'; uid: number; startX: number; startY: number; active: boolean; ghost: HTMLElement | null; grabX: number; grabY: number; offX: number; offY: number };
 let drag: Drag | null = null;
 
@@ -577,6 +644,13 @@ function onDown(event: PointerEvent): void {
   if (bar && !target.closest('button')) {
     const rect = root.getBoundingClientRect();
     drag = { kind: 'win', dx: event.clientX - rect.left - ui.win.x, dy: event.clientY - rect.top - ui.win.y };
+    event.preventDefault();
+    return;
+  }
+  const offerEl = target.closest<HTMLElement>('.offer');
+  if (offerEl) {
+    const rect = offerEl.getBoundingClientRect();
+    drag = { kind: 'offer', index: Number(offerEl.dataset.offer), startX: event.clientX, startY: event.clientY, active: false, ghost: null, offX: event.clientX - rect.left, offY: event.clientY - rect.top };
     event.preventDefault();
     return;
   }
@@ -607,7 +681,26 @@ function onMove(event: PointerEvent): void {
     const rect = root.getBoundingClientRect();
     ui.win.x = event.clientX - rect.left - drag.dx;
     ui.win.y = event.clientY - rect.top - drag.dy;
+    ui.win.moved = true;
     clampWindow();
+    return;
+  }
+  if (drag.kind === 'offer') {
+    const o = drag;
+    if (!o.active) {
+      if (Math.hypot(event.clientX - o.startX, event.clientY - o.startY) < 8) return;
+      const el = root.querySelector<HTMLElement>(`.offer[data-offer="${o.index}"]`);
+      if (!el) return;
+      o.active = true;
+      o.ghost = el.cloneNode(true) as HTMLElement;
+      o.ghost.classList.add('ghost');
+      root.appendChild(o.ghost);
+      el.classList.add('lifted');
+    }
+    const rr = root.getBoundingClientRect();
+    o.ghost!.style.left = `${event.clientX - rr.left - o.offX}px`;
+    o.ghost!.style.top = `${event.clientY - rr.top - o.offY}px`;
+    for (const zone of root.querySelectorAll('.counter.take, .counter-far')) zone.classList.toggle('hot', inside(zone.getBoundingClientRect(), event.clientX, event.clientY));
     return;
   }
   const d = drag;
@@ -647,6 +740,22 @@ function onUp(event: PointerEvent): void {
   const d = drag;
   drag = null;
   if (d.kind === 'win') return;
+  if (d.kind === 'offer') {
+    d.ghost?.remove();
+    const picked = ui.picked.includes(d.index);
+    let want = !picked; // a tap moves it to the other side
+    if (d.active) {
+      const near = root.querySelector('.counter.take');
+      const far = root.querySelector('.counter-far');
+      if (near && inside(near.getBoundingClientRect(), event.clientX, event.clientY)) want = true;
+      else if (far && inside(far.getBoundingClientRect(), event.clientX, event.clientY)) want = false;
+      else want = picked;
+    }
+    ui.picked = want ? [...new Set([...ui.picked, d.index])] : ui.picked.filter((i) => i !== d.index);
+    if (want) ui.win.open = true;
+    render();
+    return;
+  }
   const g = s;
   if (!d.active) {
     // a tap: show the good's details
@@ -687,7 +796,7 @@ export function mount(el: HTMLElement): void {
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp);
   window.addEventListener('pointercancel', () => {
-    if (drag?.kind === 'item') drag.ghost?.remove();
+    if (drag && drag.kind !== 'win') drag.ghost?.remove();
     drag = null;
     render();
   });

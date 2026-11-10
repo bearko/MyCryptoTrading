@@ -42,26 +42,61 @@ describe('game rules', () => {
     expect(G.itemValue(catalog, item.id, 2)).toBeGreaterThan(G.itemValue(catalog, item.id, 0));
   });
 
-  it('buying at the asking price moves money and stock', () => {
+  it('buying a seller\'s goods moves money and stock, and the seller stays while goods remain', () => {
     const s = G.newGame(3, catalog);
     s.gum = 100000;
+    s.rows = 8;
+    for (;;) {
+      until(s, 'sell');
+      if (G.currentVisitor(s)!.offers.length >= 2) break;
+      G.pass(s);
+      G.callNext(s, catalog);
+    }
+    const v = G.currentVisitor(s)!;
+    const count = v.offers.length;
+    const first = v.offers[0];
+    const before = { gum: s.gum, stock: s.stock.length };
+    expect(G.buy(s, catalog, [0])).toBe(true);
+    expect(s.gum).toBe(before.gum - first.ask);
+    expect(s.stock).toHaveLength(before.stock + 1);
+    expect(v.offers).toHaveLength(count - 1);
+    expect(v.done).toBe(false);
+    expect(v.bundleRate).toBe(0); // the bundle discount is gone after a partial buy
+    expect(G.buy(s, catalog, G.allPicks(v))).toBe(true);
+    expect(v.done).toBe(true);
+    expect(s.stock).toHaveLength(before.stock + count);
+  });
+
+  it('taking everything at once earns the bundle discount', () => {
+    const s = G.newGame(14, catalog);
+    s.gum = 100000;
+    s.rows = 8;
     until(s, 'sell');
     const v = G.currentVisitor(s)!;
-    const before = { gum: s.gum, stock: s.stock.length };
-    expect(G.acceptAsk(s, catalog, false)).toBe(true);
-    expect(s.gum).toBe(before.gum - v.ask);
-    expect(s.stock).toHaveLength(before.stock + 1);
-    expect(v.done).toBe(true);
+    v.offers = [
+      { itemId: catalog.items[0].id, cond: 1, ask: 100 },
+      { itemId: catalog.items[1].id, cond: 1, ask: 60 },
+    ];
+    v.bundleRate = 0.1;
+    expect(G.quoteBuy(s, catalog, v, [0])).toMatchObject({ price: 100, rate: 0 });
+    expect(G.quoteBuy(s, catalog, v, [0, 1])).toMatchObject({ count: 2, full: 160, price: 144, rate: 0.1 });
+    const gum = s.gum;
+    expect(G.buy(s, catalog, [0, 1])).toBe(true);
+    expect(s.gum).toBe(gum - 144);
+    expect(s.stock.slice(-2).reduce((sum, x) => sum + x.paid, 0)).toBe(144);
   });
 
   it('cannot buy with a full shelf or an empty purse', () => {
     const s = G.newGame(4, catalog);
     until(s, 'sell');
+    const v = G.currentVisitor(s)!;
     s.gum = 0;
-    expect(G.acceptAsk(s, catalog, false)).toBe(false);
+    expect(G.quoteBuy(s, catalog, v, [0]).block).toBe('gum');
+    expect(G.buy(s, catalog, [0])).toBe(false);
     s.gum = 100000;
     s.rows = 0; // no shelf at all
-    expect(G.acceptAsk(s, catalog, false)).toBe(false);
+    expect(G.quoteBuy(s, catalog, v, [0]).block).toBe('shelf');
+    expect(G.buy(s, catalog, [0])).toBe(false);
   });
 
   it('a discount can be won only once, and refusals cost patience', () => {
@@ -69,11 +104,12 @@ describe('game rules', () => {
     s.gum = 100000;
     until(s, 'sell');
     const v = G.currentVisitor(s)!;
-    const ask = v.ask;
+    const asks = v.offers.map((o) => o.ask);
     let guard = 0;
     while (!v.done && !v.haggled && guard++ < 10) G.haggle(s, 0);
     if (v.haggled) {
-      expect(v.ask).toBeLessThan(ask);
+      v.offers.forEach((o, i) => expect(o.ask).toBeLessThanOrEqual(asks[i]));
+      expect(v.offers.reduce((sum, o) => sum + o.ask, 0)).toBeLessThan(asks.reduce((a, b) => a + b, 0));
       expect(G.haggle(s, 0)).toBe(false);
     } else {
       expect(v.patience).toBe(0);
@@ -90,6 +126,7 @@ describe('game rules', () => {
       for (const item of [...s.stock]) {
         const gum = s.gum;
         const fair = G.salePrice(catalog, item, 0);
+        const budget = v.budget;
         const result = G.sell(s, catalog, [item.uid], 0);
         if (!G.matches(catalog, v.want, item.itemId)) {
           expect(result).toBe('nomatch');
@@ -98,7 +135,10 @@ describe('game rules', () => {
         }
         // at the fair price the customer always agrees; over the budget they pay the budget
         expect(result).toBe('sold');
-        expect(s.gum - gum).toBe(Math.min(fair, v.budget));
+        expect(s.gum - gum).toBe(Math.min(fair, budget));
+        expect(v.budget).toBe(budget - (s.gum - gum));
+        // the customer leaves once the money is (nearly) gone, and stays otherwise
+        expect(v.done).toBe(v.budget < B.budgetFloor);
         break;
       }
       G.pass(s);
@@ -122,6 +162,7 @@ describe('game rules', () => {
     expect(G.sell(s, catalog, uids, 0)).toBe('sold');
     expect(s.gum).toBe(gum + 10);
     expect(s.stock).toHaveLength(count - 2);
+    expect(v.done).toBe(true); // the budget is spent
   });
 
   it('goods on the shelf never overlap and stay inside the grid', () => {
@@ -129,7 +170,8 @@ describe('game rules', () => {
     s.gum = 1_000_000;
     for (let n = 0; n < 60; n++) {
       until(s, 'sell');
-      G.acceptAsk(s, catalog, false);
+      G.buy(s, catalog, [0]);
+      G.pass(s);
       G.callNext(s, catalog);
     }
     const seen = new Set<string>();

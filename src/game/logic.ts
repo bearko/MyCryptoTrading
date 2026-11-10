@@ -3,7 +3,7 @@ import type { Catalog, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randRange } from './rng';
 import { SHAPES, TURNED, type Shape } from './shapes';
-import { emptySummary, type GameState, type StockItem, type Visitor, type Want } from './state';
+import { emptySummary, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
 
 const clamp = (v: number, min: number, max: number): number => Math.min(max, Math.max(min, v));
 
@@ -23,8 +23,7 @@ export function salePrice(cat: Catalog, stock: StockItem, tier: number): number 
 }
 
 export const disposePrice = (cat: Catalog, stock: StockItem): number => Math.round(itemValue(cat, stock.itemId, stock.cond) * B.disposeRate);
-export const tipPrice = (v: Visitor): number => Math.round(v.ask * (1 + B.tipRate));
-export const discountedAsk = (v: Visitor, tier: number): number => Math.max(1, Math.round(v.ask * (1 - B.discountTiers[tier])));
+export const discountedAsk = (ask: number, tier: number): number => Math.max(1, Math.round(ask * (1 - B.discountTiers[tier])));
 
 function chance(s: GameState, base: number, temper: number): number {
   if (base >= 1) return 1;
@@ -166,7 +165,7 @@ function startMorning(s: GameState, cat: Catalog): void {
 
 export function newGame(seed: number, cat: Catalog): GameState {
   const s: GameState = {
-    v: 2,
+    v: 3,
     rng: seed | 0,
     day: 1,
     gum: B.startGum,
@@ -215,14 +214,28 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
   let sellerShare: number = B.sellerShare;
   if (s.stock.length === 0) sellerShare = 0.85;
   else if (freeCells(s, cat) < 4) sellerShare = 0.2;
-  const base = { heroId: hero.id, temper, patience: B.temperPatience[temper], haggled: false, mood: 'neutral' as const, done: false };
+  const base = {
+    heroId: hero.id,
+    temper,
+    patience: B.temperPatience[temper],
+    haggled: false,
+    mood: 'neutral' as const,
+    done: false,
+    offers: [] as Offer[],
+    bundleRate: 0,
+  };
 
   if (rand(s) < sellerShare) {
-    const item = pick(s, cat.itemsByRarity[rollRarity(s, heroBonus)]);
-    const cond = pickWeighted(s, B.condWeights);
+    const count = 1 + pickWeighted(s, B.offerCountWeights);
     const [lo, hi] = B.askRange[temper];
-    const ask = Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi)));
-    return { ...base, kind: 'sell', itemId: item.id, cond, ask, want: { type: 'any' }, budget: 0, line: lines.sellOpen(s, temper) };
+    const offers: Offer[] = [];
+    for (let i = 0; i < count; i++) {
+      const item = pick(s, cat.itemsByRarity[rollRarity(s, heroBonus)]);
+      const cond = pickWeighted(s, B.condWeights);
+      offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi))) });
+    }
+    const bundleRate = count >= 2 ? B.bundleRates[pickWeighted(s, B.bundleWeights)] : 0;
+    return { ...base, kind: 'sell', offers, bundleRate, want: { type: 'any' }, budget: 0, line: lines.sellOpen(s, temper) };
   }
 
   let want: Want;
@@ -243,8 +256,10 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
     else want = { type: 'any' };
     ref = B.rarityValue[rarity];
   }
-  const budget = Math.round(ref * B.retail * randRange(s, 1.05, 1.55) * (1 + heroBonus * 0.05));
-  return { ...base, kind: 'buy', itemId: 0, cond: 1, ask: 0, want, budget, line: lines.buyOpen(s, want) };
+  // some customers carry enough for two or three goods; rarer heroes more often
+  const goods = 1 + pickWeighted(s, [B.budgetCountWeights[0], B.budgetCountWeights[1] + heroBonus * 4, B.budgetCountWeights[2] + heroBonus * 4]);
+  const budget = Math.round(ref * B.retail * randRange(s, 1.05, 1.55) * (1 + heroBonus * 0.05) * goods);
+  return { ...base, kind: 'buy', want, budget, line: lines.buyOpen(s, want) };
 }
 
 export function openShop(s: GameState, cat: Catalog): void {
@@ -284,39 +299,94 @@ function strike(s: GameState, v: Visitor, refusal: string): void {
 
 // ---------------------------------------------------------------- buying from a customer
 
-export type BuyBlock = 'gum' | 'shelf' | null;
-export function buyBlock(s: GameState, cat: Catalog, itemId: number, price: number): BuyBlock {
-  if (!findSlot(s, cat, itemId)) return 'shelf';
-  if (s.gum < price) return 'gum';
-  return null;
+export interface BuyQuote {
+  /** how many goods */
+  count: number;
+  /** what the shop pays */
+  price: number;
+  /** the same goods without the bundle discount */
+  full: number;
+  /** discount applied (0 when none) */
+  rate: number;
+  /** why the shop cannot buy them: no room on the shelf, or not enough GUM */
+  block: 'gum' | 'shelf' | null;
 }
 
-/** Buys the good at the current asking price, or a bit over it (`tip`) to earn goodwill. */
-export function acceptAsk(s: GameState, cat: Catalog, tip: boolean): boolean {
+/** True when every one of these goods finds a place on the shelf together. */
+function fitsAll(s: GameState, cat: Catalog, itemIds: readonly number[]): boolean {
+  const before = s.stock.length;
+  let ok = true;
+  for (const itemId of itemIds) {
+    const slot = findSlot(s, cat, itemId);
+    if (!slot) {
+      ok = false;
+      break;
+    }
+    s.stock.push({ uid: -1 - s.stock.length, itemId, cond: 1, paid: 0, ...slot });
+  }
+  s.stock.length = before;
+  return ok;
+}
+
+/**
+ * Works out buying some of a seller's goods (`picks` are indexes into `v.offers`), without doing it.
+ * Taking everything the seller brought at once earns their bundle discount.
+ */
+export function quoteBuy(s: GameState, cat: Catalog, v: Visitor, picks: readonly number[]): BuyQuote {
+  const chosen = [...new Set(picks)].map((i) => v.offers[i]).filter((o): o is Offer => !!o);
+  const full = chosen.reduce((sum, o) => sum + o.ask, 0);
+  const rate = chosen.length === v.offers.length && chosen.length >= 2 ? v.bundleRate : 0;
+  const price = Math.round(full * (1 - rate));
+  let block: BuyQuote['block'] = null;
+  if (chosen.length > 0 && !fitsAll(s, cat, chosen.map((o) => o.itemId))) block = 'shelf';
+  else if (s.gum < price) block = 'gum';
+  return { count: chosen.length, price, full, rate, block };
+}
+
+/** All the goods a seller still has, as picks. */
+export const allPicks = (v: Visitor): number[] => v.offers.map((_, i) => i);
+
+/**
+ * Buys the picked goods. The seller stays while goods remain, and leaves once everything is bought.
+ */
+export function buy(s: GameState, cat: Catalog, picks: readonly number[]): boolean {
   const v = currentVisitor(s);
   if (!v || v.done || v.kind !== 'sell') return false;
-  const price = tip ? tipPrice(v) : v.ask;
-  if (buyBlock(s, cat, v.itemId, price)) return false;
-  s.gum -= price;
-  addStock(s, cat, v.itemId, v.cond, price);
-  s.today.spend += price;
-  s.today.bought += 1;
-  s.totals.bought += 1;
-  if (tip) addRep(s, B.tipRep);
-  else if (!v.haggled) addRep(s, B.payAskRep);
-  v.done = true;
+  const quote = quoteBuy(s, cat, v, picks);
+  if (quote.count === 0 || quote.block) return false;
+  const chosen = new Set(picks);
+  const taken = v.offers.filter((_, i) => chosen.has(i));
+  // the discount is shared out so each good remembers what it really cost
+  let left = quote.price;
+  taken.forEach((o, i) => {
+    const paid = i === taken.length - 1 ? left : Math.round(o.ask * (1 - quote.rate));
+    left -= paid;
+    addStock(s, cat, o.itemId, o.cond, paid);
+  });
+  s.gum -= quote.price;
+  s.today.spend += quote.price;
+  s.today.bought += taken.length;
+  s.totals.bought += taken.length;
+  v.offers = v.offers.filter((_, i) => !chosen.has(i));
+  v.bundleRate = 0;
   v.mood = 'happy';
-  v.line = lines.dealSeller(v.temper, tip);
+  if (v.offers.length === 0) {
+    v.done = true;
+    v.line = lines.dealSeller(v.temper);
+  } else {
+    v.line = lines.moreSeller(v.temper);
+  }
   return true;
 }
 
-/** Asks for a discount. Works once per customer; a refusal costs patience. */
+/** Asks for a discount on everything the seller still has. Works once per customer; a refusal costs patience. */
 export function haggle(s: GameState, tier: number): boolean {
   const v = currentVisitor(s);
   if (!v || v.done || v.kind !== 'sell' || v.haggled) return false;
   if (rand(s) < discountChance(s, v, tier)) {
-    v.ask = discountedAsk(v, tier);
+    for (const o of v.offers) o.ask = discountedAsk(o.ask, tier);
     v.haggled = true;
+    v.mood = 'neutral';
     v.line = lines.haggleOk(v.temper);
     addRep(s, B.discountRep[tier]);
     return true;
@@ -363,7 +433,7 @@ export type SellResult = 'sold' | 'refused' | 'left' | 'nomatch' | 'invalid';
 
 /**
  * Sells the goods on the counter. A price over the budget is allowed: the customer pays the budget
- * and the rest is lost. A refusal costs patience.
+ * and the rest is lost. A refusal costs patience. The customer stays while they have money left.
  */
 export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: number): SellResult {
   const v = currentVisitor(s);
@@ -382,9 +452,14 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
     s.totals.bestSale = Math.max(s.totals.bestSale, quote.paid);
     const markup = quote.paid / quote.fair - 1;
     addRep(s, markup <= 1e-9 ? B.saleRep[0] : markup <= 0.3 ? B.saleRep[1] : B.saleRep[2]);
-    v.done = true;
+    v.budget -= quote.paid;
     v.mood = 'happy';
-    v.line = lines.dealBuyer(v.temper);
+    if (v.budget < B.budgetFloor) {
+      v.done = true;
+      v.line = lines.dealBuyer(v.temper);
+    } else {
+      v.line = lines.moreBuyer(v.temper);
+    }
     return 'sold';
   }
   strike(s, v, lines.markupNg(v.temper));
@@ -397,7 +472,7 @@ export function refuseGood(s: GameState): void {
   if (v && !v.done) v.line = lines.noMatch();
 }
 
-/** Sends the customer away without a deal. No penalty. */
+/** Sends the customer away (the bell). No penalty. */
 export function pass(s: GameState): void {
   const v = currentVisitor(s);
   if (!v || v.done) return;

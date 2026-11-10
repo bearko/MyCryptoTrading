@@ -43,10 +43,15 @@ export const B = {
   discountTiers: [0.15, 0.3, 0.45],
   discountChance: [0.8, 0.5, 0.2],
   discountRep: [0, 0, -1],
-  /** paying extra on purpose buys goodwill */
-  tipRate: 0.15,
-  tipRep: 3,
-  payAskRep: 0,
+  /** how many goods a seller brings (1, 2, 3, 4) */
+  offerCountWeights: [55, 28, 12, 5],
+  /** discount for buying everything a seller brought at once (only when they brought 2 or more) */
+  bundleRates: [0, 0.05, 0.1, 0.15],
+  bundleWeights: [35, 25, 25, 15],
+  /** how many goods' worth of money a buyer carries (1, 2, 3); rarer heroes lean higher */
+  budgetCountWeights: [60, 28, 12],
+  /** a buyer with less than this left is done shopping */
+  budgetFloor: 10,
 
   /** selling: markup over the fair price, and how often it is accepted (in between: a straight line) */
   markupTiers: [0, 0.15, 0.3, 0.5],
@@ -64,11 +69,11 @@ export const B = {
   /** selling a good back to the wholesaler */
   disposeRate: 0.5,
 
-  rentFirst: 300,
-  rentGrowth: 1.15,
+  rentFirst: 550,
+  rentGrowth: 1.2,
   rentEvery: 7,
   grace: 1,
-  deedPrice: 5000,
+  deedPrice: 10000,
 } as const;
 
 export const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日'];
