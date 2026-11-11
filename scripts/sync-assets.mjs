@@ -5,7 +5,7 @@
 //   node scripts/sync-assets.mjs
 //
 // Source directory: $MCH_ASSETS_DIR, else vendor/mycryptoheroes (git submodule).
-// Outputs: public/mch/** (copied assets) and src/generated/catalog.json.
+// Outputs: public/mch/** (copied assets), src/generated/catalog.json and src/generated/audio.json.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -18,6 +18,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const src = resolve(root, process.env.MCH_ASSETS_DIR ?? 'vendor/mycryptoheroes');
 const outPublic = join(root, 'public', 'mch');
 const outCatalog = join(root, 'src', 'generated', 'catalog.json');
+const outAudio = join(root, 'src', 'generated', 'audio.json');
 
 if (!existsSync(join(src, 'Data'))) {
   console.error(`[sync-assets] asset database not found at ${src}`);
@@ -239,6 +240,56 @@ const backdrop = halve('Image/Backgrounds/1002.png');
 
 mkdirSync(dirname(outCatalog), { recursive: true });
 const dungeon = halve('Image/Backgrounds/1006.png');
+
+// ---------------------------------------------------------------- sound
+// Only the files the game plays are copied (the whole Audio folder is 24MB). src/ui/audio.ts streams
+// the music one track at a time and makes almost every sound effect itself, so nothing here is
+// downloaded before it is needed.
+//
+// Which track plays where. Chosen from the track names and from measurements (ffmpeg ebur128,
+// key and tempo estimates), not by ear — audition them on soundboard.html and swap freely:
+//
+//   scene    file             length  loudness    notes
+//   title    9on9             2:31    -12.3 LUFS  the one clearly major-key track (A major): bright and welcoming
+//   day      land             2:08    -12.5 LUFS  the town theme (A minor), fewest highs, steady: opening hours
+//   night    cryptid-wars     2:24    -13.7 LUFS  lowest level of all, A minor like the day theme, so day -> night blends
+//   shop     pvp              2:15    -13.9 LUFS  light and quick without being heavy: the night market
+//   dungeon  pve              1:01    -12.6 LUFS  the quest theme (C minor), a short loop
+//   battle   land-battle      1:37    -13.6 LUFS  D minor, about 164 bpm
+//   boss     raid             3:00    -12.3 LUFS  the brightest, busiest and fastest track
+//   ending   pve-event        2:23    -10.2 LUFS  the loudest, festive; hovers between F minor and F major
+//   (colosseum.mp3 is not used.)
+//
+// gain: evens the tracks out to about -14 LUFS. head / tail: seconds of silence at the start and the
+// end (below -40 dBFS), skipped when the track loops.
+const lufsGain = (lufs, target = -14) => Math.min(1, Math.round(10 ** ((target - lufs) / 20) * 100) / 100);
+const track = (file, lufs, head, tail) => ({ url: use(`Audio/BGM/${file}.mp3`), gain: lufsGain(lufs), head, tail });
+const sample = (relPath, gain) => ({ url: use(`Audio/SE/${relPath}`), gain });
+const audio = {
+  bgm: {
+    title: track('9on9', -12.3, 0.13, 1.19),
+    day: track('land', -12.5, 0.02, 2.12),
+    night: track('cryptid-wars', -13.7, 0.27, 0.84),
+    shop: track('pvp', -13.9, 0.03, 1.23),
+    dungeon: track('pve', -12.6, 0, 0.63),
+    battle: track('land-battle', -13.6, 0.05, 0.21),
+    boss: track('raid', -12.3, 0.01, 1.51),
+    ending: track('pve-event', -10.2, 0.02, 0.76),
+  },
+  // Recorded effects. The battle ones are laid quietly under the synthesized sound of the same name;
+  // the two jingles are an alternative to the synthesized phrases (off by default, see audioTuning).
+  // MP3 only: every browser decodes it.
+  se: {
+    hit: sample('Battle/1_single_damage.mp3', 0.5), // 0.3s, a dry punch
+    hitBig: sample('Battle/2_area_damage.mp3', 0.7), // 2.3s, -19.3 LUFS, a long rumbling tail
+    heal: sample('Battle/3_heal_resurrection.mp3', 0.4), // 1.6s, -15.5 LUFS, bright sparkles
+    buff: sample('Battle/4_buff.mp3', 0.5), // 2.1s, -17.3 LUFS, rising
+    debuff: sample('Battle/5_debuff_status_effect.mp3', 0.55), // 2.1s, -18.6 LUFS, dark
+    win: sample('Jingles/win.mp3', 0.4), // 3.5s, -10.2 LUFS, peaks over full scale, ends on a hard cut
+    lose: sample('Jingles/lose.mp3', 0.5), // 5.3s, -12.8 LUFS
+  },
+};
+writeFileSync(outAudio, JSON.stringify(audio));
 
 writeFileSync(outCatalog, JSON.stringify({ items, heroes, icons, backdrop, dungeon, player, enemies, bosses }));
 console.log(`[sync-assets] ${items.length} goods, ${heroes.length} customers, ${enemies.length} enemies, ${bosses.length} bosses, ${copied} files copied`);

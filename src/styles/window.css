@@ -1,0 +1,497 @@
+/* ---------- the customer window: a slip of paper (an invoice) */
+.win {
+  position: absolute;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: min(62%, 262px);
+  min-height: 0;
+  border-bottom: 0;
+  box-shadow: 5px 5px 0 var(--ink-50);
+  animation: win-in 0.28s var(--ease-pop) both;
+  transform-origin: 0 0;
+}
+.win.big {
+  width: calc(100% - 12px);
+  max-width: 468px;
+}
+.win.held {
+  box-shadow: 9px 12px 0 var(--ink-50);
+  transition: box-shadow 0.12s;
+}
+@keyframes win-in {
+  from {
+    opacity: 0;
+    transform: translateX(-30px) rotate(-5deg) scale(0.9);
+  }
+}
+.win-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding-left: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  cursor: grab;
+  touch-action: none;
+}
+.win-kind {
+  padding: 1px 9px;
+  font-family: var(--f-display);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--cool);
+  white-space: nowrap;
+  transform: skewX(var(--skew));
+}
+.win.kind-buy .win-kind {
+  background: var(--gum);
+}
+/* the ridges of a handle */
+.win-grip {
+  flex: 1;
+  height: 14px;
+  background: repeating-linear-gradient(90deg, var(--ink-3) 0 3px, transparent 3px 7px);
+}
+.win-btn {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-left: 2px solid var(--ink-3);
+  background: none;
+  color: var(--paper);
+  cursor: pointer;
+}
+.win-btn:active {
+  background: var(--ink-3);
+}
+.win-btn:active svg {
+  transform: scale(0.8);
+}
+.win-who {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-bottom: 2px solid var(--ink);
+  background: var(--paper-2);
+  font-size: 0.75rem;
+  min-width: 0;
+}
+.win-who b {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 900;
+}
+/* small: the name plate beside the slip already says who this is */
+.win.small .win-who {
+  display: none;
+}
+.win-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.win-scroll {
+  flex: 1 1 auto;
+  min-height: 48px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 8px 6px;
+}
+.win-foot {
+  flex: 0 0 auto;
+  padding: 5px 8px 9px;
+  border-top: 3px double var(--ink);
+}
+.win .hint {
+  font-size: 0.75rem;
+}
+
+/* line items: grey until picked, then ink */
+.lines {
+  display: grid;
+}
+.line {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 5px 3px;
+  border: 0;
+  border-bottom: 1.5px dashed var(--rule);
+  background: none;
+  color: var(--sub);
+  font-family: var(--f-body);
+  text-align: left;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+}
+button.line {
+  cursor: pointer;
+}
+button.line:active {
+  background: var(--paper-2);
+}
+.line .tile {
+  filter: grayscale(0.85);
+  opacity: 0.6;
+  transition:
+    filter 0.15s,
+    opacity 0.15s;
+}
+.line .tags {
+  opacity: 0.6;
+}
+.line.on {
+  color: var(--ink);
+  background: linear-gradient(90deg, var(--gum-wash), transparent 85%);
+}
+.line.on .tile {
+  filter: none;
+  opacity: 1;
+}
+.line.on .tags {
+  opacity: 1;
+}
+.line.bad {
+  background: var(--hot-wash);
+}
+.line-main {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.line-main b {
+  font-size: 0.875rem;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.line-main small {
+  font-size: 0.6875rem;
+  line-height: 1.35;
+}
+.win.small .line-main .tags {
+  display: none;
+}
+.line-price {
+  display: grid;
+  justify-items: end;
+  line-height: 1;
+}
+.ask {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 1.1875rem;
+  font-variant-numeric: tabular-nums;
+}
+.line-price s {
+  font-family: var(--f-num);
+  font-size: 0.75rem;
+  color: var(--hot-deep);
+  text-decoration-thickness: 2px;
+}
+.ask.new {
+  color: var(--leaf-deep);
+  animation: price-pop 0.4s var(--ease-pop) both;
+}
+@keyframes price-pop {
+  from {
+    transform: scale(2.2) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+.want {
+  display: grid;
+  gap: 1px;
+  padding: 3px 0 5px;
+  border-bottom: 1.5px dashed var(--rule);
+}
+.want > span,
+.sum > span {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--sub);
+}
+.want b {
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+/* totals are the biggest thing on the slip */
+.sum {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 3px;
+}
+.sum .total {
+  font-size: 1.75rem;
+  line-height: 1.05;
+}
+.sum .total .gum img {
+  width: 0.72em;
+  height: 0.72em;
+}
+.sum.minor {
+  font-size: 0.75rem;
+}
+.sum.minor b {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.9375rem;
+}
+.sum.bad .total,
+.sum.minor.bad b {
+  color: var(--hot-deep);
+}
+.sum.minor.bad {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 8px;
+}
+.sum.minor.bad > span {
+  margin-right: auto;
+  color: var(--hot-deep);
+  white-space: nowrap;
+}
+.sum.minor.bad b {
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.off.mini {
+  margin-left: 4px;
+  padding: 0 3px;
+  animation: none;
+  transform: none;
+}
+.off {
+  padding: 0 5px;
+  background: var(--hot);
+  color: var(--paper);
+  font-style: normal;
+  font-size: 0.6875rem;
+  font-weight: 900;
+  line-height: 1.5;
+  transform: rotate(-4deg);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* the markup: four segments of one switch */
+.segs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 2px 0 4px;
+  border: var(--edge) solid var(--ink);
+  background: var(--ink);
+  gap: 2px;
+}
+.seg {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-num);
+  font-size: 1rem;
+  cursor: pointer;
+  transition:
+    background-color 0.1s,
+    transform var(--t-press);
+}
+.seg:first-child {
+  font-family: var(--f-body);
+  font-weight: 900;
+  font-size: 0.8125rem;
+}
+.seg:active {
+  transform: scale(0.92);
+}
+.seg.on {
+  background: var(--ink);
+  color: var(--gum);
+}
+
+/* a chance, as a bar and a number */
+.chance {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--sub);
+}
+.chance i {
+  height: 10px;
+  background: var(--paper-2);
+  border: 2px solid var(--ink);
+  transform: skewX(-20deg);
+  overflow: hidden;
+}
+.chance i b {
+  display: block;
+  height: 100%;
+  background: var(--leaf);
+  transition: width 0.25s var(--ease-out);
+}
+.chance em {
+  min-width: 2.6em;
+  font-family: var(--f-num);
+  font-style: normal;
+  font-size: 1.0625rem;
+  color: var(--ink);
+  text-align: right;
+}
+.chance.even i b {
+  background: var(--gum);
+}
+.chance.risky i b {
+  background: repeating-linear-gradient(-45deg, var(--hot) 0 5px, var(--hot-deep) 5px 8px);
+}
+.chance.risky em {
+  color: var(--hot-deep);
+}
+
+.win .actions {
+  margin-top: 6px;
+}
+.win .btn {
+  padding-left: 6px;
+  padding-right: 10px;
+}
+.win.small .btn {
+  font-size: 0.8125rem;
+}
+.win .btn > span {
+  white-space: nowrap;
+}
+.win.small .btn.small {
+  font-size: 0.75rem;
+}
+
+/* haggling: three tiers, each with its odds */
+.haggle-q {
+  margin-top: 4px;
+  font-family: var(--f-display);
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+.haggle-q small {
+  display: block;
+  font-family: var(--f-body);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--sub);
+}
+.btn.tier {
+  padding-left: 2px;
+  padding-right: 6px;
+}
+.btn.tier > span {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 1.125rem;
+}
+.btn.tier.safe {
+  --face: color-mix(in srgb, var(--leaf) 55%, var(--paper));
+}
+.btn.tier.even {
+  --face: var(--gum-wash);
+}
+.btn.tier.risky {
+  --face: color-mix(in srgb, var(--hot) 45%, var(--paper));
+}
+
+/* the suspense beat: the customer is thinking, the meter fills */
+.beat {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 8px 4px 6px;
+  font-family: var(--f-display);
+  font-size: 0.9375rem;
+  text-align: center;
+}
+.beat span {
+  animation: pulse 0.3s steps(2) infinite;
+}
+.beat-bar {
+  height: 16px;
+  border: var(--edge) solid var(--ink);
+  background: var(--paper-2);
+  transform: skewX(-20deg);
+  overflow: hidden;
+}
+.beat-bar b {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(-45deg, var(--gum) 0 8px, var(--gum-deep) 8px 12px);
+  transform-origin: 0 50%;
+  animation: beat-fill linear both;
+}
+@keyframes beat-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+html.calm .beat-bar b {
+  animation: none;
+}
+
+/* short screens: the slip is trimmed to what is needed to deal */
+@media (max-height: 700px) {
+  .sum.minor.bundle {
+    display: none;
+  }
+  .win-scroll {
+    min-height: 44px;
+  }
+  .win-foot {
+    padding: 3px 8px 8px;
+  }
+  .win .actions {
+    margin-top: 4px;
+    gap: 4px;
+  }
+  .win .btn.small {
+    min-height: 40px;
+  }
+  .segs {
+    margin: 0 0 2px;
+  }
+  .seg {
+    min-height: 40px;
+  }
+  .win-bar,
+  .win-btn {
+    height: 40px;
+  }
+  .want {
+    padding: 1px 0 3px;
+  }
+}

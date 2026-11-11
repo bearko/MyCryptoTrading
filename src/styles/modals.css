@@ -1,0 +1,413 @@
+/* ---------- windows over the game */
+.modal {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: calc(16px + var(--safe-t)) 16px calc(16px + var(--safe-b));
+  background:
+    repeating-linear-gradient(-45deg, transparent 0 14px, color-mix(in srgb, var(--violet) 14%, transparent) 14px 16px),
+    var(--scrim);
+  animation: fade-in 0.14s both;
+}
+.modal-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 372px;
+  max-height: 100%;
+  padding: 16px 14px 14px;
+  background: var(--paper);
+  color: var(--ink);
+  border: var(--edge) solid var(--ink);
+  box-shadow: 6px 6px 0 var(--gum);
+  animation: modal-in 0.26s var(--ease-pop) both;
+}
+/* modal boxes are paper too */
+.modal-box .btn {
+  --side: var(--ink);
+}
+.modal-box .btn.gold {
+  --side: var(--gum-deep);
+}
+.modal-box .btn.gold::before {
+  border-color: var(--ink);
+}
+.modal-box .btn.ghost {
+  --face: var(--paper-2);
+  --side: var(--rule);
+  --text: var(--ink);
+}
+.modal-box .btn.ghost::before {
+  border-color: var(--ink);
+}
+.modal-box .btn:disabled {
+  --face: var(--paper-2);
+  --side: transparent;
+  --text: var(--sub);
+}
+.modal-box .btn:disabled::before {
+  border-color: var(--rule);
+}
+.modal-box .hint {
+  color: var(--sub);
+}
+.modal-box .note {
+  background: var(--paper-2);
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(26px) rotate(-2.5deg) scale(0.92);
+  }
+}
+.modal-box.tall {
+  min-height: 0;
+}
+.modal-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 -4px;
+  padding: 0 4px 4px;
+}
+/* the title sits on an ink slab that sticks out of the box */
+.modal-title {
+  position: relative;
+  isolation: isolate;
+  align-self: flex-start;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: -30px 0 10px -22px;
+  padding: 5px 20px 6px 16px;
+  color: var(--paper);
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 1.1875rem;
+  line-height: 1.3;
+  animation: slide-in-left 0.25s 0.08s var(--ease-pop) both;
+}
+.modal-title::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--ink);
+  transform: skewX(var(--skew));
+}
+.modal-title small {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--f-num);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  color: var(--gum);
+}
+.modal-text {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.warn-text {
+  color: var(--hot-deep);
+}
+.modal-box.alert {
+  padding-top: 26px;
+  box-shadow: 6px 6px 0 var(--hot);
+}
+.alert-mark {
+  position: absolute;
+  left: 50%;
+  top: -24px;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-left: -23px;
+  background: var(--hot);
+  border: var(--edge) solid var(--ink);
+  color: var(--paper);
+  font-family: var(--f-num);
+  font-size: 1.75rem;
+  transform: rotate(45deg);
+  animation: pop-in 0.3s 0.1s var(--ease-pop) both;
+}
+.alert-mark::first-letter {
+  display: inline-block;
+}
+.modal-box .item + .detail {
+  margin-top: 8px;
+}
+.skill-text {
+  margin-top: 5px;
+  padding: 6px 8px;
+  background: var(--paper-2);
+  font-family: var(--f-pixel);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+.row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1.5px dashed var(--rule);
+  animation: rise-in 0.22s calc(var(--i, 0) * 30ms) var(--ease-out) both;
+}
+.row .item {
+  flex: 1;
+}
+.row .btn {
+  flex: 0 0 auto;
+  min-width: 68px;
+}
+.row.worn {
+  background: linear-gradient(90deg, var(--gum-wash), transparent);
+  margin: 0 -4px;
+  padding: 8px 4px;
+}
+
+/* the long-press menu */
+.modal-box.menu {
+  max-width: 300px;
+}
+.menu-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 3px double var(--ink);
+  font-size: 1rem;
+}
+
+/* where to go tonight: two big slanted cards */
+.dest-cards {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 4px;
+}
+.dest-card {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 92px;
+  padding: 10px 20px 12px 18px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform var(--t-press) var(--ease-out);
+  animation: slide-in-left 0.28s 0.1s var(--ease-pop) both;
+}
+.dest-card.go-quest {
+  color: var(--paper);
+  animation-name: slide-in-right;
+  animation-delay: 0.16s;
+}
+.dest-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 9px 5px 6px;
+  z-index: -2;
+  background: var(--halftone), var(--gum);
+  color: var(--gum-deep);
+  border: var(--edge) solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+  transform: skewX(var(--skew));
+}
+.dest-card.go-quest::before {
+  background: var(--halftone), var(--violet);
+  color: var(--violet-deep);
+}
+.dest-card:active {
+  transform: translate(3px, 3px);
+}
+.dest-card:active::before {
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.dest-icon {
+  flex: 0 0 auto;
+  animation: icon-nod 2.6s ease-in-out infinite;
+}
+.dest-text {
+  display: grid;
+  gap: 2px;
+}
+.dest-text b {
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 1.375rem;
+  line-height: 1.2;
+}
+.dest-text small {
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.dest-card em {
+  position: absolute;
+  right: 14px;
+  bottom: 0;
+  z-index: -1;
+  font-family: var(--f-num);
+  font-style: normal;
+  font-size: 3.25rem;
+  line-height: 1;
+  opacity: 0.16;
+  transform: skewX(-8deg);
+}
+
+/* help */
+.help {
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+  counter-reset: help;
+  display: grid;
+  gap: 7px;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+.help li {
+  position: relative;
+  padding-left: 30px;
+  counter-increment: help;
+}
+.help li::before {
+  content: counter(help);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  background: var(--ink);
+  color: var(--gum);
+  font-family: var(--f-num);
+  font-size: 0.8125rem;
+  transform: skewX(var(--skew));
+}
+.credit {
+  margin-top: 10px;
+  color: var(--mute);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+.modal-box .credit {
+  color: var(--sub);
+}
+
+/* settings: sliders and switches */
+.slider {
+  display: grid;
+  gap: 4px;
+  padding: 6px 0 10px;
+  border-bottom: 1.5px dashed var(--rule);
+}
+.slider span {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.slider em {
+  font-family: var(--f-num);
+  font-style: normal;
+  font-size: 1.125rem;
+}
+.slider input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: none;
+  cursor: pointer;
+}
+.slider input::-webkit-slider-runnable-track {
+  height: 14px;
+  border: var(--edge) solid var(--ink);
+  background: linear-gradient(90deg, var(--gum) var(--v), var(--paper-2) var(--v));
+}
+.slider input::-moz-range-track {
+  height: 10px;
+  border: var(--edge) solid var(--ink);
+  background: linear-gradient(90deg, var(--gum) var(--v), var(--paper-2) var(--v));
+}
+.slider input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 32px;
+  margin-top: -12px;
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  box-shadow: 3px 3px 0 var(--gum-deep);
+  transform: skewX(var(--skew));
+}
+.slider input::-moz-range-thumb {
+  width: 22px;
+  height: 32px;
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+}
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1.5px dashed var(--rule);
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.toggle-text {
+  flex: 1;
+  display: grid;
+}
+.toggle-text small {
+  font-size: 0.6875rem;
+  color: var(--sub);
+  line-height: 1.4;
+}
+.toggle-knob {
+  position: relative;
+  flex: 0 0 auto;
+  width: 54px;
+  height: 28px;
+  background: var(--paper-2);
+  border: var(--edge) solid var(--ink);
+  transform: skewX(var(--skew));
+  transition: background-color 0.15s;
+}
+.toggle-knob i {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 20px;
+  height: 18px;
+  background: var(--ink);
+  transition: transform 0.18s var(--ease-pop);
+}
+.toggle.on .toggle-knob {
+  background: var(--gum);
+}
+.toggle.on .toggle-knob i {
+  transform: translateX(24px);
+}
+.settings-more {
+  margin-top: 12px;
+}

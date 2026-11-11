@@ -1,0 +1,597 @@
+/* ---------- shared parts: slab buttons, paper, tags, tiles, stamps */
+
+/* A slab: a skewed plate with an ink outline and a hard offset shadow. It sinks when pressed. */
+.btn {
+  --face: var(--paper);
+  --side: var(--mute);
+  --text: var(--ink);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: 48px;
+  margin: 0;
+  padding: 5px 14px 9px 10px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--f-body);
+  font-weight: 900;
+  font-size: 0.9375rem;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out);
+}
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0 7px 4px 4px;
+  z-index: -1;
+  background: var(--face);
+  border: var(--edge) solid var(--ink);
+  box-shadow: 4px 4px 0 var(--side);
+  transform: skewX(var(--skew));
+  transition:
+    box-shadow var(--t-press) var(--ease-out),
+    background-color var(--t-press);
+}
+.btn > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+}
+.btn > span > em {
+  padding: 0 6px;
+  background: var(--ink);
+  color: var(--paper);
+  font-style: normal;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.btn small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.25;
+  opacity: 0.86;
+}
+.btn:active:not(:disabled) {
+  transform: translate(3px, 3px);
+}
+.btn:active:not(:disabled)::before {
+  box-shadow: 1px 1px 0 var(--side);
+  background: color-mix(in srgb, var(--face) 70%, var(--paper));
+}
+.btn.primary {
+  --face: var(--gum);
+  --side: var(--gum-deep);
+}
+/* the primary slab has a slow sheen: yellow parts are never still */
+.btn.primary:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  inset: 3px 10px 7px 7px;
+  z-index: -1;
+  background: linear-gradient(100deg, transparent 40%, color-mix(in srgb, var(--paper) 75%, transparent) 50%, transparent 60%) no-repeat;
+  background-size: 300% 100%;
+  transform: skewX(var(--skew));
+  animation: sheen 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes sheen {
+  0%,
+  55% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -60% 0;
+  }
+}
+.btn.gold {
+  --face: var(--ink);
+  --side: var(--gum);
+  --text: var(--gum);
+}
+.btn.gold::before {
+  border-color: var(--gum);
+}
+.btn.ghost {
+  --face: var(--ink-2);
+  --side: var(--ink-3);
+  --text: var(--paper);
+}
+.btn.ghost::before {
+  border-color: var(--ink-3);
+}
+.btn.danger {
+  --face: var(--hot);
+  --side: var(--hot-deep);
+  --text: var(--paper);
+}
+.btn.small {
+  min-height: 44px;
+  padding: 4px 12px 8px 8px;
+  font-size: 0.8125rem;
+}
+.btn.big {
+  min-height: 60px;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+}
+.btn.big::before {
+  box-shadow: 5px 5px 0 var(--side);
+}
+.btn.pulse:not(:disabled) {
+  animation: slab-pulse 1.6s ease-in-out infinite;
+}
+@keyframes slab-pulse {
+  50% {
+    transform: scale(1.035);
+  }
+}
+.btn:disabled {
+  --face: var(--ink-3);
+  --side: transparent;
+  --text: var(--mute);
+  cursor: not-allowed;
+}
+.btn:disabled::before {
+  border-color: var(--ink-3);
+  background-image: repeating-linear-gradient(-45deg, transparent 0 6px, var(--ink-20) 6px 10px);
+}
+.btn svg {
+  flex: 0 0 auto;
+}
+/* on paper the outline and the shadow are ink */
+.paper .btn {
+  --side: var(--ink);
+}
+.paper .btn.gold {
+  --side: var(--gum-deep);
+}
+.paper .btn.gold::before {
+  border-color: var(--ink);
+}
+.paper .btn.ghost {
+  --face: var(--paper-2);
+  --side: var(--rule);
+  --text: var(--ink);
+}
+.paper .btn.ghost::before {
+  border-color: var(--ink);
+}
+.paper .btn.danger {
+  --side: var(--ink);
+}
+.paper .btn:disabled {
+  --face: var(--paper-2);
+  --side: transparent;
+  --text: var(--sub);
+}
+.paper .btn:disabled::before {
+  border-color: var(--rule);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 6px 4px;
+  margin-top: 8px;
+}
+.actions.one {
+  grid-template-columns: 1fr;
+}
+.actions.two {
+  grid-template-columns: 1fr 1fr;
+}
+.actions.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+.cta {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+/* paper: cards, slips, receipts */
+.paper {
+  position: relative;
+  background: var(--paper);
+  color: var(--ink);
+  border: var(--edge) solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+/* the torn edge of a slip */
+.teeth {
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  top: 100%;
+  height: 8px;
+  background:
+    linear-gradient(135deg, var(--paper) 50%, transparent 50.5%) 0 0 / 10px 8px repeat-x,
+    linear-gradient(225deg, var(--paper) 50%, transparent 50.5%) 0 0 / 10px 8px repeat-x;
+  filter: drop-shadow(0 3px 0 var(--ink));
+  pointer-events: none;
+}
+
+.hint {
+  margin: 6px 0 0;
+  color: var(--mute);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+.paper .hint {
+  color: var(--sub);
+}
+.note {
+  margin: 6px 0 0;
+  padding: 5px 9px;
+  border-left: 5px solid var(--cool);
+  background: var(--ink-2);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.paper .note {
+  background: var(--paper-2);
+}
+.note.bad {
+  border-left-color: var(--hot);
+  color: var(--hot);
+}
+.paper .note.bad {
+  background: var(--hot-wash);
+  color: var(--hot-deep);
+}
+.note.good {
+  border-left-color: var(--leaf);
+}
+small.bad {
+  color: var(--hot-deep);
+  font-weight: 900;
+}
+
+/* GUM: the coin and a number in the number face */
+.gum {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.gum img {
+  width: 1.05em;
+  height: 1.05em;
+  flex: 0 0 auto;
+}
+
+/* labels: the two sets (skill line, parameter line), rarity and condition */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 5px;
+  border: 1.5px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+.tag i {
+  font-style: normal;
+  font-size: 0.85em;
+}
+.tag.role {
+  border-radius: 99px;
+  padding: 0 7px;
+}
+.tag.param {
+  color: var(--ink);
+}
+.tag.param-phy {
+  background: color-mix(in srgb, var(--c-phy) 55%, var(--paper));
+}
+.tag.param-int {
+  background: color-mix(in srgb, var(--c-int) 50%, var(--paper));
+}
+.tag.param-agi {
+  background: color-mix(in srgb, var(--c-agi) 55%, var(--paper));
+}
+.tag.param-hp {
+  background: color-mix(in srgb, var(--c-hp) 55%, var(--paper));
+}
+.tag.rar {
+  background: var(--ink);
+  color: var(--paper);
+}
+.tag.rar.r4,
+.tag.rar.r5 {
+  color: var(--gum);
+}
+.tag.cond {
+  border-style: dashed;
+}
+.tag.cond.c2 {
+  border-style: solid;
+  background: var(--gum-wash);
+}
+
+/* the shape that goes with a parameter line (so colour is never the only sign) */
+.glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--f-body);
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  font-style: normal;
+}
+.glyph.g-phy {
+  color: var(--c-phy);
+}
+.glyph.g-int {
+  color: var(--c-int);
+}
+.glyph.g-agi {
+  color: var(--c-agi);
+}
+.glyph.g-hp {
+  color: var(--c-hp);
+}
+
+/* a good's picture on its parameter-coloured tile */
+.tile,
+.offer,
+.inv-item,
+.slot.full {
+  --fa: color-mix(in srgb, var(--ta) 72%, var(--paper));
+  --fb: color-mix(in srgb, var(--tb) 72%, var(--paper));
+}
+.tile {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, var(--fa) 50%, var(--fb) 50%);
+  border: 2.5px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.tile img {
+  width: 88%;
+  height: 88%;
+  filter: drop-shadow(1px 1px 0 var(--ink-50));
+}
+.tile .glyph {
+  position: absolute;
+  left: -2px;
+  top: -2px;
+}
+.tile .glyph + .glyph {
+  left: 11px;
+}
+.tile.sm {
+  width: 36px;
+  height: 36px;
+  box-shadow: none;
+}
+.tile.md {
+  width: 52px;
+  height: 52px;
+}
+.tile.lg {
+  width: 64px;
+  height: 64px;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.tile.fly {
+  box-shadow: 4px 6px 0 var(--ink-50);
+}
+
+/* a good as a card: picture, name, labels, value */
+.item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 0;
+}
+.item-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.item-name {
+  font-family: var(--f-pixel);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+.item-val {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--sub);
+}
+.item-val .gum {
+  color: var(--ink);
+  font-size: 1.0625rem;
+}
+.item-note {
+  font-size: 0.75rem;
+  color: var(--sub);
+}
+.item-note.good {
+  color: var(--leaf-deep);
+  font-weight: 900;
+}
+
+/* stat chips: HP / PHY / INT / AGI */
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 0 5px;
+  border-bottom: 3px solid var(--c-hp);
+  background: var(--paper-2);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.stat b {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 0.875rem;
+}
+.stat.s-phy {
+  border-bottom-color: var(--c-phy);
+}
+.stat.s-int {
+  border-bottom-color: var(--c-int);
+}
+.stat.s-agi {
+  border-bottom-color: var(--c-agi);
+}
+.stat em {
+  font-style: normal;
+  font-weight: 900;
+}
+.stat.up em {
+  color: var(--leaf-deep);
+}
+.stat.down em {
+  color: var(--hot-deep);
+}
+
+/* key / value rows on paper */
+.kv {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1.5px dashed var(--rule);
+  font-size: 0.8125rem;
+}
+.kv > span {
+  flex: 0 0 auto;
+  color: var(--sub);
+  font-weight: 700;
+}
+.kv > b {
+  text-align: right;
+}
+.kv > b.stats {
+  justify-content: flex-end;
+}
+
+/* a rubber stamp: slammed on, a little crooked */
+.stamp {
+  display: inline-grid;
+  place-items: center;
+  padding: 2px 10px;
+  border: 3px solid currentColor;
+  border-radius: 4px;
+  color: var(--hot);
+  font-family: var(--f-display);
+  font-size: 1rem;
+  font-style: normal;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  transform: rotate(-8deg);
+  animation: stamp-in 0.38s var(--ease-pop) both;
+  /* a worn stamp: specks where the ink did not take */
+  -webkit-mask-image: radial-gradient(circle at 20% 30%, transparent 0 1.5px, #000 2px), radial-gradient(circle at 70% 60%, transparent 0 2px, #000 2.5px), radial-gradient(circle at 45% 85%, transparent 0 1.5px, #000 2px);
+  -webkit-mask-size: 23px 19px, 31px 27px, 17px 23px;
+  -webkit-mask-composite: source-in;
+  mask-image: radial-gradient(circle at 20% 30%, transparent 0 1.5px, #000 2px), radial-gradient(circle at 70% 60%, transparent 0 2px, #000 2.5px), radial-gradient(circle at 45% 85%, transparent 0 1.5px, #000 2px);
+  mask-size: 23px 19px, 31px 27px, 17px 23px;
+  mask-composite: intersect;
+}
+.stamp.ok {
+  color: var(--ink);
+}
+.stamp small {
+  font-family: var(--f-num);
+  font-size: 0.8125rem;
+}
+
+/* patience: one pip for each refusal the customer will still take */
+.pips {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.pips i {
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: transparent;
+}
+.pips i.on {
+  background: var(--paper);
+}
+.pips.ink i {
+  border-color: var(--ink);
+}
+.pips.ink i.on {
+  background: var(--hot);
+}
+.temper {
+  padding: 0 6px;
+  border: 1.5px solid currentColor;
+  font-style: normal;
+  font-size: 0.6875rem;
+  font-weight: 900;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+.temper.t0 {
+  color: var(--leaf);
+}
+.temper.t2 {
+  color: var(--hot);
+}
+.paper .temper.t0 {
+  color: var(--leaf-deep);
+}
+.paper .temper.t2 {
+  color: var(--hot-deep);
+}

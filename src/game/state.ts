@@ -102,6 +102,8 @@ export interface Battle {
   turn: number;
   log: string[];
   over: null | 'won' | 'lost' | 'fled';
+  /** what happened in the last round, in order, for the screen to stage (the log says the same in words) */
+  events: import('./quest').BattleEvent[];
 }
 
 /** A night in the dungeon. */
@@ -118,6 +120,10 @@ export interface Quest {
   gumFound: number;
   /** the run is over: walked home, beaten, or the deepest floor is cleared */
   ended: null | 'home' | 'lost' | 'cleared';
+  /** what happened on the last step outside a battle, in order, for the screen to stage */
+  events: import('./quest').QuestEvent[];
+  /** the id of the newest event of this run (battle and exploration share the counter; it only grows) */
+  eid: number;
 }
 
 export type Phase = 'morning' | 'open' | 'evening' | 'shop' | 'quest' | 'won' | 'lost';

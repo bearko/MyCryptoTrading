@@ -1,108 +1,100 @@
-import { B } from '../game/balance';
+/**
+ * The quest screen: the dungeon crawl and its turn-based battle.
+ *
+ * The rules (src/game/quest.ts) resolve every step at once and say what happened as a list of events.
+ * This screen keeps its own picture of the fight (src/ui/quest/view.ts) and plays those events one by one
+ * (src/ui/quest/play.ts); the HTML (src/ui/quest/render.ts) is drawn from that picture.
+ */
 import { catalog as cat } from '../game/catalog';
 import * as Q from '../game/quest';
-import type { Fighter, GameState } from '../game/state';
-import { btn, esc, num, pct } from './html';
+import type { GameState } from '../game/state';
+import { audio } from './audio';
+import { bind, music, play, skip } from './quest/play';
+import { screen } from './quest/render';
+import { adopt, pending, sync, view } from './quest/view';
 
-function bar(f: Fighter): string {
-  const w = Math.max(0, Math.round((f.hp / f.maxHp) * 100));
-  return `<div class="hpbar"><i style="width:${w}%"></i><span>HP ${num(f.hp)} / ${num(f.maxHp)}</span></div>`;
-}
+/** things to do right after the next render (a sound, a shake of the card that would not go in) */
+const after: ((root: HTMLElement) => void)[] = [];
 
-function stats(f: Fighter): string {
-  const one = (key: 'phy' | 'int' | 'agi'): string => {
-    const cls = f[key] > f.base[key] ? 'up' : f[key] < f.base[key] ? 'down' : '';
-    return `<span class="st ${cls}">${key.toUpperCase()} ${f[key]}</span>`;
-  };
-  const status = Object.keys(f.status)
-    .map((name) => `<span class="st bad" title="${esc(Q.STATUS_HELP[name] ?? '')}">${esc(name)}</span>`)
-    .join('');
-  return `<div class="sts">${one('phy')}${one('int')}${one('agi')}${status}</div>`;
-}
-
-/** The dungeon: what is ahead (an enemy, or the corridor), the player's state, the log and the choices. */
+/** The dungeon: the stage (corridor or enemy), the player's strip, and the cards or choices. */
 export function questScreen(g: GameState): string {
-  const q = g.quest!;
-  const b = q.battle;
-  let view: string;
-  if (b) {
-    const enemy = Q.enemyOf(cat, b);
-    view = `<div class="foe ${b.foe.hp <= 0 ? 'down' : ''}">
-        <div class="foe-info"><b>${esc(enemy.ja)}${b.boss ? '（最深部の主）' : ''}</b>${bar(b.foe)}${stats(b.foe)}</div>
-        <img src="${enemy.img}" alt="" draggable="false" />
-      </div>`;
-  } else {
-    view = `<div class="corridor">${q.ended === 'lost' ? '気がつくと、店の前に倒れていた。' : q.ended === 'cleared' ? '最深部を制覇した！' : q.depth === 0 ? 'ダンジョンの入口' : `地下 ${q.depth} 階`}</div>`;
+  if (!g.quest) return '';
+  adopt(g);
+  if (!view.playing) {
+    if (pending(g).length > 0) view.playing = true;
+    else sync(g);
   }
-
-  const log = (b ? b.log : q.log).map((line) => `<li>${esc(line)}</li>`).join('');
-  let actions: string;
-  let hint = '';
-  if (b && !b.over) {
-    const list = Q.skills(g, cat);
-    actions =
-      list.map((k, i) => `<button class="btn skill" data-act="q-skill" data-arg="${i}"><span>${esc(k.name)}</span><small>${esc(k.text)}</small></button>`).join('') +
-      btn('q-run', '逃げる', { cls: 'ghost', sub: `成功率 ${pct(Q.runChance(g))}${b.runs >= 2 ? '（必ず逃げられる）' : ''}` });
-    hint = `<p class="hint">ターン ${b.turn}。AGI の高いほうが先に動きます（あなた ${q.me.agi}／敵 ${b.foe.agi}）。</p>`;
-  } else if (b) {
-    actions = btn('q-after', q.ended ? '帰宅する' : 'つづける', { cls: 'primary big' });
-  } else if (q.ended) {
-    const text = q.ended === 'lost' ? '今回拾った品はすべて失いました。' : `ウォレットの品と ${num(q.gumFound)} GUM を持ち帰ります。`;
-    hint = `<p class="note ${q.ended === 'lost' ? 'bad' : 'good'}">${text}</p>`;
-    actions = btn('q-finish', '帰宅する', { cls: 'primary big' });
-  } else {
-    const found = q.found
-      ? `<p class="note bad">「${esc(cat.itemById.get(q.found.itemId)!.ja)}」がウォレットに入りません。下のウォレットを並べ替えるか、いらない品を捨てて場所を作れます。</p>
-         <div class="actions">${btn('q-take', 'もう一度入れてみる')}${btn('q-leave', 'あきらめる', { cls: 'ghost' })}</div>`
-      : '';
-    hint = found;
-    actions = btn('q-advance', q.depth + 1 >= B.questDepth ? '最深部へ進む' : '奥へ進む', { cls: 'primary' }) + btn('q-back', '帰る', { sub: 'ウォレットの品を持ち帰る' });
-  }
-  return `<section class="scene dungeon" style="background-image:url('${cat.dungeon}')">
-      <div class="line-left">地下 ${q.depth} / ${B.questDepth} 階</div>${view}
-    </section>
-    <section class="qpanel">
-      <div class="me"><img src="${cat.player.img}" alt="" /><div><b>あなた</b>${bar(q.me)}${stats(q.me)}</div></div>
-      <ul class="qlog">${log}</ul>
-      ${hint}
-      <div class="actions ${b && !b.over ? 'one' : ''}">${actions}</div>
-    </section>`;
+  return screen(g, view);
 }
 
 /** Handles the quest's buttons. Returns true when the action was one of them. */
 export function questAct(g: GameState, name: string, n: number): boolean {
+  if (!name.startsWith('q-') || g.phase !== 'quest' || !g.quest) return false;
+  adopt(g);
+  // a round is being shown: the tap only hurries it along
+  if (view.playing) {
+    skip();
+    return true;
+  }
+  const b = g.quest.battle;
   switch (name) {
     case 'q-advance':
       Q.advance(g, cat);
-      return true;
+      break;
     case 'q-back':
       Q.turnBack(g);
-      return true;
+      break;
     case 'q-skill':
+      if (!b || b.over) return true;
+      view.picked = n;
       Q.fight(g, cat, n);
-      return true;
+      break;
     case 'q-run':
+      if (!b || b.over) return true;
+      view.picked = -1;
       Q.fight(g, cat, -1);
-      return true;
+      break;
     case 'q-after':
       Q.afterBattle(g, cat);
       if (g.quest?.ended === 'lost') Q.finishQuest(g, cat);
-      return true;
+      break;
     case 'q-take':
-      Q.takeFound(g, cat);
-      return true;
+      if (!Q.takeFound(g, cat)) {
+        after.push((root) => {
+          audio.sfx('error');
+          root.querySelector('.q-card-stuck')?.animate([{ translate: '0 0' }, { translate: '-8px 0' }, { translate: '7px 0' }, { translate: '-5px 0' }, { translate: '0 0' }], { duration: 280 });
+        });
+      }
+      break;
     case 'q-leave':
       Q.leaveFound(g);
-      return true;
+      after.push(() => audio.sfx('cancel'));
+      break;
     case 'q-finish':
       Q.finishQuest(g, cat);
-      return true;
+      break;
+    default:
+      return false;
   }
-  return false;
+  if (g.phase === 'quest' && g.quest && pending(g).length > 0) view.playing = true;
+  return true;
 }
 
 /**
- * Called by the app after every render while the quest is on screen. The place for effects that are
- * not plain HTML: sounds, particles, numbers flying off a hit.
+ * Called by the app after every render while the quest is on screen: starts the playback of whatever
+ * has not been shown yet, and keeps the music right.
  */
-export function questEffects(_g: GameState, _root: HTMLElement): void {}
+export function questEffects(g: GameState, root: HTMLElement): void {
+  if (!g.quest) return;
+  bind(g, root);
+  adopt(g);
+  for (const fn of after.splice(0)) {
+    try {
+      fn(root);
+    } catch {
+      // decoration only
+    }
+  }
+  if (view.playing) void play(g);
+  else music();
+}

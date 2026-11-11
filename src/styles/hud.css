@@ -1,0 +1,293 @@
+/* ---------- the top band: day tag, GUM (the hero number), reputation, rent */
+.hud {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
+  padding: calc(6px + var(--safe-t)) calc(8px + var(--safe-r)) 6px calc(8px + var(--safe-l));
+  background: var(--ink);
+  border-bottom: 3px solid var(--ink-3);
+}
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+}
+/* a paper tag with a punched hole: DAY 3 水 */
+.day-tag {
+  position: relative;
+  isolation: isolate;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 12px 0 22px;
+  color: var(--ink);
+  animation: tag-swing 5s ease-in-out infinite;
+  transform-origin: 10px 50%;
+}
+.day-tag::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 11px 50%, var(--ink) 0 3.5px, transparent 4px), var(--paper);
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 6px) 100%, 10px 100%, 0 50%);
+}
+.day-tag small {
+  font-family: var(--f-num);
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  align-self: flex-end;
+  margin-bottom: 7px;
+}
+.day-tag b {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 1.625rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.day-tag i {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 50%;
+  font-style: normal;
+  font-size: 0.6875rem;
+  font-weight: 900;
+}
+@keyframes tag-swing {
+  50% {
+    transform: rotate(-2.5deg);
+  }
+}
+.hud-gum {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--gum);
+}
+.hud-gum img {
+  width: 26px;
+  height: 26px;
+  animation: coin-bob 2.4s ease-in-out infinite;
+}
+@keyframes coin-bob {
+  50% {
+    transform: translateY(-2px) rotate(-6deg);
+  }
+}
+.hud-gum b {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 2.125rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  transform: skewX(-6deg);
+  text-shadow: 2px 2px 0 var(--gum-deep);
+  transition:
+    color 0.15s,
+    transform 0.15s var(--ease-pop);
+}
+.hud-gum small {
+  align-self: flex-end;
+  margin-bottom: 5px;
+  font-family: var(--f-num);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  color: var(--mute);
+}
+.hud-gum.up b {
+  color: var(--paper);
+  transform: skewX(-6deg) scale(1.12);
+}
+.hud-gum.down b {
+  color: var(--hot);
+  transform: skewX(-6deg) scale(0.94);
+}
+.hud-rep {
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  line-height: 1;
+}
+.rep-top {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.rep-top small {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--mute);
+}
+.rep-top b {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 1.125rem;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.2s;
+}
+.rep-stars {
+  position: relative;
+  display: inline-block;
+  color: var(--ink-3);
+  font-size: 0.6875rem;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.rep-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  color: var(--paper);
+  transition: width 0.4s var(--ease-out);
+}
+.hud-rep.up .rep-top b,
+.hud-rep.up .rep-fill {
+  color: var(--leaf);
+}
+.hud-rep.down .rep-top b,
+.hud-rep.down .rep-fill {
+  color: var(--hot);
+}
+.hud-btn {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2.5px solid var(--ink-3);
+  background: var(--ink-2);
+  color: var(--paper);
+  cursor: pointer;
+  position: relative;
+  transform: skewX(var(--skew));
+  transition: transform var(--t-press) var(--ease-out);
+}
+.hud-btn svg {
+  transform: skewX(calc(var(--skew) * -1));
+  transition: transform 0.4s var(--ease-pop);
+}
+.hud-btn:active {
+  transform: skewX(var(--skew)) scale(0.9);
+  background: var(--ink-3);
+}
+.hud-btn:active svg {
+  transform: skewX(calc(var(--skew) * -1)) rotate(90deg);
+}
+
+/* rent: a countdown gauge that turns hot when the day is near */
+.rent {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 20px;
+  margin-top: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--mute);
+  white-space: nowrap;
+}
+.rent-k {
+  padding: 3px 6px;
+  background: var(--ink-3);
+  color: var(--paper);
+}
+.rent-n {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 0.9375rem;
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+}
+.rent-n.short {
+  color: var(--hot);
+}
+.rent-gauge {
+  flex: 1;
+  display: flex;
+  gap: 3px;
+  height: 9px;
+  transform: skewX(-24deg);
+}
+.rent-gauge i {
+  flex: 1;
+  background: var(--ink-3);
+  transition: background-color 0.3s;
+}
+.rent-gauge i.on {
+  background: var(--mute);
+}
+.rent-left b {
+  margin: 0 2px;
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 0.9375rem;
+  color: var(--paper);
+}
+.rent.hot .rent-k {
+  background: var(--hot);
+}
+.rent.hot .rent-gauge i.on {
+  background: var(--hot);
+}
+.rent.hot .rent-left,
+.rent.hot .rent-left b {
+  color: var(--hot);
+}
+.rent.hot .rent-gauge,
+.rent.hot .rent-k {
+  animation: rent-pulse 1s ease-in-out infinite;
+}
+@keyframes rent-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+.rent.owned .rent-k {
+  background: var(--leaf);
+  color: var(--ink);
+}
+.rent-v {
+  color: var(--mute);
+}
+
+/* short screens: a tighter band, so the shop front keeps its room */
+@media (max-height: 700px) {
+  .hud {
+    padding-top: calc(3px + var(--safe-t));
+    padding-bottom: 4px;
+  }
+  .hud-row {
+    height: 40px;
+  }
+  .hud-btn {
+    width: 42px;
+    height: 40px;
+  }
+  /* the press area stays a full finger's width */
+  .hud-btn::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+  }
+  .rent {
+    height: 16px;
+    margin-top: 2px;
+  }
+}
