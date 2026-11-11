@@ -25,6 +25,8 @@ export const B = {
   visitorsPerRep: 25,
   /** share of visitors who come to sell */
   sellerShare: 0.5,
+  /** a customer line is never shorter than this */
+  visitorsMin: 2,
   /** chance that a buyer wants something that is on the shelf right now */
   buyerKnowsStock: 0.6,
 
@@ -63,11 +65,45 @@ export const B = {
   repDivisor: 250,
   angryLeaveRep: -2,
 
-  /** wholesaler: every morning, a few plain goods slightly under market value */
-  wholesaleCount: 3,
-  wholesaleRate: [0.86, 0.96],
-  /** selling a good back to the wholesaler */
+  /** selling a good back to the trade (処分) */
   disposeRate: 0.5,
+
+  /** the wallet is the bag: [columns, rows] by the wallet's rarity (index 1–5) */
+  walletSizes: [[4, 5], [4, 5], [5, 5], [5, 6], [6, 6], [6, 7]],
+  /** the night shop: how many goods, and their price against market value */
+  shopCount: 6,
+  shopRate: [0.8, 0.96],
+  /** chance that the shop also has the next wallet up */
+  shopWalletChance: 0.35,
+  /** going out at night: the shop opens late and this many customers are missed */
+  lateOpenLoss: 1,
+
+  /** today's event: none / demand for a parameter line / caravan / rain / sellers in a hurry */
+  eventWeights: [40, 25, 12, 12, 11],
+  demandBudget: 1.25,
+  caravanVisitors: 2,
+  rainVisitors: -1,
+  bargainAsk: 0.88,
+
+  /** the quest: floors to the boss, and how enemies grow with depth */
+  questDepth: 10,
+  /** enemy strength at depth d = questPowerBase × questPowerGrowth^(d − 1), spread over its stats by its trend */
+  questPowerBase: 100,
+  questPowerGrowth: 1.3,
+  questHpMult: 2.5,
+  questBossMult: 1.3,
+  /** what a step brings: enemy / a good on the ground / nothing / luck / bad luck */
+  questRoll: [50, 28, 8, 7, 7],
+  questDropChance: 0.35,
+  /** running away: base chance, plus this per point of AGI over the enemy's; the third try always works */
+  runBase: 0.5,
+  runPerAgi: 0.01,
+  runMin: 0.2,
+  runMax: 0.9,
+  /** the bare-handed attack every fighter has: PHY × this % */
+  punch: [35, 45],
+  /** damage cut: half the defender's matching stat, in %, capped */
+  cutCap: 40,
 
   rentFirst: 550,
   rentGrowth: 1.2,

@@ -1,4 +1,4 @@
-import { KIND_JA, RARITY_JA } from './catalog';
+import { PARAM_JA, RARITY_JA, ROLE_JA } from './catalog';
 import { pick, type RngHolder } from './rng';
 import type { Want } from './state';
 
@@ -21,7 +21,8 @@ const PASS = ['そうか、残念だ。', 'では、またの機会に。', 'ふ
 const NO_MATCH = 'それは探している物と違うな。';
 
 export function wantText(want: Want): string {
-  if (want.type === 'kind') return KIND_JA[want.kind];
+  if (want.type === 'param') return `${PARAM_JA[want.param]}の品`;
+  if (want.type === 'role') return `${ROLE_JA[want.role]}の技を持つ品`;
   if (want.type === 'rarity') return `${RARITY_JA[want.min]}以上の品`;
   return '何かいい品';
 }

@@ -1,6 +1,7 @@
 import { B } from '../src/game/balance';
 import type { Catalog } from '../src/game/catalog';
 import * as G from '../src/game/logic';
+import * as N from '../src/game/night';
 import type { GameState } from '../src/game/state';
 
 export type Style = 'plain' | 'careful';
@@ -9,10 +10,6 @@ export type Style = 'plain' | 'careful';
 export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): GameState {
   const s = G.newGame(seed, cat);
   while (s.phase !== 'lost' && !s.owned && s.day <= maxDays) {
-    // morning: restock from the wholesaler when the shelf is thin
-    s.wholesale.forEach((o, i) => {
-      if (s.stock.length < 4 && s.gum - o.price > 60) G.buyWholesale(s, cat, i);
-    });
     G.openShop(s, cat);
     while (s.phase === 'open') {
       const v = G.currentVisitor(s)!;
@@ -32,7 +29,16 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
       }
     }
     if (G.buyDeed(s)) break;
-    G.endDay(s, cat);
+    // a thin shelf and some money: a night at the shop (tomorrow opens late)
+    const spare = s.gum - reserve;
+    if (s.stock.length < 3 && spare > 120 && N.goShop(s, cat)) {
+      s.shop!.goods.forEach((g, i) => {
+        if (s.gum - g.price < reserve + 40 || cat.itemById.get(g.itemId)!.wallet) return;
+        if (N.shopBuy(s, i) && !N.stow(s, cat, s.shop!.tray.length - 1)) s.shop!.tray.pop(); // does not fit: left behind
+      });
+      N.goHome(s, cat);
+    }
+    G.endDay(s);
   }
   return s;
 }

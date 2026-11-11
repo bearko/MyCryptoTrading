@@ -3,7 +3,7 @@ import type { Catalog, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randRange } from './rng';
 import { SHAPES, TURNED, type Shape } from './shapes';
-import { emptySummary, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
+import { emptySummary, type DayEvent, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
 
 const clamp = (v: number, min: number, max: number): number => Math.min(max, Math.max(min, v));
 
@@ -44,31 +44,49 @@ function markupBase(markup: number): number {
 
 export function matches(cat: Catalog, want: Want, itemId: number): boolean {
   const item = cat.itemById.get(itemId)!;
-  if (want.type === 'kind') return item.kind === want.kind;
+  if (want.type === 'param') return item.params.includes(want.param);
+  if (want.type === 'role') return item.roles.includes(want.role);
   if (want.type === 'rarity') return item.rarity >= want.min;
   return true;
 }
 
-// ---------------------------------------------------------------- the shelf grid
+// ---------------------------------------------------------------- grids (the shelf and the wallet)
 
 export const shapeOf = (cat: Catalog, itemId: number, rot = false): Shape => (rot ? TURNED : SHAPES)[cat.itemById.get(itemId)!.shape];
 
-/** Cells taken on the shelf, as "x,y" keys. `ignoreUid` leaves one good out (the one being moved). */
-function takenCells(s: GameState, cat: Catalog, ignoreUid = -1): Set<string> {
+/** A grid of cells holding goods: the shop's shelf, or the wallet. */
+export interface Grid {
+  cols: number;
+  rows: number;
+  items: StockItem[];
+}
+export type GridId = 'shelf' | 'wallet';
+
+export function walletSize(s: GameState, cat: Catalog): { cols: number; rows: number } {
+  const [cols, rows] = B.walletSizes[cat.itemById.get(s.wallet.itemId)?.rarity ?? 1];
+  return { cols, rows };
+}
+
+export function gridOf(s: GameState, cat: Catalog, id: GridId): Grid {
+  return id === 'shelf' ? { cols: B.gridCols, rows: s.rows, items: s.stock } : { ...walletSize(s, cat), items: s.wallet.items };
+}
+
+/** Cells taken, as "x,y" keys. `ignoreUid` leaves one good out (the one being moved). */
+function takenCells(g: Grid, cat: Catalog, ignoreUid = -1): Set<string> {
   const taken = new Set<string>();
-  for (const stock of s.stock) {
+  for (const stock of g.items) {
     if (stock.uid === ignoreUid) continue;
     for (const [cx, cy] of shapeOf(cat, stock.itemId, stock.rot).cells) taken.add(`${stock.x + cx},${stock.y + cy}`);
   }
   return taken;
 }
 
-function fitsAt(s: GameState, shape: Shape, x: number, y: number, taken: Set<string>): boolean {
-  return shape.cells.every(([cx, cy]) => x + cx >= 0 && x + cx < B.gridCols && y + cy >= 0 && y + cy < s.rows && !taken.has(`${x + cx},${y + cy}`));
+function fitsAt(g: Grid, shape: Shape, x: number, y: number, taken: Set<string>): boolean {
+  return shape.cells.every(([cx, cy]) => x + cx >= 0 && x + cx < g.cols && y + cy >= 0 && y + cy < g.rows && !taken.has(`${x + cx},${y + cy}`));
 }
 
-export function canPlace(s: GameState, cat: Catalog, itemId: number, x: number, y: number, rot: boolean, ignoreUid = -1): boolean {
-  return fitsAt(s, shapeOf(cat, itemId, rot), x, y, takenCells(s, cat, ignoreUid));
+export function canPlaceIn(g: Grid, cat: Catalog, itemId: number, x: number, y: number, rot: boolean, ignoreUid = -1): boolean {
+  return fitsAt(g, shapeOf(cat, itemId, rot), x, y, takenCells(g, cat, ignoreUid));
 }
 
 export interface Slot {
@@ -81,39 +99,56 @@ export interface Slot {
  * First free spot for a good, scanning row by row: as it is first, then turned.
  * Null when it does not fit anywhere. `only` limits the search to one orientation.
  */
-export function findSlot(s: GameState, cat: Catalog, itemId: number, ignoreUid = -1, only?: boolean): Slot | null {
-  const taken = takenCells(s, cat, ignoreUid);
+export function findSlotIn(g: Grid, cat: Catalog, itemId: number, ignoreUid = -1, only?: boolean): Slot | null {
+  const taken = takenCells(g, cat, ignoreUid);
   for (const rot of only === undefined ? [false, true] : [only]) {
     const shape = shapeOf(cat, itemId, rot);
-    for (let y = 0; y <= s.rows - shape.h; y++) {
-      for (let x = 0; x <= B.gridCols - shape.w; x++) {
-        if (fitsAt(s, shape, x, y, taken)) return { x, y, rot };
+    for (let y = 0; y <= g.rows - shape.h; y++) {
+      for (let x = 0; x <= g.cols - shape.w; x++) {
+        if (fitsAt(g, shape, x, y, taken)) return { x, y, rot };
       }
     }
   }
   return null;
 }
 
-export function moveStock(s: GameState, cat: Catalog, uid: number, x: number, y: number): boolean {
-  const stock = s.stock.find((it) => it.uid === uid);
-  if (!stock || !canPlace(s, cat, stock.itemId, x, y, stock.rot, uid)) return false;
+export const findSlot = (s: GameState, cat: Catalog, itemId: number): Slot | null => findSlotIn(gridOf(s, cat, 'shelf'), cat, itemId);
+
+export function moveStock(s: GameState, cat: Catalog, uid: number, x: number, y: number, id: GridId = 'shelf'): boolean {
+  const g = gridOf(s, cat, id);
+  const stock = g.items.find((it) => it.uid === uid);
+  if (!stock || !canPlaceIn(g, cat, stock.itemId, x, y, stock.rot, uid)) return false;
   stock.x = x;
   stock.y = y;
   return true;
 }
 
 /** Turns a good a quarter turn: where it stands if it fits, else at the first spot that takes it. */
-export function turnStock(s: GameState, cat: Catalog, uid: number): boolean {
-  const stock = s.stock.find((it) => it.uid === uid);
+export function turnStock(s: GameState, cat: Catalog, uid: number, id: GridId = 'shelf'): boolean {
+  const g = gridOf(s, cat, id);
+  const stock = g.items.find((it) => it.uid === uid);
   if (!stock) return false;
   const rot = !stock.rot;
-  const slot = canPlace(s, cat, stock.itemId, stock.x, stock.y, rot, uid) ? { x: stock.x, y: stock.y, rot } : findSlot(s, cat, stock.itemId, uid, rot);
+  const slot = canPlaceIn(g, cat, stock.itemId, stock.x, stock.y, rot, uid) ? { x: stock.x, y: stock.y, rot } : findSlotIn(g, cat, stock.itemId, uid, rot);
   if (!slot) return false;
   Object.assign(stock, slot);
   return true;
 }
 
-export const freeCells = (s: GameState, cat: Catalog): number => B.gridCols * s.rows - takenCells(s, cat).size;
+export const freeCells = (s: GameState, cat: Catalog, id: GridId = 'shelf'): number => {
+  const g = gridOf(s, cat, id);
+  return g.cols * g.rows - takenCells(g, cat).size;
+};
+
+/** Puts a good on a grid at the first free spot. Returns its uid, or null when it does not fit. */
+export function addTo(s: GameState, cat: Catalog, id: GridId, itemId: number, cond: number, paid: number): number | null {
+  const g = gridOf(s, cat, id);
+  const slot = findSlotIn(g, cat, itemId);
+  if (!slot) return null;
+  const uid = s.nextUid++;
+  g.items.push({ uid, itemId, cond, paid, ...slot });
+  return uid;
+}
 
 // ---------------------------------------------------------------- calendar and rent
 
@@ -121,15 +156,20 @@ export const isRentDay = (s: GameState): boolean => !s.owned && s.day % B.rentEv
 /** 0 on the rent day itself */
 export const daysToRent = (s: GameState): number => (B.rentEvery - (s.day % B.rentEvery)) % B.rentEvery;
 export const visitorsFor = (rep: number): number => B.visitorsBase + Math.floor(rep / B.visitorsPerRep);
+/** Customers expected today: reputation, today's event, and a late opening after a night out. */
+export function visitorsExpected(s: GameState): number {
+  const event = s.event.id === 'caravan' ? B.caravanVisitors : s.event.id === 'rain' ? B.rainVisitors : 0;
+  return Math.max(B.visitorsMin, visitorsFor(s.rep) + event - (s.lateOpen ? B.lateOpenLoss : 0));
+}
 export const shelfCost = (s: GameState): number | null => B.shelfCost[s.shelfLevel] ?? null;
 
-function addRep(s: GameState, delta: number): void {
+export function addRep(s: GameState, delta: number): void {
   s.rep = clamp(s.rep + delta, 0, 100);
 }
 
 // ---------------------------------------------------------------- new game and mornings
 
-function rollRarity(s: GameState, heroBonus: number): number {
+export function rollRarity(s: GameState, heroBonus: number): number {
   return (
     1 +
     pickWeighted(s, [
@@ -142,30 +182,29 @@ function rollRarity(s: GameState, heroBonus: number): number {
   );
 }
 
-/** Puts a good on the shelf at the first free spot. False when it does not fit. */
-function addStock(s: GameState, cat: Catalog, itemId: number, cond: number, paid: number): boolean {
-  const slot = findSlot(s, cat, itemId);
-  if (!slot) return false;
-  s.stock.push({ uid: s.nextUid++, itemId, cond, paid, ...slot });
-  return true;
+const addStock = (s: GameState, cat: Catalog, itemId: number, cond: number, paid: number): boolean => addTo(s, cat, 'shelf', itemId, cond, paid) !== null;
+
+function rollEvent(s: GameState): DayEvent {
+  const id = (['none', 'demand', 'caravan', 'rain', 'bargain'] as const)[pickWeighted(s, B.eventWeights)];
+  return id === 'demand' ? { id, param: pick(s, ['phy', 'int', 'agi'] as const) } : { id };
 }
 
-function startMorning(s: GameState, cat: Catalog): void {
+/** A new day: the shutter is still down, today's event is decided, and last night's outing costs a customer. */
+function startMorning(s: GameState): void {
   s.phase = 'morning';
   s.today = emptySummary();
   s.queue = [];
   s.cursor = -1;
-  s.wholesale = [];
-  for (let i = 0; i < B.wholesaleCount; i++) {
-    const item = pick(s, cat.itemsByRarity[1 + pickWeighted(s, [60, 32, 8])]);
-    const price = Math.round(itemValue(cat, item.id, 1) * randRange(s, B.wholesaleRate[0], B.wholesaleRate[1]));
-    s.wholesale.push({ itemId: item.id, cond: 1, price, sold: false });
-  }
+  s.event = s.day === 1 ? { id: 'none' } : rollEvent(s);
+  s.lateOpen = s.wentOut;
+  s.wentOut = false;
+  s.shop = null;
+  s.quest = null;
 }
 
 export function newGame(seed: number, cat: Catalog): GameState {
   const s: GameState = {
-    v: 3,
+    v: 4,
     rng: seed | 0,
     day: 1,
     gum: B.startGum,
@@ -174,35 +213,31 @@ export function newGame(seed: number, cat: Catalog): GameState {
     shelfLevel: 0,
     stock: [],
     nextUid: 1,
+    wallet: { itemId: cat.wallets[0].id, items: [] },
+    equip: { head: null, body: null, arm: null, leg: null, special1: null, special2: null },
     rent: B.rentFirst,
     graceLeft: B.grace,
     owned: false,
     ownedDay: 0,
     phase: 'morning',
-    wholesale: [],
+    event: { id: 'none' },
+    lateOpen: false,
+    wentOut: false,
+    shop: null,
+    quest: null,
     queue: [],
     cursor: -1,
     visitorsToday: 0,
     today: emptySummary(),
     nightNote: '',
-    totals: { sold: 0, bought: 0, bestSale: 0 },
+    totals: { sold: 0, bought: 0, bestSale: 0, deepest: 0 },
   };
   for (let i = 0; i < B.startStock; i++) {
     const item = pick(s, cat.itemsByRarity[i < 3 ? 1 : 2]);
     addStock(s, cat, item.id, 1, 0);
   }
-  startMorning(s, cat);
+  startMorning(s);
   return s;
-}
-
-export function buyWholesale(s: GameState, cat: Catalog, index: number): boolean {
-  const offer = s.wholesale[index];
-  if (s.phase !== 'morning' || !offer || offer.sold || s.gum < offer.price) return false;
-  if (!addStock(s, cat, offer.itemId, offer.cond, offer.price)) return false;
-  s.gum -= offer.price;
-  offer.sold = true;
-  s.today.spend += offer.price;
-  return true;
 }
 
 // ---------------------------------------------------------------- customers
@@ -232,7 +267,8 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
     for (let i = 0; i < count; i++) {
       const item = pick(s, cat.itemsByRarity[rollRarity(s, heroBonus)]);
       const cond = pickWeighted(s, B.condWeights);
-      offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi))) });
+      const hurry = s.event.id === 'bargain' ? B.bargainAsk : 1;
+      offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi) * hurry)) });
     }
     const bundleRate = count >= 2 ? B.bundleRates[pickWeighted(s, B.bundleWeights)] : 0;
     return { ...base, kind: 'sell', offers, bundleRate, want: { type: 'any' }, budget: 0, line: lines.sellOpen(s, temper) };
@@ -244,28 +280,36 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
     const target = pick(s, s.stock);
     const item = cat.itemById.get(target.itemId)!;
     const roll = rand(s);
-    if (roll < 0.55) want = { type: 'kind', kind: item.kind };
+    if (roll < 0.35) want = { type: 'param', param: pick(s, item.params) };
+    else if (roll < 0.6 && item.roles.length > 0) want = { type: 'role', role: pick(s, item.roles) };
     else if (roll < 0.8 && item.rarity >= 2) want = { type: 'rarity', min: Math.min(item.rarity, 4) };
     else want = { type: 'any' };
     ref = itemValue(cat, target.itemId, target.cond);
   } else {
     const rarity = rollRarity(s, heroBonus);
     const roll = rand(s);
-    if (roll < 0.6) want = { type: 'kind', kind: pick(s, ['phy', 'int', 'agi'] as const) };
+    if (roll < 0.4) want = { type: 'param', param: pick(s, ['phy', 'int', 'agi'] as const) };
+    else if (roll < 0.65) want = { type: 'role', role: pick(s, ['atk', 'buff', 'debuff', 'heal', 'status'] as const) };
     else if (roll < 0.85) want = { type: 'rarity', min: clamp(rarity, 2, 4) };
     else want = { type: 'any' };
     ref = B.rarityValue[rarity];
   }
+  // on a demand day, most buyers are after that parameter line and bring more money for it
+  let demand = 1;
+  if (s.event.id === 'demand' && s.event.param && rand(s) < 0.6) {
+    want = { type: 'param', param: s.event.param };
+    demand = B.demandBudget;
+  }
   // some customers carry enough for two or three goods; rarer heroes more often
   const goods = 1 + pickWeighted(s, [B.budgetCountWeights[0], B.budgetCountWeights[1] + heroBonus * 4, B.budgetCountWeights[2] + heroBonus * 4]);
-  const budget = Math.round(ref * B.retail * randRange(s, 1.05, 1.55) * (1 + heroBonus * 0.05) * goods);
+  const budget = Math.round(ref * B.retail * randRange(s, 1.05, 1.55) * (1 + heroBonus * 0.05) * goods * demand);
   return { ...base, kind: 'buy', want, budget, line: lines.buyOpen(s, want) };
 }
 
 export function openShop(s: GameState, cat: Catalog): void {
   if (s.phase !== 'morning') return;
   s.phase = 'open';
-  s.visitorsToday = visitorsFor(s.rep);
+  s.visitorsToday = visitorsExpected(s);
   s.cursor = -1;
   callNext(s, cat);
 }
@@ -482,11 +526,12 @@ export function pass(s: GameState): void {
 
 // ---------------------------------------------------------------- shop management
 
-export function dispose(s: GameState, cat: Catalog, uid: number): boolean {
-  const index = s.stock.findIndex((x) => x.uid === uid);
+export function dispose(s: GameState, cat: Catalog, uid: number, id: GridId = 'shelf'): boolean {
+  const items = id === 'shelf' ? s.stock : s.wallet.items;
+  const index = items.findIndex((x) => x.uid === uid);
   if (index < 0) return false;
-  const price = disposePrice(cat, s.stock[index]);
-  s.stock.splice(index, 1);
+  const price = disposePrice(cat, items[index]);
+  items.splice(index, 1);
   s.gum += price;
   s.today.revenue += price;
   return true;
@@ -516,7 +561,7 @@ export function continueAfterWin(s: GameState): void {
 }
 
 /** Closes the day: collects rent on rent days, then starts the next morning. */
-export function endDay(s: GameState, cat: Catalog): void {
+export function endDay(s: GameState): void {
   if (s.phase !== 'evening') return;
   s.nightNote = '';
   if (isRentDay(s)) {
@@ -535,7 +580,7 @@ export function endDay(s: GameState, cat: Catalog): void {
     }
   }
   s.day += 1;
-  startMorning(s, cat);
+  startMorning(s);
 }
 
 export const findItem = (cat: Catalog, itemId: number): Item => cat.itemById.get(itemId)!;
