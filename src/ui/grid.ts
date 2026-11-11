@@ -1,8 +1,11 @@
 import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState } from '../game/state';
-import { atHome, ctx, shownGrid, ui } from './core';
+import * as N from '../game/night';
+import { SLOT_IDS, type SlotId } from '../game/state';
+import { atHome, ctx, shownGrid, shownTab, ui } from './core';
 import { esc, glyphs, tone } from './html';
+import { ICON } from './icons';
 
 /** Where the picture sits on an odd-shaped footprint: over its heaviest part. */
 function imageSpot(cells: readonly (readonly [number, number])[], size: number): string {
@@ -17,7 +20,7 @@ function imageSpot(cells: readonly (readonly [number, number])[], size: number):
 }
 
 /** One good on a grid: a tile for each cell of its footprint (outlined along the outer edge), and its picture. */
-export function gridItem(x: { uid: number; itemId: number; x: number; y: number; rot: boolean }, cls = ''): string {
+export function gridItem(x: { uid: number; itemId: number; x: number; y: number; rot: number }, cls = ''): string {
   const cell = ctx.cell;
   const item = G.findItem(cat, x.itemId);
   const shape = G.shapeOf(cat, x.itemId, x.rot);
@@ -31,8 +34,29 @@ export function gridItem(x: { uid: number; itemId: number; x: number; y: number;
   const size = Math.min(shape.w, shape.h) * cell;
   const first = shape.cells.reduce((a, c) => (c[1] < a[1] || (c[1] === a[1] && c[0] < a[0]) ? c : a));
   return `<div class="inv-item ${cls}" id="item-${x.uid}" data-item="${x.uid}" style="${tone(item)};left:${x.x * cell}px;top:${x.y * cell}px;width:${shape.w * cell}px;height:${shape.h * cell}px">
-      ${cells}<img src="${item.img}" alt="${esc(item.ja)}" draggable="false" style="width:${size}px;height:${size}px;${imageSpot(shape.cells, size)}${x.rot ? ';transform:rotate(90deg)' : ''}" />
+      ${cells}<img src="${item.img}" alt="${esc(item.ja)}" draggable="false" style="width:${size}px;height:${size}px;${imageSpot(shape.cells, size)}${x.rot ? `;transform:rotate(${x.rot * 90}deg)` : ''}" />
       <span class="inv-glyph" style="left:${first[0] * cell}px;top:${first[1] * cell}px">${glyphs(item)}</span>${cls === 'match' ? `<i class="inv-mark" style="left:${(first[0] + 1) * cell - 17}px;top:${first[1] * cell + 3}px" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
+}
+
+const SLOT_LABEL: Record<SlotId | 'wallet', string> = { head: '頭', body: '胴体', arm: '腕', leg: '足', special1: '特殊1', special2: '特殊2', wallet: 'ウォレット' };
+
+/**
+ * The gear tab: what is worn, as places to drop goods on and to drag them off.
+ * A tap on a place opens the list of goods that fit it.
+ */
+function gearBoard(g: GameState): string {
+  const place = (id: SlotId | 'wallet'): string => {
+    const itemId = id === 'wallet' ? g.wallet.itemId : g.equip[id]?.itemId;
+    const item = itemId ? G.findItem(cat, itemId) : null;
+    return `<button class="gslot ${item ? 'full' : ''}" id="gslot-${id}" data-slot="${id}" data-act="gear-slot" data-arg="${id}" ${item ? `style="${tone(item)}"` : ''} aria-label="${SLOT_LABEL[id]}${item ? `：${esc(item.ja)}` : '：なし'}">
+      <span class="gslot-face">${item ? `<img src="${item.img}" alt="" draggable="false" />` : `<i>${ICON.slot[id]}</i>`}</span><small>${SLOT_LABEL[id]}</small></button>`;
+  };
+  const [hp, phy, int, agi] = N.playerStats(g, cat);
+  return `<div class="gearboard" id="gearboard">
+      <div class="gslots">${SLOT_IDS.map(place).join('')}${place('wallet')}</div>
+      <div class="gear-line"><img src="${cat.player.img}" alt="" draggable="false" /><b>HP ${hp}</b><b class="s-phy">PHY ${phy}</b><b class="s-int">INT ${int}</b><b class="s-agi">AGI ${agi}</b></div>
+      <p class="hint">品をつまんで、ここへ置くと装備。装備中の品は、つまんでタブへ運ぶと外せます。</p>
+    </div>`;
 }
 
 /** The room the grid section is given at home, whichever tab is shown (so switching tabs moves nothing). */
@@ -45,6 +69,7 @@ let boardMin = 0;
 export function gridSection(g: GameState, side = ''): string {
   const cell = ctx.cell;
   const id = shownGrid(g);
+  const tab = shownTab(g);
   const grid = G.gridOf(g, cat, id);
   // while a buyer is at the counter, the goods on the shelf that they would take are marked
   const v = G.currentVisitor(g);
@@ -57,16 +82,21 @@ export function gridSection(g: GameState, side = ''): string {
   const wallet = G.findItem(cat, g.wallet.itemId);
   let head: string;
   if (atHome(g)) {
-    const tab = (which: G.GridId, label: string, count: string): string =>
-      `<button class="tab ${id === which ? 'on' : ''}" data-act="grid" data-arg="${which}" role="tab" aria-selected="${id === which}"><span>${label}</span><em>${count}</em></button>`;
-    head = `<div class="tabs" role="tablist">${tab('shelf', '棚', usedOf(g, 'shelf'))}${tab('wallet', 'ウォレット', g.wallet.items.length ? `${g.wallet.items.length}個` : '空')}</div>`;
+    const tabBtn = (which: G.GridId | 'gear', label: string, count: string): string =>
+      `<button class="tab ${tab === which ? 'on' : ''}" id="tab-${which}" data-act="grid" data-arg="${which}" role="tab" aria-selected="${tab === which}"><span>${label}</span><em>${count}</em></button>`;
+    const worn = SLOT_IDS.filter((slot) => g.equip[slot]).length;
+    head = `<div class="tabs" role="tablist">${tabBtn('shelf', '棚', usedOf(g, 'shelf'))}${tabBtn('wallet', 'ウォレット', g.wallet.items.length ? `${g.wallet.items.length}個` : '空')}${tabBtn('gear', '装備', `${worn}/6`)}</div>`;
   } else {
     head = `<div class="tabs"><span class="tab on solo"><span>ウォレット</span><em>${used}/${total}</em></span><span class="inv-count">${esc(wallet.ja)}</span></div>`;
   }
-  return `<section class="inv ${id} ${side ? 'with-side' : ''}" id="inv" data-ui>
-    <div class="inv-head">${head}<span class="inv-tip">タップ：詳細<br />長押し：メニュー</span></div>
+  const board =
+    tab === 'gear'
+      ? gearBoard(g)
+      : `<div class="grid" id="grid-${id}" data-grid="${id}" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${items}<div class="preview" id="preview" data-live></div></div>`;
+  return `<section class="inv ${tab} ${side ? 'with-side' : ''}" id="inv" data-ui>
+    <div class="inv-head">${head}<span class="inv-tip">${atHome(g) ? 'つまんでタブへ：移動' : 'タップ：詳細'}<br />長押し：メニュー</span></div>
     <div class="inv-body">
-      <div class="board" ${atHome(g) && boardMin ? `style="min-height:${boardMin}px"` : ''}><div class="grid" id="grid-${id}" data-grid="${id}" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${items}<div class="preview" id="preview" data-live></div></div></div>
+      <div class="board" ${atHome(g) && boardMin ? `style="min-height:${boardMin}px"` : ''}>${board}</div>
       ${side}
     </div>
   </section>`;

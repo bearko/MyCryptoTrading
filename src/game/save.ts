@@ -7,7 +7,10 @@ export function load(): GameState | null {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as GameState;
-    return s && s.v === 4 ? s : null;
+    if (!s || s.v !== 4) return null;
+    // older saves kept the turn as true / false
+    for (const x of [...s.stock, ...s.wallet.items]) x.rot = typeof x.rot === 'number' ? x.rot & 3 : x.rot ? 1 : 0;
+    return s;
   } catch {
     return null;
   }

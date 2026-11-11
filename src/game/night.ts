@@ -1,6 +1,6 @@
 import { B } from './balance';
 import type { Catalog, Item } from './catalog';
-import { addTo, findSlotIn, gridOf, itemValue, rollRarity, walletSize, type GridId } from './logic';
+import { addTo, canPlaceIn, findSlotIn, gridOf, itemValue, rollRarity, walletSize, type GridId } from './logic';
 import { pick, pickWeighted, rand, randRange } from './rng';
 import { SLOT_IDS, type GameState, type LooseItem, type SlotId } from './state';
 
@@ -101,18 +101,44 @@ function take(s: GameState, id: GridId, uid: number): LooseItem | null {
   return { itemId: x.itemId, cond: x.cond, paid: x.paid };
 }
 
+/**
+ * Moves a good between the shelf and the wallet. With a cell it lands there as it is turned (or not at all);
+ * without one it takes the first spot that fits. False when there is no room.
+ */
+export function transfer(s: GameState, cat: Catalog, from: GridId, uid: number, to: GridId, x?: number, y?: number): boolean {
+  if (from === to) return false;
+  const source = from === 'shelf' ? s.stock : s.wallet.items;
+  const index = source.findIndex((it) => it.uid === uid);
+  if (index < 0) return false;
+  const stock = source[index];
+  const target = gridOf(s, cat, to);
+  const slot = x === undefined || y === undefined ? findSlotIn(target, cat, stock.itemId) : canPlaceIn(target, cat, stock.itemId, x, y, stock.rot) ? { x, y, rot: stock.rot } : null;
+  if (!slot) return false;
+  source.splice(index, 1);
+  target.items.push({ ...stock, ...slot });
+  return true;
+}
+
+/** True when a good may be worn in a slot (a special good in either special slot). */
+export function fitsSlot(item: Item, slot: SlotId): boolean {
+  if (item.wallet) return false;
+  return item.slot === 'special' ? slot.startsWith('special') : item.slot === slot;
+}
+
 export type EquipResult = 'ok' | 'noroom' | 'walletfull' | 'invalid';
 
 /**
- * Wears a good from the shelf. What was worn there goes back to the shelf.
- * A wallet replaces the wallet; a smaller one is refused while the wallet holds goods that would not fit.
+ * Wears a good from the shelf or the wallet. What was worn there goes back to where the good came from.
+ * A wallet replaces the wallet (from the shelf only); a smaller one is refused while the wallet holds goods.
  */
-export function equip(s: GameState, cat: Catalog, uid: number, slot?: SlotId): EquipResult {
-  const stock = s.stock.find((x) => x.uid === uid);
+export function equip(s: GameState, cat: Catalog, uid: number, slot?: SlotId, from: GridId = 'shelf'): EquipResult {
+  const source = from === 'shelf' ? s.stock : s.wallet.items;
+  const stock = source.find((x) => x.uid === uid);
   if (!stock) return 'invalid';
   const item = cat.itemById.get(stock.itemId)!;
   const backup = { ...stock };
   if (item.wallet) {
+    if (from !== 'shelf') return 'invalid';
     const [cols, rows] = B.walletSizes[item.rarity];
     const now = walletSize(s, cat);
     if (s.wallet.items.length > 0 && (cols < now.cols || rows < now.rows)) return 'walletfull';
@@ -125,21 +151,28 @@ export function equip(s: GameState, cat: Catalog, uid: number, slot?: SlotId): E
     return 'ok';
   }
   const target = slot ?? slotFor(s, item);
-  if ((item.slot === 'special') !== target.startsWith('special') || (item.slot !== 'special' && item.slot !== target)) return 'invalid';
+  if (!fitsSlot(item, target)) return 'invalid';
   const old = s.equip[target];
-  const worn = take(s, 'shelf', uid)!;
-  if (old && addTo(s, cat, 'shelf', old.itemId, old.cond, old.paid) === null) {
-    s.stock.push(backup);
+  const worn = take(s, from, uid)!;
+  if (old && addTo(s, cat, from, old.itemId, old.cond, old.paid) === null) {
+    source.push(backup);
     return 'noroom';
   }
   s.equip[target] = worn;
   return 'ok';
 }
 
-/** Takes gear off and puts it back on the shelf. False when the shelf has no room. */
-export function unequip(s: GameState, cat: Catalog, slot: SlotId): boolean {
+/**
+ * Takes gear off and puts it on the shelf or in the wallet: at a cell when one is given, else at the first
+ * spot that fits. False when there is no room.
+ */
+export function unequip(s: GameState, cat: Catalog, slot: SlotId, to: GridId = 'shelf', x?: number, y?: number): boolean {
   const old = s.equip[slot];
-  if (!old || addTo(s, cat, 'shelf', old.itemId, old.cond, old.paid) === null) return false;
+  if (!old) return false;
+  const target = gridOf(s, cat, to);
+  const spot = x === undefined || y === undefined ? findSlotIn(target, cat, old.itemId) : canPlaceIn(target, cat, old.itemId, x, y, 0) ? { x, y, rot: 0 } : null;
+  if (!spot) return false;
+  target.items.push({ uid: s.nextUid++, itemId: old.itemId, cond: old.cond, paid: old.paid, ...spot });
   s.equip[slot] = null;
   return true;
 }

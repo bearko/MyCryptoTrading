@@ -254,3 +254,116 @@
 .inv.with-side .tray .btn {
   min-height: 52px;
 }
+
+/* ---------- carrying a good to another tab: hold it over the tab for a second and the tab opens */
+.dragging .tab:not(.on) {
+  animation: pulse 0.9s ease-in-out infinite;
+}
+.tab.dwell::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 2px;
+  height: 4px;
+  background: var(--gum);
+  transform-origin: 0 50%;
+  animation: tab-dwell 1s linear both;
+}
+@keyframes tab-dwell {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* ---------- the gear tab */
+.gearboard {
+  width: 100%;
+  padding: 2px 4px 6px;
+  color: var(--paper);
+}
+.gslots {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.gslot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 74px;
+  padding: 6px 2px 4px;
+  border: 2px dashed var(--ink-3);
+  border-radius: var(--radius);
+  background: var(--ink-2);
+  color: var(--mute);
+  font: inherit;
+  touch-action: none;
+  cursor: pointer;
+}
+.gslot small {
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+.gslot-face {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+}
+.gslot-face img {
+  width: 44px;
+  height: 44px;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.gslot-face i {
+  opacity: 0.5;
+}
+.gslot.full {
+  border: var(--edge) solid var(--ink);
+  background: linear-gradient(135deg, var(--ta) 50%, var(--tb) 50%);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+.gslot.can {
+  border-color: var(--leaf);
+  border-style: dashed;
+  animation: pulse 0.8s ease-in-out infinite;
+}
+.gslot.hot {
+  outline: 3px solid var(--gum);
+  outline-offset: 2px;
+}
+.gslot.lifted {
+  opacity: 0.35;
+}
+.gear-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  margin-top: 8px;
+  font-family: var(--f-num);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+.gear-line img {
+  width: 34px;
+  height: 34px;
+  image-rendering: pixelated;
+}
+.gear-line .s-phy {
+  color: var(--c-phy);
+}
+.gear-line .s-int {
+  color: var(--c-int);
+}
+.gear-line .s-agi {
+  color: var(--c-agi);
+}
+.gearboard .hint {
+  color: var(--mute);
+}
