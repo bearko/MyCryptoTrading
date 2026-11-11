@@ -1,0 +1,104 @@
+import { catalog as cat } from '../game/catalog';
+import * as G from '../game/logic';
+import type { GameState } from '../game/state';
+import { atHome, ctx, shownGrid, ui } from './core';
+import { esc, glyphs, tone } from './html';
+
+/** Where the picture sits on an odd-shaped footprint: over its heaviest part. */
+function imageSpot(cells: readonly (readonly [number, number])[], size: number): string {
+  const cell = ctx.cell;
+  const cx = cells.reduce((a, c) => a + c[0] + 0.5, 0) / cells.length;
+  const cy = cells.reduce((a, c) => a + c[1] + 0.5, 0) / cells.length;
+  const w = Math.max(...cells.map((c) => c[0])) + 1;
+  const h = Math.max(...cells.map((c) => c[1])) + 1;
+  const left = Math.min(Math.max(cx * cell - size / 2, 0), w * cell - size);
+  const top = Math.min(Math.max(cy * cell - size / 2, 0), h * cell - size);
+  return `left:${left}px;top:${top}px`;
+}
+
+/** One good on a grid: a tile for each cell of its footprint (outlined along the outer edge), and its picture. */
+export function gridItem(x: { uid: number; itemId: number; x: number; y: number; rot: boolean }, cls = ''): string {
+  const cell = ctx.cell;
+  const item = G.findItem(cat, x.itemId);
+  const shape = G.shapeOf(cat, x.itemId, x.rot);
+  const has = new Set(shape.cells.map(([cx, cy]) => `${cx},${cy}`));
+  const cells = shape.cells
+    .map(([cx, cy]) => {
+      const edge = (dx: number, dy: number, name: string): string => (has.has(`${cx + dx},${cy + dy}`) ? '' : ` ${name}`);
+      return `<i class="inv-cell${edge(0, -1, 'et')}${edge(1, 0, 'er')}${edge(0, 1, 'eb')}${edge(-1, 0, 'el')}" data-uid="${x.uid}" style="left:${cx * cell}px;top:${cy * cell}px"></i>`;
+    })
+    .join('');
+  const size = Math.min(shape.w, shape.h) * cell;
+  const first = shape.cells.reduce((a, c) => (c[1] < a[1] || (c[1] === a[1] && c[0] < a[0]) ? c : a));
+  return `<div class="inv-item ${cls}" id="item-${x.uid}" data-item="${x.uid}" style="${tone(item)};left:${x.x * cell}px;top:${x.y * cell}px;width:${shape.w * cell}px;height:${shape.h * cell}px">
+      ${cells}<img src="${item.img}" alt="${esc(item.ja)}" draggable="false" style="width:${size}px;height:${size}px;${imageSpot(shape.cells, size)}${x.rot ? ';transform:rotate(90deg)' : ''}" />
+      <span class="inv-glyph" style="left:${first[0] * cell}px;top:${first[1] * cell}px">${glyphs(item)}</span>${cls === 'match' ? `<i class="inv-mark" style="left:${(first[0] + 1) * cell - 17}px;top:${first[1] * cell + 3}px" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
+}
+
+/** The room the grid section is given at home, whichever tab is shown (so switching tabs moves nothing). */
+let boardMin = 0;
+
+/**
+ * The shelf or the wallet: an ink board of cells, with the goods on parameter-coloured tiles.
+ * `side` is put beside the board when there is room for it (the night shop's tray).
+ */
+export function gridSection(g: GameState, side = ''): string {
+  const cell = ctx.cell;
+  const id = shownGrid(g);
+  const grid = G.gridOf(g, cat, id);
+  // while a buyer is at the counter, the goods on the shelf that they would take are marked
+  const v = G.currentVisitor(g);
+  const want = id === 'shelf' && v && !v.done && v.kind === 'buy' ? v.want : null;
+  const items = grid.items
+    .map((x) => gridItem(x, id === 'shelf' && ui.counter.includes(x.uid) ? 'away' : want && G.matches(cat, want, x.itemId) ? 'match' : ''))
+    .join('');
+  const total = grid.cols * grid.rows;
+  const used = total - G.freeCells(g, cat, id);
+  const wallet = G.findItem(cat, g.wallet.itemId);
+  let head: string;
+  if (atHome(g)) {
+    const tab = (which: G.GridId, label: string, count: string): string =>
+      `<button class="tab ${id === which ? 'on' : ''}" data-act="grid" data-arg="${which}" role="tab" aria-selected="${id === which}"><span>${label}</span><em>${count}</em></button>`;
+    head = `<div class="tabs" role="tablist">${tab('shelf', '棚', usedOf(g, 'shelf'))}${tab('wallet', 'ウォレット', g.wallet.items.length ? `${g.wallet.items.length}個` : '空')}</div>`;
+  } else {
+    head = `<div class="tabs"><span class="tab on solo"><span>ウォレット</span><em>${used}/${total}</em></span><span class="inv-count">${esc(wallet.ja)}</span></div>`;
+  }
+  return `<section class="inv ${id} ${side ? 'with-side' : ''}" id="inv" data-ui>
+    <div class="inv-head">${head}<span class="inv-tip">タップ：詳細<br />長押し：メニュー</span></div>
+    <div class="inv-body">
+      <div class="board" ${atHome(g) && boardMin ? `style="min-height:${boardMin}px"` : ''}><div class="grid" id="grid-${id}" data-grid="${id}" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${items}<div class="preview" id="preview" data-live></div></div></div>
+      ${side}
+    </div>
+  </section>`;
+}
+
+function usedOf(g: GameState, id: G.GridId): string {
+  const grid = G.gridOf(g, cat, id);
+  const total = grid.cols * grid.rows;
+  return `${total - G.freeCells(g, cat, id)}/${total}`;
+}
+
+/** True when the night shop's tray fits beside the wallet (a wide wallet takes the whole width). */
+export const sideFits = (g: GameState): boolean => G.walletSize(g, cat).cols <= 5;
+
+/** Fits the cell size to the screen. */
+export function measure(g: GameState): void {
+  const root = ctx.root;
+  const w = root.clientWidth || 390;
+  const h = root.clientHeight || 780;
+  const grid = G.gridOf(g, cat, shownGrid(g));
+  // on shorter screens the cells give way to the scene (never under a finger's width while the grid is small)
+  const cap = Math.max(44, Math.min(58, h * 0.067));
+  if (atHome(g)) {
+    // the shelf sets the room; the wallet tab fits itself into the same room
+    const shelf = G.gridOf(g, cat, 'shelf');
+    const share = h < 700 ? 0.38 : 0.44;
+    const shelfCell = Math.floor(Math.max(28, Math.min((w - 24) / shelf.cols, cap, (h * share - 40) / shelf.rows)));
+    boardMin = shelf.rows * shelfCell + 18;
+    ctx.cell = grid === shelf || shownGrid(g) === 'shelf' ? shelfCell : Math.floor(Math.max(28, Math.min((w - 24) / grid.cols, cap, (shelf.rows * shelfCell) / grid.rows)));
+    return;
+  }
+  boardMin = 0;
+  const beside = g.phase === 'shop' && sideFits(g);
+  ctx.cell = Math.floor(Math.max(28, Math.min((w - 24) / grid.cols, beside ? 46 : cap, (h * (beside ? 0.34 : 0.3) - 40) / grid.rows)));
+}

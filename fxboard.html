@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="data:," />
+    <title>FX board (dev)</title>
+    <style>
+      /* Dev only: a phone-sized stand-in for the game root, to audition every effect of src/ui/fx.ts. */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--ink);
+        overscroll-behavior: none;
+      }
+      #app {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        max-width: 480px;
+        height: 100dvh;
+        margin: 0 auto;
+        overflow: hidden;
+        background: var(--ink-2);
+        color: var(--paper);
+        font-family: var(--f-body);
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .b-hud {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 12px;
+        background: var(--ink);
+        border-bottom: 3px solid var(--ink-3);
+      }
+      .b-day {
+        padding: 2px 10px;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--f-num);
+        font-size: 16px;
+        transform: skewX(var(--skew));
+      }
+      .b-wallet {
+        display: inline-block;
+        font-family: var(--f-num);
+        font-size: 30px;
+        color: var(--gum);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+      }
+      .b-wallet small {
+        font-size: 14px;
+        margin-left: 4px;
+        color: var(--mute);
+      }
+      .b-stat {
+        font-family: var(--f-pixel);
+        font-size: 11px;
+        color: var(--mute);
+        text-align: right;
+        min-width: 86px;
+      }
+      .b-stage {
+        position: relative;
+        flex: 1 1 0;
+        min-height: 250px;
+        overflow: hidden;
+        background: var(--ink-2);
+      }
+      .b-stage::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        color: var(--ink-3);
+        background: var(--halftone);
+        animation: drift 9s linear infinite;
+      }
+      .b-stage[data-tone='day'] {
+        background: var(--paper-2);
+      }
+      .b-stage[data-tone='day']::before {
+        color: var(--gum-deep);
+        opacity: 0.35;
+      }
+      .b-hero {
+        position: absolute;
+        left: 50%;
+        top: 46%;
+        width: 92px;
+        height: 120px;
+        margin: -60px 0 0 -46px;
+        background: var(--violet);
+        border: 3px solid var(--ink);
+        box-shadow: var(--shadow);
+        animation: breathe 2.4s ease-in-out infinite;
+      }
+      .b-hero::after {
+        content: 'TARGET';
+        position: absolute;
+        inset: auto 0 6px;
+        text-align: center;
+        font-family: var(--f-num);
+        font-size: 13px;
+        color: var(--ink);
+      }
+      .b-counter {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 34px;
+        background: var(--ink-3);
+        border-top: 3px solid var(--ink);
+      }
+      .b-pad {
+        flex: 0 0 auto;
+        max-height: 46%;
+        overflow-y: auto;
+        padding: 8px;
+        background: var(--ink);
+        border-top: 3px solid var(--ink-3);
+      }
+      .b-pad h2 {
+        margin: 8px 2px 4px;
+        font-family: var(--f-num);
+        font-weight: 400;
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        color: var(--mute);
+      }
+      .b-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+      .b-grid button {
+        min-height: 44px;
+        padding: 2px 4px;
+        border: 2px solid var(--ink);
+        border-radius: var(--radius);
+        background: var(--paper);
+        color: var(--ink);
+        box-shadow: 0 3px 0 var(--ink-3);
+        font-family: var(--f-body);
+        font-weight: 900;
+        font-size: 12px;
+        line-height: 1.15;
+        transition: transform var(--t-press) ease-out;
+      }
+      .b-grid button:active {
+        transform: translateY(2px) scale(0.97);
+      }
+      .b-grid button.is-main {
+        background: var(--gum);
+      }
+      .b-grid button.is-on {
+        background: var(--leaf);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/dev/fxboard.ts"></script>
+  </body>
+</html>

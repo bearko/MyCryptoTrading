@@ -1,0 +1,404 @@
+/* ---------- the night shop: violet and neon, goods as price-tagged cards */
+.shop {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 12px 14px;
+  background:
+    linear-gradient(to bottom, color-mix(in srgb, var(--violet) 34%, transparent), transparent 46%),
+    var(--night);
+}
+.shop-sign {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 2px 0 6px;
+  border-bottom: 3px solid var(--violet);
+}
+.shop-sign b {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--paper);
+  text-shadow:
+    0 0 6px var(--hot),
+    2px 2px 0 var(--hot);
+  transform: skewX(-6deg);
+  animation: neon 3.4s steps(1) infinite;
+}
+.shop-sign span {
+  font-family: var(--f-display);
+  font-size: 0.875rem;
+  color: var(--gum);
+}
+.shop-hint {
+  margin: 6px 0 10px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--paper) 78%, var(--violet));
+}
+.shop-hint b {
+  color: var(--gum);
+}
+.shop-list {
+  display: grid;
+  gap: 10px;
+}
+.shop-good {
+  position: relative;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 7px 6px 7px 8px;
+  background: var(--paper);
+  border: var(--edge) solid var(--ink);
+  box-shadow: 4px 4px 0 var(--violet);
+  color: var(--ink);
+  animation: rise-in 0.26s calc(var(--i) * 40ms + 60ms) var(--ease-pop) both;
+}
+.good-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.good-name {
+  font-size: 0.9375rem;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.good-val {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--sub);
+}
+/* the price tag is the button */
+.price-tag {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: end;
+  align-content: center;
+  min-width: 78px;
+  min-height: 54px;
+  margin-right: -14px;
+  padding: 4px 9px 4px 18px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  filter: drop-shadow(3px 3px 0 var(--ink));
+  transform: rotate(-3deg);
+  transition: transform var(--t-press) var(--ease-out);
+  isolation: isolate;
+}
+.price-tag::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 12px 50%, var(--ink) 0 3px, transparent 3.5px), var(--gum);
+  clip-path: polygon(13px 0, 100% 0, 100% 100%, 13px 100%, 0 50%);
+}
+.price-tag small {
+  font-size: 0.6875rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+.price-tag b {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 1.5rem;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.price-tag:active:not(:disabled) {
+  transform: rotate(-3deg) translate(2px, 2px) scale(0.96);
+  filter: drop-shadow(1px 1px 0 var(--ink));
+}
+.price-tag.poor {
+  cursor: not-allowed;
+  color: var(--sub);
+}
+.price-tag.poor::before {
+  background: radial-gradient(circle at 12px 50%, var(--ink) 0 3px, transparent 3.5px), var(--paper-2);
+}
+.price-tag.poor small {
+  color: var(--hot-deep);
+}
+.shop-good.sold {
+  box-shadow: none;
+}
+.shop-good.sold > .tile,
+.shop-good.sold > .good-body {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+.stamp.sold {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  margin-top: -18px;
+  font-family: var(--f-num);
+  font-size: 1.5rem;
+}
+
+/* what is bought but not in the wallet yet, and the way home */
+.tray {
+  position: relative;
+  z-index: 5;
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  padding: 14px 6px 8px 10px;
+  border-top: 3px solid var(--violet);
+  background: var(--ink);
+}
+.tray .counter-mat {
+  min-height: 58px;
+  background: var(--ink-2);
+  border-color: var(--ink-3);
+  box-shadow: none;
+  color: var(--mute);
+}
+.tray .counter-mat::after {
+  display: none;
+}
+.tray.has .counter-mat {
+  background: var(--hot-wash);
+  border-color: var(--hot);
+}
+.tray.has .zone-label {
+  background: var(--hot);
+}
+.tray .btn {
+  flex: 0 0 auto;
+  min-width: 104px;
+}
+.tray .zone-goods {
+  justify-content: flex-start;
+  overflow-x: auto;
+  padding: 4px 2px 6px;
+}
+
+/* ---------- gear: the warrior centre stage, six places and the wallet */
+.gearbox {
+  gap: 0;
+}
+.gear-stage {
+  display: grid;
+  grid-template-columns: 72px 1fr 72px;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+.gear-col {
+  display: grid;
+  gap: 8px;
+}
+.gear-me {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  min-height: 232px;
+  padding-bottom: 2px;
+  isolation: isolate;
+}
+/* a spotlight of halftone behind the warrior */
+.gear-spot {
+  position: absolute;
+  inset: 4px -4px 60px;
+  z-index: -1;
+  color: var(--violet);
+  background:
+    var(--halftone),
+    radial-gradient(ellipse at 50% 60%, color-mix(in srgb, var(--gum) 70%, var(--paper)), var(--paper-2) 70%);
+  border: 2.5px solid var(--ink);
+  transform: skewX(var(--skew));
+}
+.departing .gear-spot {
+  background:
+    var(--halftone),
+    radial-gradient(ellipse at 50% 60%, color-mix(in srgb, var(--violet) 55%, var(--paper)), var(--ink-3) 85%);
+  color: var(--ink);
+}
+.gear-me > img {
+  width: min(100%, 156px);
+  aspect-ratio: 1;
+  margin-bottom: -6px;
+  transform-origin: 50% 100%;
+  animation: breathe 2.6s ease-in-out infinite;
+  filter: drop-shadow(2px 0 0 var(--paper)) drop-shadow(-2px 0 0 var(--paper)) drop-shadow(0 -2px 0 var(--paper)) drop-shadow(4px 4px 0 var(--ink-50));
+}
+.slot {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 72px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out);
+}
+.slot:active {
+  transform: scale(0.92);
+}
+.slot-face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  background: var(--paper-2);
+  border: 2.5px dashed var(--sub);
+}
+.slot.full .slot-face {
+  background: linear-gradient(135deg, var(--fa) 50%, var(--fb) 50%);
+  border: 2.5px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.slot-face img {
+  width: 50px;
+  height: 50px;
+  filter: drop-shadow(1px 1px 0 var(--ink-50));
+}
+.slot-face .glyph {
+  position: absolute;
+  left: -3px;
+  top: -3px;
+}
+.slot-face .glyph + .glyph {
+  left: 10px;
+}
+.slot-glyph {
+  color: var(--rule);
+}
+.slot-glyph svg {
+  width: 30px;
+  height: 30px;
+}
+.slot small {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.6875rem;
+  font-weight: 900;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.slot small svg {
+  width: 11px;
+  height: 11px;
+}
+.slot.flash .slot-face {
+  animation: slot-flash 0.55s var(--ease-pop) both;
+}
+@keyframes slot-flash {
+  0% {
+    transform: scale(1.5) rotate(-8deg);
+    filter: brightness(2.2);
+  }
+  45% {
+    transform: scale(0.94);
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: scale(1);
+    filter: none;
+  }
+}
+.gear-me .slot-wallet {
+  width: auto;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.gear-me .slot-wallet .slot-face {
+  width: 46px;
+  height: 46px;
+}
+.gear-me .slot-wallet .slot-face img {
+  width: 38px;
+  height: 38px;
+}
+.gear-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  margin-top: 10px;
+}
+.gstat {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  padding: 3px 2px 2px;
+  background: var(--ink);
+  color: var(--paper);
+  border-bottom: 5px solid var(--c-hp);
+}
+.gstat.s-phy {
+  border-bottom-color: var(--c-phy);
+}
+.gstat.s-int {
+  border-bottom-color: var(--c-int);
+}
+.gstat.s-agi {
+  border-bottom-color: var(--c-agi);
+}
+.gstat small {
+  font-family: var(--f-num);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  color: var(--mute);
+}
+.gstat b {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.gstat em {
+  position: absolute;
+  right: -3px;
+  top: -9px;
+  padding: 0 4px;
+  background: var(--leaf);
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  font-family: var(--f-num);
+  font-style: normal;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  transform: rotate(4deg);
+  animation: pop-in 0.3s 0.25s var(--ease-pop) both;
+}
+.gstat em.down {
+  background: var(--hot);
+  color: var(--paper);
+}
+
+@media (max-height: 700px) {
+  .shop-hint {
+    display: none;
+  }
+  .shop-sign {
+    margin-bottom: 8px;
+  }
+  .shop-sign b {
+    font-size: 1.5rem;
+  }
+}

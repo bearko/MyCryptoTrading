@@ -1,0 +1,157 @@
+/* Design tokens (docs/UI_DIRECTION.md). Every screen uses these; do not write raw colours elsewhere. */
+@import '@fontsource/dela-gothic-one/index.css';
+@import '@fontsource/dotgothic16/index.css';
+@import '@fontsource/anton/index.css';
+@import '@fontsource/zen-kaku-gothic-new/500.css';
+@import '@fontsource/zen-kaku-gothic-new/700.css';
+@import '@fontsource/zen-kaku-gothic-new/900.css';
+
+:root {
+  /* colour */
+  --ink: #0f0d16;
+  --ink-2: #1c1826;
+  --ink-3: #2d2740;
+  --paper: #fff8e7;
+  --paper-2: #f1e6c8;
+  --gum: #ffd21f;
+  --gum-deep: #e0a800;
+  --hot: #ff3b5c;
+  --cool: #2d8cff;
+  --leaf: #2fd67b;
+  --violet: #8f5bff;
+  --mute: #8d86a3;
+  /* parameter lines */
+  --c-phy: var(--hot);
+  --c-int: var(--cool);
+  --c-agi: var(--leaf);
+  --c-hp: #c9973a;
+
+  /* type */
+  --f-display: 'Dela Gothic One', 'Hiragino Kaku Gothic ProN', sans-serif;
+  --f-num: 'Anton', 'Dela Gothic One', sans-serif;
+  --f-body: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
+  --f-pixel: 'DotGothic16', 'Zen Kaku Gothic New', monospace;
+
+  /* shape */
+  --skew: -8deg;
+  --edge: 3px;
+  --shadow: 4px 4px 0 var(--ink);
+  --shadow-sm: 2px 2px 0 var(--ink);
+  --radius: 6px;
+
+  /* motion */
+  --ease-pop: cubic-bezier(0.2, 1.4, 0.3, 1);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.6, 0, 0.9, 0.4);
+  --t-press: 80ms;
+  --t-in: 240ms;
+  --t-out: 150ms;
+  --t-big: 600ms;
+
+  /* text scale (settings: 文字を大きく sets 1.15) */
+  --text-scale: 1;
+}
+
+/* Shared textures: use as background layers. */
+:root {
+  --halftone: radial-gradient(circle at 50% 50%, currentColor 0 1.6px, transparent 1.8px) 0 0 / 9px 9px;
+  --stripes: repeating-linear-gradient(-45deg, currentColor 0 6px, transparent 6px 14px);
+}
+
+@keyframes drift {
+  to {
+    background-position: 90px 90px;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-40px) skewX(var(--skew));
+  }
+}
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(40px) skewX(var(--skew));
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+@keyframes stamp-in {
+  0% {
+    opacity: 0;
+    transform: scale(2.6) rotate(-14deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.92) rotate(-8deg);
+  }
+  100% {
+    transform: scale(1) rotate(-8deg);
+  }
+}
+@keyframes breathe {
+  50% {
+    transform: translateY(-1.2%) scaleY(1.012);
+  }
+}
+@keyframes pulse {
+  50% {
+    filter: brightness(1.25);
+  }
+}
+@keyframes wobble {
+  25% {
+    transform: rotate(-9deg);
+  }
+  75% {
+    transform: rotate(9deg);
+  }
+}
+@keyframes shake-x {
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* 演出をひかえる: set by the OS or by the game's setting (html.calm). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+html.calm *,
+html.calm *::before,
+html.calm *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}

@@ -1,0 +1,235 @@
+/* ---------- base: the page, the game root, shared tones derived from the tokens */
+:root {
+  --wood: color-mix(in srgb, var(--c-hp) 58%, var(--ink));
+  --wood-hi: color-mix(in srgb, var(--c-hp) 82%, var(--paper));
+  --wood-lo: color-mix(in srgb, var(--c-hp) 34%, var(--ink));
+  --brass: color-mix(in srgb, var(--gum) 74%, var(--c-hp));
+  --brass-lo: color-mix(in srgb, var(--gum-deep) 58%, var(--ink));
+  --steel: color-mix(in srgb, var(--mute) 46%, var(--ink-3));
+  --steel-hi: color-mix(in srgb, var(--mute) 72%, var(--paper));
+  --steel-lo: color-mix(in srgb, var(--ink-3) 60%, var(--ink));
+  --scrim: color-mix(in srgb, var(--ink) 84%, transparent);
+  --ink-10: color-mix(in srgb, var(--ink) 10%, transparent);
+  --ink-20: color-mix(in srgb, var(--ink) 20%, transparent);
+  --ink-50: color-mix(in srgb, var(--ink) 50%, transparent);
+  --paper-20: color-mix(in srgb, var(--paper) 20%, transparent);
+  /* on paper: quiet text and rules */
+  --sub: color-mix(in srgb, var(--ink) 64%, var(--paper));
+  --rule: color-mix(in srgb, var(--ink) 22%, var(--paper));
+  --gum-wash: color-mix(in srgb, var(--gum) 36%, var(--paper));
+  --hot-wash: color-mix(in srgb, var(--hot) 16%, var(--paper));
+  --hot-deep: color-mix(in srgb, var(--hot) 62%, var(--ink));
+  --leaf-deep: color-mix(in srgb, var(--leaf) 55%, var(--ink));
+  --violet-deep: color-mix(in srgb, var(--violet) 45%, var(--ink));
+  --night: color-mix(in srgb, var(--violet) 22%, var(--ink));
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+html {
+  /* 文字を大きく: every text size is in rem, so this one line scales them all */
+  font-size: calc(16px * var(--text-scale));
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  overscroll-behavior: none;
+  overflow: hidden;
+}
+body {
+  font-family: var(--f-body);
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+img {
+  image-rendering: pixelated;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+button {
+  font: inherit;
+  color: inherit;
+  touch-action: manipulation;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--cool);
+  outline-offset: 2px;
+}
+p,
+h1,
+h2 {
+  margin: 0;
+}
+b,
+strong {
+  font-weight: 900;
+}
+
+#app {
+  position: relative;
+  isolation: isolate;
+  user-select: none;
+  -webkit-user-select: none;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  height: 100dvh;
+  margin: 0 auto;
+  background: var(--ink);
+  color: var(--paper);
+  overflow: hidden;
+}
+/* the ground everything stands on: ink with drifting halftone */
+#app::before {
+  content: '';
+  position: absolute;
+  inset: -90px;
+  z-index: -1;
+  color: var(--ink-3);
+  background: var(--halftone);
+  opacity: 0.6;
+  animation: drift-t 14s linear infinite;
+  pointer-events: none;
+}
+#app[data-phase='evening']::before,
+#app[data-phase='shop']::before,
+#app[data-phase='quest']::before {
+  color: var(--violet-deep);
+}
+/* while a beat or a scene change runs, nothing can be pressed */
+#app.busy {
+  pointer-events: none;
+}
+@keyframes drift-t {
+  to {
+    transform: translate(90px, 90px);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* the layer for things that fly over the screens (dragged goods, flying goods, notes) */
+.over-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+  overflow: hidden;
+}
+.flyer {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  will-change: transform;
+}
+.flyer .tile {
+  width: 100%;
+  height: 100%;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  top: 47%;
+  z-index: 3;
+  max-width: 90%;
+  padding: 6px 16px;
+  background: var(--ink);
+  border: 2.5px solid var(--paper);
+  box-shadow: 3px 3px 0 var(--ink-50);
+  color: var(--paper);
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-align: center;
+  transform: translateX(-50%) skewX(var(--skew));
+  animation: toast-in 0.22s var(--ease-pop) both;
+  transition: opacity 0.25s;
+}
+.toast.good {
+  background: var(--leaf);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.toast.bad {
+  background: var(--hot);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.toast.out {
+  opacity: 0;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-14px) skewX(var(--skew)) scale(0.8);
+  }
+}
+
+/* the ring that fills while a good is held (long press) */
+.hold-ring {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  animation: pop-in 0.12s var(--ease-pop) both;
+}
+.hold-ring svg {
+  transform: rotate(-90deg);
+}
+.hold-track {
+  fill: var(--ink-50);
+  stroke: var(--ink);
+  stroke-width: 7;
+}
+.hold-fill {
+  fill: none;
+  stroke: var(--gum);
+  stroke-width: 5;
+  stroke-linecap: butt;
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+  animation: hold-fill linear forwards;
+}
+@keyframes hold-fill {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* calm: the ring must still be readable as progress, so it keeps its time */
+html.calm .hold-fill {
+  animation-duration: 360ms !important;
+}
+
+.pix {
+  font-family: var(--f-pixel);
+  font-weight: 400;
+}
+
+/* calm: what would come in late comes at once (the tokens already cut the durations) */
+html.calm :is(.night, .morning, .title, .modal, .ending, .scene, .shop, .win) *,
+html.calm :is(.night, .morning, .title, .modal, .ending, .win, .shop-good, .row) {
+  animation-delay: 0s !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.night, .morning, .title, .modal, .ending, .scene, .shop, .win) *,
+  :is(.night, .morning, .title, .modal, .ending, .win, .shop-good, .row) {
+    animation-delay: 0s !important;
+  }
+}

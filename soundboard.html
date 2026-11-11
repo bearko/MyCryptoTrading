@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="mch/Image/Icons/gum.png" />
+    <title>サウンドボード — My Crypto Trading（開発用）</title>
+    <style>
+      /* Dev-only page (not part of the build): plain styles, nothing shared with the game. */
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 12px 12px 48px; background: #0f0d16; color: #fff8e7; font: 14px/1.5 system-ui, sans-serif; }
+      main { max-width: 520px; margin: 0 auto; }
+      h1 { font-size: 18px; margin: 4px 0 2px; }
+      h2 { font-size: 13px; margin: 22px 0 8px; padding: 4px 8px; background: #ffd21f; color: #0f0d16; display: inline-block; transform: skewX(-8deg); }
+      p { margin: 4px 0; color: #8d86a3; font-size: 12px; }
+      .panel { background: #1c1826; border: 2px solid #2d2740; padding: 10px; margin-top: 10px; }
+      .row { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+      .row > span:first-child { flex: 0 0 76px; font-weight: 700; }
+      .row output { flex: 0 0 44px; text-align: right; font-variant-numeric: tabular-nums; }
+      input[type='range'] { flex: 1; min-width: 0; height: 44px; accent-color: #ffd21f; }
+      label.check { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+      label.check input { width: 22px; height: 22px; accent-color: #ffd21f; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      button { font: inherit; color: inherit; min-height: 44px; cursor: pointer; border: 2px solid #0f0d16; box-shadow: 3px 3px 0 #000; background: #2d2740; padding: 6px 8px; text-align: left; touch-action: manipulation; }
+      button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000; }
+      button.on { background: #ffd21f; color: #0f0d16; }
+      button b { display: block; font-size: 15px; }
+      button small { display: block; font-size: 11px; opacity: 0.75; }
+      button canvas { display: block; width: 100%; height: 26px; margin-top: 4px; image-rendering: pixelated; }
+      button i { display: block; font-style: normal; font-size: 10px; opacity: 0.6; font-variant-numeric: tabular-nums; }
+      #state { font-size: 12px; color: #2fd67b; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>サウンドボード</h1>
+      <p>開発用のページです（ビルドには入りません）。ボタンを押すと、ゲームと同じ <code>audio.sfx()</code>／<code>audio.bgm()</code> で鳴ります。</p>
+      <div id="state">最初のタップで音が有効になります</div>
+      <div id="app"></div>
+    </main>
+    <script type="module" src="/src/dev/soundboard.ts"></script>
+  </body>
+</html>

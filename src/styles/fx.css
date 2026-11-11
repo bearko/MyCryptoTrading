@@ -1,0 +1,416 @@
+/*
+ * Effects layers (src/ui/fx.ts). Everything here lives in `.fx-host`, a fixed box that fx.ts keeps
+ * exactly over the game root — it is NOT a child of #app, so re-rendering the game never touches it.
+ * Only transform / opacity are animated. Colours come from tokens.css.
+ */
+.fx-host {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9000;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.fx-canvas,
+.fx-layer,
+.fx-wipe,
+.fx-flash {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.fx-canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+.fx-layer,
+.fx-wipe {
+  overflow: hidden;
+}
+/* While a screen wipe runs, taps must not reach the half-covered screen. */
+.fx-wipe.is-busy {
+  pointer-events: auto;
+}
+.fx-flash {
+  background: var(--fx-c, var(--paper));
+  opacity: 0;
+  will-change: opacity;
+}
+.fx-probe {
+  position: absolute;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+}
+
+/* A zero-size anchor: whatever is inside is centred on the point (left / top are set once). */
+.fx-at {
+  position: absolute;
+  width: 0;
+  height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.fx-at > * {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* Ink-outlined type: 16 hard copies of the glyphs make the outline, 3 more the offset shadow. */
+.fx-type {
+  --o: 3px;
+  --on: calc(var(--o) * -1);
+  --d: calc(var(--o) * 0.71);
+  --dn: calc(var(--o) * -0.71);
+  --p: calc(var(--o) * 0.92);
+  --pn: calc(var(--o) * -0.92);
+  --q: calc(var(--o) * 0.38);
+  --qn: calc(var(--o) * -0.38);
+  text-shadow:
+    var(--o) 0 0 var(--ink),
+    var(--on) 0 0 var(--ink),
+    0 var(--o) 0 var(--ink),
+    0 var(--on) 0 var(--ink),
+    var(--d) var(--d) 0 var(--ink),
+    var(--dn) var(--d) 0 var(--ink),
+    var(--d) var(--dn) 0 var(--ink),
+    var(--dn) var(--dn) 0 var(--ink),
+    var(--p) var(--q) 0 var(--ink),
+    var(--pn) var(--q) 0 var(--ink),
+    var(--p) var(--qn) 0 var(--ink),
+    var(--pn) var(--qn) 0 var(--ink),
+    var(--q) var(--p) 0 var(--ink),
+    var(--qn) var(--p) 0 var(--ink),
+    var(--q) var(--pn) 0 var(--ink),
+    var(--qn) var(--pn) 0 var(--ink),
+    calc(var(--o) + 1px) calc(var(--o) + 1px) 0 var(--ink),
+    calc(var(--o) + 2px) calc(var(--o) + 2px) 0 var(--ink),
+    calc(var(--o) + 3px) calc(var(--o) + 3px) 0 var(--ink);
+}
+
+/* ---------- flying numbers ---------- */
+.fx-text {
+  font-family: var(--f-num);
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--paper);
+}
+.fx-text-mv {
+  display: grid;
+  place-items: center;
+  will-change: transform, opacity;
+}
+.fx-text-mv > * {
+  grid-area: 1 / 1;
+}
+.fx-text .fx-type {
+  display: block;
+  padding: 0 0.12em;
+  transform: skewX(var(--skew));
+}
+.fx-text--gain {
+  color: var(--gum);
+}
+.fx-text--loss {
+  color: var(--hot);
+}
+.fx-text--heal {
+  color: var(--leaf);
+}
+.fx-text--dmg {
+  color: var(--paper);
+}
+.fx-text--dmg .fx-type {
+  --o: 4px;
+}
+.fx-text--crit {
+  color: var(--gum);
+}
+.fx-text--crit .fx-type {
+  --o: 4px;
+}
+.fx-text--info {
+  font-family: var(--f-display);
+  letter-spacing: 0.04em;
+}
+.fx-text--info .fx-type {
+  transform: none;
+}
+/* The star-burst behind a critical number. */
+.fx-text-burst {
+  width: 2.5em;
+  height: 2.5em;
+  background: var(--hot);
+  clip-path: polygon(
+    50% 0%,
+    60% 26%,
+    82% 9%,
+    74% 35%,
+    100% 34%,
+    78% 50%,
+    98% 68%,
+    72% 66%,
+    76% 94%,
+    56% 74%,
+    44% 100%,
+    38% 72%,
+    14% 86%,
+    26% 60%,
+    0% 56%,
+    22% 44%,
+    6% 22%,
+    32% 28%,
+    34% 4%,
+    46% 24%
+  );
+  will-change: transform;
+}
+.fx-text-burst2 {
+  width: 2.9em;
+  height: 2.9em;
+  background: var(--ink);
+  clip-path: polygon(
+    50% 0%,
+    60% 26%,
+    82% 9%,
+    74% 35%,
+    100% 34%,
+    78% 50%,
+    98% 68%,
+    72% 66%,
+    76% 94%,
+    56% 74%,
+    44% 100%,
+    38% 72%,
+    14% 86%,
+    26% 60%,
+    0% 56%,
+    22% 44%,
+    6% 22%,
+    32% 28%,
+    34% 4%,
+    46% 24%
+  );
+  will-change: transform;
+}
+
+/* ---------- stamp ---------- */
+.fx-stamp {
+  --fx-c: var(--hot);
+  font-family: var(--f-display);
+  font-size: 44px;
+  line-height: 1;
+}
+.fx-stamp-tilt {
+  will-change: transform, opacity;
+}
+/* The ink slab under the face: it shows through the worn spots of the face. */
+.fx-stamp-body {
+  padding: 3px;
+  background: var(--ink);
+  border-radius: 0.2em;
+  box-shadow: 5px 5px 0 var(--ink);
+  transform: rotate(-8deg);
+  animation: stamp-in 260ms var(--ease-in) both;
+  will-change: transform, opacity;
+}
+.fx-stamp-face {
+  padding: 0.07em;
+  border-radius: 0.15em;
+  background: var(--paper);
+}
+/* What the rubber printed: the frame and the letters. Worn spots let the paper show through. */
+.fx-stamp-print {
+  position: relative;
+  padding: 0.12em 0.4em 0.16em;
+  border: 0.1em solid var(--fx-c);
+  border-radius: 0.1em;
+  color: var(--fx-c);
+  letter-spacing: 0.04em;
+  -webkit-mask-image:
+    radial-gradient(circle at 22% 31%, transparent 0 0.02em, black 0.03em),
+    radial-gradient(circle at 68% 58%, transparent 0 0.034em, black 0.044em),
+    radial-gradient(ellipse 0.1em 0.03em at 41% 77%, transparent 0 99%, black 100%),
+    linear-gradient(104deg, black 0 30%, transparent 30.3% 30.9%, black 31.2% 71%, transparent 71.2% 72.4%, black 72.7% 100%);
+  mask-image:
+    radial-gradient(circle at 22% 31%, transparent 0 0.02em, black 0.03em),
+    radial-gradient(circle at 68% 58%, transparent 0 0.034em, black 0.044em),
+    radial-gradient(ellipse 0.1em 0.03em at 41% 77%, transparent 0 99%, black 100%),
+    linear-gradient(104deg, black 0 30%, transparent 30.3% 30.9%, black 31.2% 71%, transparent 71.2% 72.4%, black 72.7% 100%);
+  -webkit-mask-size:
+    0.39em 0.3em,
+    0.93em 0.66em,
+    1.34em 0.84em,
+    100% 100%;
+  mask-size:
+    0.39em 0.3em,
+    0.93em 0.66em,
+    1.34em 0.84em,
+    100% 100%;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+/* The inner line of the double outline. */
+.fx-stamp-print::after {
+  content: '';
+  position: absolute;
+  inset: 0.05em;
+  border: 0.035em solid var(--fx-c);
+  border-radius: 0.06em;
+  pointer-events: none;
+}
+
+/* ---------- banner ---------- */
+.fx-banner {
+  --fx-c: var(--gum);
+  --fx-t: var(--ink);
+  --fx-t2: var(--paper);
+  position: absolute;
+  left: -25%;
+  width: 150%;
+  top: 42%;
+  transform: translateY(-50%) rotate(-6deg);
+  font-family: var(--f-display);
+  font-size: 64px;
+  line-height: 1;
+}
+.fx-banner-trail,
+.fx-banner-band {
+  will-change: transform, opacity;
+  /* both ends are cut on the slant: the edge that wipes across the screen is never a plain vertical */
+  clip-path: polygon(1.1em 0, 100% 0, calc(100% - 1.1em) 100%, 0 100%);
+}
+/* The second band, in ink, that runs after the coloured one. */
+.fx-banner-trail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 14px;
+  bottom: -14px;
+  background: var(--fx-k, var(--ink));
+  border-top: 3px solid var(--fx-c);
+  border-bottom: 3px solid var(--fx-c);
+}
+.fx-banner-band {
+  position: relative;
+  overflow: hidden;
+  padding: 0.22em 0 0.26em;
+  background: var(--fx-c);
+  border-top: 4px solid var(--ink);
+  border-bottom: 4px solid var(--ink);
+  color: var(--fx-t);
+  text-align: center;
+}
+/* Halftone inside the band: an oversized sheet that slides (transform only). */
+.fx-banner-tone {
+  position: absolute;
+  inset: -90px;
+  color: var(--fx-t);
+  background: var(--halftone);
+  opacity: 0.16;
+  animation: fx-tone 2.4s linear infinite;
+  will-change: transform;
+}
+.fx-banner-type {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+  will-change: transform;
+}
+.fx-banner-type > b {
+  font-weight: 400;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+  text-shadow:
+    3px 3px 0 var(--fx-t2),
+    4px 4px 0 var(--fx-t2);
+}
+.fx-banner-type > small {
+  align-self: flex-end;
+  margin-right: 0.4em;
+  padding: 3px 14px 4px;
+  background: var(--fx-t);
+  color: var(--fx-c);
+  font-family: var(--f-body);
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  transform: skewX(var(--skew));
+}
+@keyframes fx-tone {
+  to {
+    transform: translate3d(-90px, 0, 0);
+  }
+}
+
+/* ---------- screen wipes ---------- */
+.fx-panel {
+  position: absolute;
+  top: -10%;
+  left: -70%;
+  width: 240%;
+  height: 120%;
+  background: var(--ink);
+  will-change: transform;
+}
+.fx-panel--gum {
+  background: var(--gum);
+}
+.fx-panel--mid {
+  background: var(--ink-3);
+}
+/* A faint halftone on the last (covering) panel, so even the covered instant has texture. */
+.fx-panel--ink::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  color: var(--ink-3);
+  background: var(--halftone);
+}
+.fx-bar {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: var(--ink);
+  border-bottom: 3px solid var(--gum);
+  box-sizing: border-box;
+  will-change: transform;
+}
+.fx-bar:nth-child(even) {
+  background: var(--ink-2);
+}
+.fx-iris {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  --fx-ir: 2000px;
+  --fx-ix: 50%;
+  --fx-iy: 50%;
+  -webkit-mask-image: radial-gradient(circle at var(--fx-ix) var(--fx-iy), transparent var(--fx-ir), black calc(var(--fx-ir) + 1px));
+  mask-image: radial-gradient(circle at var(--fx-ix) var(--fx-iy), transparent var(--fx-ir), black calc(var(--fx-ir) + 1px));
+}
+.fx-iris--rim {
+  background: var(--gum);
+}
+.fx-fade {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  will-change: opacity;
+}
+
+/* The ambient motes sit over the UI (the layer is outside the game root), so they stay faint. */
+.fx-ambient {
+  opacity: 0.38;
+}
