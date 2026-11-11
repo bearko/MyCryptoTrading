@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { B } from '../src/game/balance';
 import { catalog } from '../src/game/catalog';
 import * as G from '../src/game/logic';
+import * as N from '../src/game/night';
 import type { GameState } from '../src/game/state';
 
 /** Opens the shop and steps through customers until one of the wanted kind is at the counter. */
@@ -9,7 +10,7 @@ function until(s: GameState, kind: 'sell' | 'buy'): void {
   if (s.phase === 'morning') G.openShop(s, catalog);
   for (let guard = 0; guard < 500; guard++) {
     if (s.phase === 'evening') {
-      G.endDay(s, catalog);
+      G.endDay(s);
       G.openShop(s, catalog);
     }
     if (G.currentVisitor(s)?.kind === kind) return;
@@ -20,11 +21,12 @@ function until(s: GameState, kind: 'sell' | 'buy'): void {
 }
 
 describe('game rules', () => {
-  it('starts with stock, money and a wholesale offer', () => {
+  it('starts with stock, money, a common wallet and nothing worn', () => {
     const s = G.newGame(1, catalog);
     expect(s.gum).toBe(B.startGum);
     expect(s.stock).toHaveLength(B.startStock);
-    expect(s.wholesale).toHaveLength(B.wholesaleCount);
+    expect(G.walletSize(s, catalog)).toEqual({ cols: 4, rows: 5 });
+    expect(Object.values(s.equip).every((x) => x === null)).toBe(true);
     expect(s.phase).toBe('morning');
   });
 
@@ -214,11 +216,11 @@ describe('game rules', () => {
     s.gum = 100000;
     while (s.day < B.rentEvery) {
       s.phase = 'evening';
-      G.endDay(s, catalog);
+      G.endDay(s);
     }
     s.phase = 'evening';
     const gum = s.gum;
-    G.endDay(s, catalog);
+    G.endDay(s);
     expect(s.gum).toBe(gum - B.rentFirst);
     expect(s.rent).toBe(Math.round(B.rentFirst * B.rentGrowth));
     expect(s.day).toBe(B.rentEvery + 1);
@@ -229,13 +231,13 @@ describe('game rules', () => {
     s.gum = 0;
     s.day = B.rentEvery;
     s.phase = 'evening';
-    G.endDay(s, catalog);
+    G.endDay(s);
     expect(s.graceLeft).toBe(0);
     expect(s.rent).toBe(Math.round(B.rentFirst * B.rentGrowth) + B.rentFirst);
     s.gum = 0;
     s.day = B.rentEvery * 2;
     s.phase = 'evening';
-    G.endDay(s, catalog);
+    G.endDay(s);
     expect(s.phase).toBe('lost');
   });
 
@@ -247,5 +249,74 @@ describe('game rules', () => {
     G.continueAfterWin(s);
     s.day = B.rentEvery;
     expect(G.isRentDay(s)).toBe(false);
+  });
+
+  it('a night at the shop: bought goods come home only in the wallet, and tomorrow opens late', () => {
+    const s = G.newGame(21, catalog);
+    s.gum = 1_000_000;
+    s.phase = 'evening';
+    expect(N.goShop(s, catalog)).toBe(true);
+    expect(N.goShop(s, catalog)).toBe(false); // one outing a night
+    const gum = s.gum;
+    expect(N.shopBuy(s, 0)).toBe(true);
+    expect(N.shopBuy(s, 1)).toBe(true);
+    expect(s.gum).toBe(gum - s.shop!.goods[0].price - s.shop!.goods[1].price);
+    expect(s.shop!.tray).toHaveLength(2);
+    expect(N.stow(s, catalog, 0)).toBe(true);
+    expect(s.wallet.items).toHaveLength(1);
+    const stock = s.stock.length;
+    N.goHome(s, catalog); // the good left on the tray is lost
+    expect(s.phase).toBe('evening');
+    expect(s.stock.length + s.wallet.items.length).toBe(stock + 1);
+    const usual = G.visitorsFor(s.rep);
+    G.endDay(s);
+    expect(s.lateOpen).toBe(true);
+    s.event = { id: 'none' };
+    expect(G.visitorsExpected(s)).toBe(usual - B.lateOpenLoss);
+  });
+
+  it('the wallet holds only what fits its grid', () => {
+    const s = G.newGame(22, catalog);
+    const big = catalog.items.find((i) => i.shape === 'sq' && !i.wallet)!;
+    let n = 0;
+    while (G.addTo(s, catalog, 'wallet', big.id, 1, 0) !== null) n += 1;
+    expect(n).toBe(4); // 4×5 cells take four 2×2 goods (two rows of two)
+    expect(G.freeCells(s, catalog, 'wallet')).toBe(4);
+  });
+
+  it('gear is worn from the shelf, adds its stats, and swaps back to the shelf', () => {
+    const s = G.newGame(23, catalog);
+    s.stock = [];
+    const sword = catalog.items.find((i) => i.slot === 'arm')!;
+    const sword2 = catalog.items.filter((i) => i.slot === 'arm')[5];
+    const a = G.addTo(s, catalog, 'shelf', sword.id, 1, 10)!;
+    const b = G.addTo(s, catalog, 'shelf', sword2.id, 1, 20)!;
+    const base = N.playerStats(s, catalog);
+    expect(N.equip(s, catalog, a)).toBe('ok');
+    expect(s.equip.arm?.itemId).toBe(sword.id);
+    expect(N.playerStats(s, catalog)).toEqual(base.map((v, i) => v + sword.stats[i]));
+    expect(N.equip(s, catalog, b)).toBe('ok'); // the first sword goes back to the shelf
+    expect(s.equip.arm?.itemId).toBe(sword2.id);
+    expect(s.stock.map((x) => x.itemId)).toEqual([sword.id]);
+    expect(N.unequip(s, catalog, 'arm')).toBe(true);
+    expect(s.stock).toHaveLength(2);
+  });
+
+  it('a bigger wallet replaces the wallet and grows the bag', () => {
+    const s = G.newGame(24, catalog);
+    s.stock = [];
+    const uid = G.addTo(s, catalog, 'shelf', catalog.wallets[1].id, 1, 0)!;
+    expect(N.equip(s, catalog, uid)).toBe('ok');
+    expect(G.walletSize(s, catalog)).toEqual({ cols: 5, rows: 5 });
+    expect(s.stock.map((x) => x.itemId)).toEqual([catalog.wallets[0].id]);
+  });
+
+  it('labels: a good can sit on several parameter and skill lines', () => {
+    const sword = catalog.items.find((i) => i.ja === '魔法剣')!;
+    expect(sword.params).toEqual(['phy', 'int']);
+    expect(sword.roles).toContain('atk');
+    expect(sword.roles).not.toContain('buff'); // raising and lowering its own PHY is a stat swap, not a buff
+    expect(G.matches(catalog, { type: 'param', param: 'int' }, sword.id)).toBe(true);
+    expect(G.matches(catalog, { type: 'role', role: 'heal' }, sword.id)).toBe(false);
   });
 });

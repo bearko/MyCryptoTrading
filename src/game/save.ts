@@ -1,13 +1,13 @@
 import type { GameState } from './state';
 
-const KEY = 'mycryptotrading.save.v3';
+const KEY = 'mycryptotrading.save.v4';
 
 export function load(): GameState | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as GameState;
-    return s && s.v === 3 ? s : null;
+    return s && s.v === 4 ? s : null;
   } catch {
     return null;
   }
