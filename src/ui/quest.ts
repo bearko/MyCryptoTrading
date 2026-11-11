@@ -100,3 +100,9 @@ export function questAct(g: GameState, name: string, n: number): boolean {
   }
   return false;
 }
+
+/**
+ * Called by the app after every render while the quest is on screen. The place for effects that are
+ * not plain HTML: sounds, particles, numbers flying off a hit.
+ */
+export function questEffects(_g: GameState, _root: HTMLElement): void {}

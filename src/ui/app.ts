@@ -1,4 +1,5 @@
 import { B, WEEKDAYS } from '../game/balance';
+import morphdom from 'morphdom';
 import { catalog as cat, COND_JA, PARAM_JA, RARITY_JA, SLOT_JA } from '../game/catalog';
 import { wantText } from '../game/lines';
 import * as G from '../game/logic';
@@ -7,7 +8,7 @@ import * as Q from '../game/quest';
 import * as store from '../game/save';
 import type { GameState, SlotId, Visitor } from '../game/state';
 import { btn, esc, gum, itemCard, itemDetail, labels, num, pct, tone } from './html';
-import { questAct, questScreen } from './quest';
+import { questAct, questEffects, questScreen } from './quest';
 
 type Modal = 'none' | 'help' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick';
 
@@ -573,10 +574,11 @@ function render(): void {
     shownPhase = g.phase;
   }
   if (ui.modal === 'help') html += helpModal();
-  const scroll = root.querySelector('.body')?.scrollTop ?? 0;
-  root.innerHTML = html;
-  const body = root.querySelector('.body');
-  if (body) body.scrollTop = scroll;
+  // update in place: elements that stay keep their state (scroll, running animations, transitions)
+  const next = root.cloneNode(false) as HTMLElement;
+  next.innerHTML = html;
+  morphdom(root, next, { childrenOnly: true });
+  if (s && s.phase === 'quest') questEffects(s, root);
   clampWindow();
   ui.flash = null;
   const v = s ? G.currentVisitor(s) : null;
