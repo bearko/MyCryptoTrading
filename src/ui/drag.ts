@@ -1,8 +1,11 @@
 import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
+import * as N from '../game/night';
 import * as store from '../game/save';
+import type { SlotId } from '../game/state';
 import { audio, haptic } from './audio';
-import { ctx, ui } from './core';
+import { atHome, ctx, shownTab, ui } from './core';
+import { gridItem } from './grid';
 import { fx } from './fx';
 import { anim, flip, layer, nope, pointOn, settle } from './motion';
 import { bubbleShake, custShake } from './scene';
@@ -12,12 +15,21 @@ import { clampWindow } from './window';
 /**
  * Dragging and pressing: goods on a grid (tap = detail, hold = menu, drag = move or put on the counter),
  * a seller's goods on the counter (tap or drag between the two sides), and the customer window (by its bar).
+ * At home a good can be carried between the shelf, the wallet and the gear: hold it over a tab for a second and
+ * that tab opens, then drop it there.
  * While a drag is on, the DOM is moved directly; the screen is redrawn when it ends.
  */
 type ItemDrag = {
   kind: 'item';
+  /** where the good lies: a grid, or (with `slot`) a place it is worn */
   grid: G.GridId;
   uid: number;
+  slot: SlotId | null;
+  itemId: number;
+  rot: number;
+  /** the tab the good is being held over, and the timer that opens it */
+  overTab: string;
+  dwell: number;
   startX: number;
   startY: number;
   active: boolean;
@@ -59,10 +71,87 @@ const clearRing = (): void => {
   for (const el of layer().querySelectorAll('.hold-ring')) el.remove();
 };
 
+const TAB_DWELL_MS = 1000;
+
 function endItemTimers(d: ItemDrag): void {
   window.clearTimeout(d.hold);
   window.clearTimeout(d.ring);
   clearRing();
+}
+
+function endDwell(d: ItemDrag): void {
+  window.clearTimeout(d.dwell);
+  d.overTab = '';
+  for (const el of ctx.root.querySelectorAll('.tab.dwell')) el.classList.remove('dwell');
+}
+
+/** The place for gear under a point, if any. */
+function slotAt(x: number, y: number): HTMLElement | null {
+  for (const el of ctx.root.querySelectorAll<HTMLElement>('.gslot')) if (inside(el.getBoundingClientRect(), x, y)) return el;
+  return null;
+}
+
+/** True when the dragged good may go into the place for gear. */
+function fitsPlace(d: ItemDrag, place: string): boolean {
+  const item = G.findItem(cat, d.itemId);
+  if (d.slot) return false; // worn goods come off through a grid
+  if (place === 'wallet') return item.wallet && d.grid === 'shelf';
+  return N.fitsSlot(item, place as SlotId);
+}
+
+/**
+ * Held over another tab for a second: that tab opens, and the good stays in the hand. The ghost is redrawn at
+ * the new tab's cell size, held by its first cell.
+ */
+function watchTabs(d: ItemDrag, x: number, y: number): void {
+  const s = ctx.s;
+  if (!s || !atHome(s)) return;
+  let over = '';
+  for (const el of ctx.root.querySelectorAll<HTMLElement>('.tab[data-arg]')) {
+    if (inside(el.getBoundingClientRect(), x, y)) over = el.dataset.arg ?? '';
+  }
+  if (over === shownTab(s)) over = '';
+  if (over === d.overTab) return;
+  endDwell(d);
+  if (!over) return;
+  d.overTab = over;
+  ctx.root.querySelector(`#tab-${over}`)?.classList.add('dwell');
+  d.dwell = window.setTimeout(() => {
+    if (drag !== d || !ctx.s) return;
+    ui.gridView = over as G.GridId | 'gear';
+    d.overTab = '';
+    ctx.render();
+    ctx.root.classList.add('dragging');
+    reGhost(d, x, y);
+    markPlaces(d);
+    audio.sfx('open');
+    haptic('light');
+  }, TAB_DWELL_MS);
+}
+
+/** Redraws the ghost as the good itself at the current cell size. */
+function reGhost(d: ItemDrag, x: number, y: number): void {
+  d.ghost?.remove();
+  const holder = document.createElement('div');
+  holder.innerHTML = gridItem({ uid: -1, itemId: d.itemId, x: 0, y: 0, rot: d.rot });
+  const ghost = holder.firstElementChild as HTMLElement;
+  ghost.removeAttribute('id');
+  ghost.classList.add('drag-ghost');
+  ghost.style.setProperty('--cell', `${ctx.cell}px`);
+  const first = G.shapeOf(cat, d.itemId, d.rot).cells[0];
+  d.offX = (first[0] + 0.5) * ctx.cell;
+  d.offY = (first[1] + 0.5) * ctx.cell;
+  ghost.style.transformOrigin = `${d.offX}px ${d.offY}px`;
+  const base = ctx.root.getBoundingClientRect();
+  ghost.style.left = `${x - base.left - d.offX}px`;
+  ghost.style.top = `${y - base.top - d.offY}px`;
+  layer().appendChild(ghost);
+  d.ghost = ghost;
+}
+
+/** On the gear tab: shows which places would take the dragged good. */
+function markPlaces(d: ItemDrag): void {
+  for (const el of ctx.root.querySelectorAll<HTMLElement>('.gslot')) el.classList.toggle('can', fitsPlace(d, el.dataset.slot ?? ''));
 }
 
 function onDown(event: PointerEvent): void {
@@ -85,11 +174,23 @@ function onDown(event: PointerEvent): void {
     event.preventDefault();
     return;
   }
+  const worn = target.closest<HTMLElement>('.gslot.full');
+  if (worn && worn.dataset.slot !== 'wallet') {
+    // a worn good: a tap is left to the button (it opens the list); a drag carries it off
+    const slot = worn.dataset.slot as SlotId;
+    const gear = s.equip[slot];
+    if (!gear) return;
+    const rect = worn.getBoundingClientRect();
+    drag = { kind: 'item', grid: 'shelf', uid: -1, slot, itemId: gear.itemId, rot: 0, overTab: '', dwell: 0, startX: event.clientX, startY: event.clientY, active: false, ghost: null, offX: event.clientX - rect.left, offY: event.clientY - rect.top, ok: false, ring: 0, hold: 0 };
+    return;
+  }
   const cellEl = target.closest<HTMLElement>('.inv-cell');
   if (!cellEl) return;
   const uid = Number(cellEl.dataset.uid);
   if (ui.counter.includes(uid)) return;
   const grid = (cellEl.closest<HTMLElement>('.grid')?.dataset.grid ?? 'shelf') as G.GridId;
+  const stockNow = G.gridOf(s, cat, grid).items.find((it) => it.uid === uid);
+  if (!stockNow) return;
   const rect = cellEl.parentElement!.getBoundingClientRect();
   const x = event.clientX;
   const y = event.clientY;
@@ -97,6 +198,11 @@ function onDown(event: PointerEvent): void {
     kind: 'item',
     grid,
     uid,
+    slot: null,
+    itemId: stockNow.itemId,
+    rot: stockNow.rot,
+    overTab: '',
+    dwell: 0,
     startX: x,
     startY: y,
     active: false,
@@ -125,7 +231,7 @@ function onDown(event: PointerEvent): void {
 }
 
 function lift(d: OfferDrag | ItemDrag): boolean {
-  const el = ctx.root.querySelector<HTMLElement>(d.kind === 'offer' ? `#${CSS.escape(d.id)}` : `#item-${d.uid}`);
+  const el = ctx.root.querySelector<HTMLElement>(d.kind === 'offer' ? `#${CSS.escape(d.id)}` : d.slot ? `#gslot-${d.slot}` : `#item-${d.uid}`);
   if (!el) return false;
   if (d.kind === 'item') endItemTimers(d);
   d.active = true;
@@ -172,19 +278,31 @@ function onMove(event: PointerEvent): void {
     for (const zone of root.querySelectorAll('#near.take, #far.take')) zone.classList.toggle('hot', inside(zone.getBoundingClientRect(), event.clientX, event.clientY));
     return;
   }
-  const counter = d.grid === 'shelf' ? root.querySelector('#near.drop') : null;
+  watchTabs(d, event.clientX, event.clientY);
+  const tab = shownTab(s);
+  const counter = d.grid === 'shelf' && !d.slot ? root.querySelector('#near.drop') : null;
   const overCounter = !!counter && inside(counter.getBoundingClientRect(), event.clientX, event.clientY);
   counter?.classList.toggle('hot', overCounter);
+  if (tab === 'gear') {
+    // over the gear: the place under the finger lights up when the good fits it
+    const place = overCounter ? null : slotAt(event.clientX, event.clientY);
+    for (const el of root.querySelectorAll('.gslot.hot')) if (el !== place) el.classList.remove('hot');
+    const fits = !!place && fitsPlace(d, place.dataset.slot ?? '');
+    place?.classList.toggle('hot', fits);
+    d.ghost!.classList.toggle('bad', !!place && !fits);
+    d.ok = overCounter || fits;
+    return;
+  }
   const preview = root.querySelector<HTMLElement>('#preview');
-  const grid = G.gridOf(s, cat, d.grid);
-  const stock = grid.items.find((x) => x.uid === d.uid);
+  const grid = G.gridOf(s, cat, tab);
+  const same = !d.slot && tab === d.grid;
   const spot = overCounter ? null : dropCell(d, event.clientX, event.clientY);
   let ok = overCounter;
-  if (preview && stock) {
+  if (preview) {
     if (!spot) preview.style.display = 'none';
     else {
-      const shape = G.shapeOf(cat, stock.itemId, stock.rot);
-      ok = G.canPlaceIn(grid, cat, stock.itemId, spot.x, spot.y, stock.rot, d.uid);
+      const shape = G.shapeOf(cat, d.itemId, d.rot);
+      ok = G.canPlaceIn(grid, cat, d.itemId, spot.x, spot.y, d.rot, same ? d.uid : -1);
       preview.style.display = 'block';
       preview.className = `preview ${ok ? 'ok' : 'ng'}`;
       preview.innerHTML = shape.cells.map(([cx, cy]) => `<i style="left:${(spot.x + cx) * ctx.cell}px;top:${(spot.y + cy) * ctx.cell}px"></i>`).join('');
@@ -198,6 +316,7 @@ function cleanup(): void {
   const root = ctx.root;
   root.classList.remove('dragging', 'drag-offer', 'drag-shelf', 'drag-wallet');
   for (const el of root.querySelectorAll('.hot')) el.classList.remove('hot');
+  for (const el of root.querySelectorAll('.gslot.can')) el.classList.remove('can');
   for (const el of root.querySelectorAll('.pressed')) el.classList.remove('pressed');
   root.querySelector('#win')?.classList.remove('held');
   const preview = root.querySelector<HTMLElement>('#preview');
@@ -272,9 +391,10 @@ function onUp(event: PointerEvent): void {
   }
 
   endItemTimers(d);
+  endDwell(d);
   cleanup();
   if (!d.active) {
-    // a tap: the good's details
+    if (d.slot) return; // a tap on a worn good: the button opens the list
     ui.sel = { grid: d.grid, uid: d.uid };
     ui.confirmDispose = false;
     ui.modal = 'inspect';
@@ -284,44 +404,61 @@ function onUp(event: PointerEvent): void {
     return;
   }
   const v = G.currentVisitor(g);
-  const counter = d.grid === 'shelf' ? root.querySelector('#near.drop') : null;
+  const tab = shownTab(g);
+  const counter = d.grid === 'shelf' && !d.slot ? root.querySelector('#near.drop') : null;
+  const good = (el: HTMLElement | null, sound: 'drop' | 'equip'): void => {
+    land(el, from, true);
+    audio.sfx(sound);
+    haptic('light');
+    if (el) fx.burst(sound === 'equip' ? 'stars' : 'dust', pointOn(el, 0.5, 0.9), { count: 8 });
+  };
+  const bad = (el: HTMLElement | null, why = ''): void => {
+    land(el, from, false);
+    audio.sfx('dropBad');
+    haptic('double');
+    if (why) note(why, 'info');
+  };
+  const home = (): HTMLElement | null => document.getElementById(d.slot ? `gslot-${d.slot}` : `item-${d.uid}`);
   if (counter && v && !v.done && v.kind === 'buy' && inside(counter.getBoundingClientRect(), event.clientX, event.clientY)) {
     const stock = g.stock.find((x) => x.uid === d.uid);
     if (stock && !G.matches(cat, v.want, stock.itemId)) {
-      // not what they asked for: it goes back to the shelf
       G.refuseGood(g);
       ui.win.open = true;
       ctx.render();
-      land(document.getElementById(`item-${d.uid}`), from, false);
-      audio.sfx('dropBad');
-      haptic('double');
+      bad(home(), '希望と違う品');
       bubbleShake();
       custShake();
-      note('希望と違う品', 'info');
     } else if (stock) {
       ui.counter.push(d.uid);
       ui.win.open = true;
       ctx.render();
-      const put = document.getElementById(`put-${d.uid}`);
-      land(put, from, true);
-      audio.sfx('drop');
-      haptic('light');
-      if (put) fx.burst('dust', pointOn(put, 0.5, 0.9), { count: 8 });
+      good(document.getElementById(`put-${d.uid}`), 'drop');
+    }
+  } else if (tab === 'gear') {
+    // dropped on a place for gear: worn, if it fits there
+    const place = slotAt(event.clientX, event.clientY)?.dataset.slot ?? '';
+    if (place && fitsPlace(d, place)) {
+      const result = N.equip(g, cat, d.uid, place === 'wallet' ? undefined : (place as SlotId), d.grid);
+      ctx.render();
+      if (result === 'ok') good(document.getElementById(`gslot-${place}`), 'equip');
+      else bad(document.getElementById(`gslot-${place}`), result === 'walletfull' ? 'ウォレットを空にしてから替えてください' : '外した品を置く場所がない');
+    } else {
+      ctx.render();
+      bad(home(), place ? 'ここには装備できない' : '');
     }
   } else {
     const spot = dropCell(d, event.clientX, event.clientY);
-    const ok = !!spot && G.moveStock(g, cat, d.uid, spot.x, spot.y, d.grid);
+    let ok = false;
+    let uid = d.uid;
+    if (spot && d.slot) {
+      // a worn good comes off onto the grid
+      ok = N.unequip(g, cat, d.slot, tab, spot.x, spot.y);
+      if (ok) uid = G.gridOf(g, cat, tab).items[G.gridOf(g, cat, tab).items.length - 1].uid;
+    } else if (spot && tab !== d.grid) ok = N.transfer(g, cat, d.grid, d.uid, tab, spot.x, spot.y);
+    else if (spot) ok = G.moveStock(g, cat, d.uid, spot.x, spot.y, d.grid);
     ctx.render();
-    const el = document.getElementById(`item-${d.uid}`);
-    land(el, from, ok);
-    if (ok) {
-      audio.sfx('drop');
-      haptic('light');
-      if (el) fx.burst('dust', pointOn(el, 0.5, 0.92), { count: 8 });
-    } else {
-      audio.sfx('dropBad');
-      haptic('double');
-    }
+    if (ok) good(document.getElementById(`item-${uid}`), 'drop');
+    else bad(home());
   }
   store.save(g);
 }
@@ -329,7 +466,10 @@ function onUp(event: PointerEvent): void {
 function onCancel(): void {
   if (!drag) return;
   if (drag.kind !== 'win') drag.ghost?.remove();
-  if (drag.kind === 'item') endItemTimers(drag);
+  if (drag.kind === 'item') {
+    endItemTimers(drag);
+    endDwell(drag);
+  }
   drag = null;
   cleanup();
   ctx.render();

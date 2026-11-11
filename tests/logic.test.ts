@@ -203,12 +203,28 @@ describe('game rules', () => {
     s.gum = 1_000_000;
     const long = catalog.items.find((i) => i.shape === 'v3')!;
     const slot = G.findSlot(s, catalog, long.id);
-    expect(slot).toEqual({ x: 0, y: 0, rot: true });
+    expect(slot).toEqual({ x: 0, y: 0, rot: 1 });
     s.rows = 4;
-    s.stock.push({ uid: 99, itemId: long.id, cond: 1, paid: 0, x: 0, y: 0, rot: false });
+    s.stock.push({ uid: 99, itemId: long.id, cond: 1, paid: 0, x: 0, y: 0, rot: 0 });
     expect(G.turnStock(s, catalog, 99)).toBe(true);
-    expect(s.stock[0].rot).toBe(true);
-    expect(G.shapeOf(catalog, long.id, true)).toMatchObject({ w: 3, h: 1 });
+    expect(s.stock[0].rot).toBe(1);
+    expect(G.shapeOf(catalog, long.id, 1)).toMatchObject({ w: 3, h: 1 });
+  });
+
+  it('a T-shaped good has four orientations, and four turns bring it back', () => {
+    const s = G.newGame(15, catalog);
+    s.stock = [];
+    s.rows = 6;
+    const tee = catalog.items.find((i) => i.shape === 't4')!;
+    s.stock.push({ uid: 7, itemId: tee.id, cond: 1, paid: 0, x: 1, y: 1, rot: 0 });
+    const looks = new Set<string>();
+    for (let n = 0; n < 4; n++) {
+      const shape = G.shapeOf(catalog, tee.id, s.stock[0].rot);
+      looks.add(shape.cells.map((c) => c.join(',')).sort().join(' '));
+      expect(G.turnStock(s, catalog, 7)).toBe(true);
+    }
+    expect(looks.size).toBe(4);
+    expect(s.stock[0].rot).toBe(0);
   });
 
   it('collects rent every seventh night, then raises it', () => {
@@ -300,6 +316,31 @@ describe('game rules', () => {
     expect(s.stock.map((x) => x.itemId)).toEqual([sword.id]);
     expect(N.unequip(s, catalog, 'arm')).toBe(true);
     expect(s.stock).toHaveLength(2);
+  });
+
+  it('goods move freely between shelf, wallet and gear', () => {
+    const s = G.newGame(25, catalog);
+    s.stock = [];
+    const sword = catalog.items.find((i) => i.slot === 'arm' && i.shape === 'v3')!;
+    const uid = G.addTo(s, catalog, 'shelf', sword.id, 1, 5)!;
+    // shelf → wallet at a cell, keeping its turn
+    expect(N.transfer(s, catalog, 'shelf', uid, 'wallet', 2, 1)).toBe(true);
+    expect(s.stock).toHaveLength(0);
+    expect(s.wallet.items[0]).toMatchObject({ uid, x: 2, y: 1 });
+    // a cell it does not fit is refused, and nothing moves
+    expect(N.transfer(s, catalog, 'wallet', uid, 'shelf', B.gridCols - 1, s.rows - 1)).toBe(false);
+    expect(s.wallet.items).toHaveLength(1);
+    // wallet → gear, then gear → wallet at a cell
+    expect(N.equip(s, catalog, uid, 'arm', 'wallet')).toBe('ok');
+    expect(s.wallet.items).toHaveLength(0);
+    expect(s.equip.arm?.itemId).toBe(sword.id);
+    expect(N.equip(s, catalog, uid, 'head', 'wallet')).toBe('invalid');
+    expect(N.unequip(s, catalog, 'arm', 'wallet', 0, 0)).toBe(true);
+    expect(s.equip.arm).toBeNull();
+    expect(s.wallet.items[0]).toMatchObject({ itemId: sword.id, x: 0, y: 0, paid: 5 });
+    // and back to the shelf at the first free spot
+    expect(N.transfer(s, catalog, 'wallet', s.wallet.items[0].uid, 'shelf')).toBe(true);
+    expect(s.stock).toHaveLength(1);
   });
 
   it('a bigger wallet replaces the wallet and grows the bag', () => {

@@ -10,8 +10,8 @@ export interface StockItem {
   /** top-left cell of its footprint on the grid it lies on */
   x: number;
   y: number;
-  /** turned a quarter turn */
-  rot: boolean;
+  /** quarter turns clockwise: 0–3 */
+  rot: number;
 }
 
 /** A good that is not on a grid: worn, or bought and not yet put in the wallet. */

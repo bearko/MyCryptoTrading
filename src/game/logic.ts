@@ -2,7 +2,7 @@ import { B } from './balance';
 import type { Catalog, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randRange } from './rng';
-import { SHAPES, TURNED, type Shape } from './shapes';
+import { ROTATED, sameCells, type Shape } from './shapes';
 import { emptySummary, type DayEvent, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
 
 const clamp = (v: number, min: number, max: number): number => Math.min(max, Math.max(min, v));
@@ -52,7 +52,8 @@ export function matches(cat: Catalog, want: Want, itemId: number): boolean {
 
 // ---------------------------------------------------------------- grids (the shelf and the wallet)
 
-export const shapeOf = (cat: Catalog, itemId: number, rot = false): Shape => (rot ? TURNED : SHAPES)[cat.itemById.get(itemId)!.shape];
+/** A good's footprint after `rot` quarter turns. */
+export const shapeOf = (cat: Catalog, itemId: number, rot = 0): Shape => ROTATED[cat.itemById.get(itemId)!.shape][rot & 3];
 
 /** A grid of cells holding goods: the shop's shelf, or the wallet. */
 export interface Grid {
@@ -85,24 +86,27 @@ function fitsAt(g: Grid, shape: Shape, x: number, y: number, taken: Set<string>)
   return shape.cells.every(([cx, cy]) => x + cx >= 0 && x + cx < g.cols && y + cy >= 0 && y + cy < g.rows && !taken.has(`${x + cx},${y + cy}`));
 }
 
-export function canPlaceIn(g: Grid, cat: Catalog, itemId: number, x: number, y: number, rot: boolean, ignoreUid = -1): boolean {
+export function canPlaceIn(g: Grid, cat: Catalog, itemId: number, x: number, y: number, rot: number, ignoreUid = -1): boolean {
   return fitsAt(g, shapeOf(cat, itemId, rot), x, y, takenCells(g, cat, ignoreUid));
 }
 
 export interface Slot {
   x: number;
   y: number;
-  rot: boolean;
+  rot: number;
 }
 
 /**
- * First free spot for a good, scanning row by row: as it is first, then turned.
+ * First free spot for a good, scanning row by row: as it is first, then each quarter turn.
  * Null when it does not fit anywhere. `only` limits the search to one orientation.
  */
-export function findSlotIn(g: Grid, cat: Catalog, itemId: number, ignoreUid = -1, only?: boolean): Slot | null {
+export function findSlotIn(g: Grid, cat: Catalog, itemId: number, ignoreUid = -1, only?: number): Slot | null {
   const taken = takenCells(g, cat, ignoreUid);
-  for (const rot of only === undefined ? [false, true] : [only]) {
+  const tried: Shape[] = [];
+  for (const rot of only === undefined ? [0, 1, 2, 3] : [only & 3]) {
     const shape = shapeOf(cat, itemId, rot);
+    if (tried.some((s) => sameCells(s, shape))) continue;
+    tried.push(shape);
     for (let y = 0; y <= g.rows - shape.h; y++) {
       for (let x = 0; x <= g.cols - shape.w; x++) {
         if (fitsAt(g, shape, x, y, taken)) return { x, y, rot };
@@ -123,12 +127,12 @@ export function moveStock(s: GameState, cat: Catalog, uid: number, x: number, y:
   return true;
 }
 
-/** Turns a good a quarter turn: where it stands if it fits, else at the first spot that takes it. */
+/** Turns a good a quarter turn clockwise (four turns bring it back): where it stands if it fits, else at the first spot that takes it. */
 export function turnStock(s: GameState, cat: Catalog, uid: number, id: GridId = 'shelf'): boolean {
   const g = gridOf(s, cat, id);
   const stock = g.items.find((it) => it.uid === uid);
   if (!stock) return false;
-  const rot = !stock.rot;
+  const rot = (stock.rot + 1) & 3;
   const slot = canPlaceIn(g, cat, stock.itemId, stock.x, stock.y, rot, uid) ? { x: stock.x, y: stock.y, rot } : findSlotIn(g, cat, stock.itemId, uid, rot);
   if (!slot) return false;
   Object.assign(stock, slot);

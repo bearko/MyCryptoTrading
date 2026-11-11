@@ -19,11 +19,13 @@ export interface Ui {
   /** markup tier chosen for the sale */
   tier: number;
   /** the customer window: where it is, its size, and whether it is open */
-  win: { x: number; y: number; big: boolean; open: boolean; moved: boolean };
+  /** size: s 小 / m 中 / l 大 */
+  win: { x: number; y: number; size: 's' | 'm' | 'l'; open: boolean; moved: boolean };
   /** counts the customers that have stepped up (a new number is a new sprite, so it walks in) */
   custKey: number;
   /** at home: which grid is shown under the counter */
-  gridView: G.GridId;
+  /** at home: which tab is shown under the counter — the shelf, the wallet, or what is worn */
+  gridView: G.GridId | 'gear';
   /** the gear window: the slot being filled ('wallet' for the wallet), and whether it leads to the quest */
   gearSlot: SlotId | 'wallet' | null;
   departing: boolean;
@@ -51,7 +53,7 @@ export const ui: Ui = {
   counter: [],
   picked: [],
   tier: 0,
-  win: { x: 6, y: 0, big: false, open: true, moved: false },
+  win: { x: 6, y: 0, size: 'm', open: true, moved: false },
   custKey: 0,
   gridView: 'shelf',
   gearSlot: null,
@@ -76,7 +78,10 @@ export const ctx = {
 };
 
 /** At home the shelf or the wallet is shown; out at night, always the wallet. */
-export const shownGrid = (g: GameState): G.GridId => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView);
+/** The grid the cells are sized for (the gear tab keeps the shelf's room). */
+export const shownGrid = (g: GameState): G.GridId => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView === 'gear' ? 'shelf' : ui.gridView);
+/** The tab on screen: a grid, or the gear. */
+export const shownTab = (g: GameState): G.GridId | 'gear' => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView);
 export const atHome = (g: GameState): boolean => g.phase === 'morning' || g.phase === 'open' || g.phase === 'evening';
 
 export const TEMPER_JA = ['気さく', 'ふつう', '頑固'];

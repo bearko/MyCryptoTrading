@@ -25,4 +25,12 @@ export const SHAPES: Record<ShapeId, Shape> = {
 
 /** The same footprint turned a quarter turn clockwise. */
 const turn = (shape: Shape): Shape => make(shape.cells.map(([x, y]) => [shape.h - 1 - y, x] as [number, number]));
-export const TURNED: Record<ShapeId, Shape> = Object.fromEntries(Object.entries(SHAPES).map(([id, shape]) => [id, turn(shape)])) as Record<ShapeId, Shape>;
+/** Every footprint in its four orientations: index 0 as drawn, then one quarter turn clockwise each. */
+export const ROTATED: Record<ShapeId, Shape[]> = Object.fromEntries(
+  Object.entries(SHAPES).map(([id, shape]) => [id, [shape, turn(shape), turn(turn(shape)), turn(turn(turn(shape)))]]),
+) as Record<ShapeId, Shape[]>;
+/** Two orientations look the same when they cover the same cells (a square never changes; a bar has two looks). */
+export const sameCells = (a: Shape, b: Shape): boolean => {
+  const key = (s: Shape): string => s.cells.map(([x, y]) => `${x},${y}`).sort().join(' ');
+  return key(a) === key(b);
+};

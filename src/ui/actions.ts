@@ -68,7 +68,7 @@ function enterGame(g: GameState | null): void {
     ui.gridView = 'shelf';
     ui.printDay = 0;
     ui.win.moved = false;
-    ui.win.big = false;
+    ui.win.size = 'm';
     closeModal();
     resetHud(g);
     resetScene();
@@ -483,10 +483,11 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       ui.win.open = false;
       break;
     case 'win-size':
-      ui.win.big = !ui.win.big;
+      // 中 → 小 → 大 → 中
+      ui.win.size = ui.win.size === 'm' ? 's' : ui.win.size === 's' ? 'l' : 'm';
       break;
     case 'grid':
-      ui.gridView = arg === 'wallet' ? 'wallet' : 'shelf';
+      ui.gridView = arg === 'wallet' ? 'wallet' : arg === 'gear' ? 'gear' : 'shelf';
       break;
     case 'take-all':
       if (v && v.kind === 'sell') {

@@ -14,5 +14,6 @@
 - 客は取引が成立してもすぐには帰らない（ベル・品をすべて買い取った・予算を使い切った・我慢が尽きた、のどれかで帰る）。
 - 画面は HTML の文字列を作り、`morphdom` で差分だけ更新する（`src/ui/app.ts` の `render()`）。残す要素には `id` を付ける。新しく入った要素は、出るときの動きが 1 回だけ流れる。エフェクトの層（`.fx-host`）は `#app` の外にある。
 - 画面の部品は `src/ui/` に分かれている：`hud`・`scene`（客）・`counter`・`window`（伝票）・`grid`（棚とウォレット）・`front`（朝・夜・シャッター）・`shop`・`gear`・`modals`・`title`・`settings`・`drag`、操作と演出の進行は `actions.ts`。クエストは `src/ui/quest.ts` と `src/ui/quest/`（表示用の状態 `view`、演出の再生 `play`、描画 `render`）。CSS は `src/styles/`。
+- 店にいるあいだ、品は棚・ウォレット・装備のあいだをドラッグで移せる（タブの上で 1 秒待つとタブが開く。`src/ui/drag.ts`、ルールは `night.ts` の `transfer`・`equip`・`unequip`）。品の向きは 0〜3（90° ずつ）。
 - 戦闘と探索は、ルール側（`src/game/quest.ts`）が出来事の一覧（`events`）を返し、画面がそれを順に再生する。
 - `soundboard.html` と `fxboard.html` は開発用の試聴・試写ページ（`npx vite` で開く。公開物には入らない）。

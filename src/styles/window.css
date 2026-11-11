@@ -495,3 +495,83 @@ html.calm .beat-bar b {
     padding: 1px 0 3px;
   }
 }
+
+/* ---------- the slip never spills past its own edge: when it is cut short, its body scrolls and the
+   totals and buttons stay stuck to the bottom, above the torn edge */
+.win-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.win-scroll {
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: visible;
+}
+.win-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: var(--paper);
+}
+.win .teeth {
+  z-index: 2;
+}
+
+/* ---------- three sizes: 小 (mini) keeps only what is needed to decide, so the counter stays free */
+.win-size {
+  width: auto;
+  gap: 3px;
+  padding: 0 7px;
+}
+.win-size b {
+  font-family: var(--f-body);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+.win.mini {
+  width: min(46%, 186px);
+}
+.win.mini .win-grip,
+.win.mini .hint,
+.win.mini .line-main small,
+.win.mini .line-main .tags,
+.win.mini .sum.minor:not(.bad),
+.win.mini .chance span,
+.win.mini .haggle-q small,
+.win.mini .btn small:empty {
+  display: none;
+}
+.win.mini .win-scroll {
+  padding: 2px 6px 3px;
+}
+.win.mini .win-foot {
+  padding: 3px 6px 7px;
+}
+.win.mini .want b {
+  font-size: 0.875rem;
+}
+.win.mini .line {
+  padding-block: 2px;
+}
+.win.mini .total {
+  font-size: 1.25rem;
+}
+.win.mini .segs .seg {
+  min-height: 34px;
+  padding-inline: 0;
+  font-size: 0.75rem;
+}
+.win.mini .actions {
+  gap: 5px;
+  margin-top: 5px;
+}
+.win.mini .btn {
+  min-height: 40px;
+  padding-inline: 4px;
+  font-size: 0.75rem;
+}
+.win.mini .btn > span {
+  white-space: normal;
+  line-height: 1.15;
+  font-size: 0.6875rem;
+}

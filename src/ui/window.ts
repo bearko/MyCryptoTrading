@@ -8,6 +8,8 @@ import { ctx, TEMPER_JA, ui } from './core';
 import { btn, esc, gum, itemTile, labels, num, pct } from './html';
 import { ICON } from './icons';
 
+const SIZE_JA = { s: '小', m: '中', l: '大' } as const;
+
 /** how long the customer thinks an offer over (the suspense beat) */
 export const BEAT_MS = 420;
 
@@ -97,9 +99,9 @@ export function customerWindow(g: GameState, v: Visitor): string {
   if (!ui.win.open || v.done) return '';
   const hero = cat.heroById.get(v.heroId)!;
   const pips = Array.from({ length: B.temperPatience[v.temper] }, (_, i) => `<i class="${i < v.patience ? 'on' : ''}"></i>`).join('');
-  return `<div class="win paper ${ui.win.big ? 'big' : 'small'} kind-${v.kind} ${ui.beat ? 'beating' : ''}" id="win" data-ui style="left:${ui.win.x}px;top:${ui.win.y}px">
+  return `<div class="win paper ${ui.win.size === 'l' ? 'big' : ui.win.size === 's' ? 'small mini' : 'small'} kind-${v.kind} ${ui.beat ? 'beating' : ''}" id="win" data-ui style="left:${ui.win.x}px;top:${ui.win.y}px">
     <div class="win-bar"><span class="win-kind">${v.kind === 'sell' ? '買取伝票' : '販売伝票'}</span><i class="win-grip" aria-hidden="true"></i>
-      <button class="win-btn" data-act="win-size" aria-label="サイズ変更">${ICON.size}</button>
+      <button class="win-btn win-size" data-act="win-size" aria-label="サイズ変更（いまは${SIZE_JA[ui.win.size]}）">${ICON.size}<b>${SIZE_JA[ui.win.size]}</b></button>
       <button class="win-btn" data-act="win-close" data-sfx="close" aria-label="閉じる">${ICON.close}</button>
     </div>
     <div class="win-who"><b>${esc(hero.ja)}</b><em class="temper t${v.temper}">${TEMPER_JA[v.temper]}</em><span class="pips ink" aria-label="我慢 ${v.patience}">${pips}</span></div>
@@ -117,13 +119,12 @@ export function clampWindow(): void {
   const hud = root.querySelector<HTMLElement>('#hud');
   const top = (hud ? hud.getBoundingClientRect().bottom - base.top : 60) + 6;
   if (!ui.win.moved) ui.win.y = top;
-  // until the player moves it, the window ends above the near side of the counter (the drop zone and the bell stay free;
-  // a seller's goods on the far side lie to the right of it, and can also be picked from the slip itself)
+  // until the player moves it, the window ends above the near side of the counter, so the drop zone, the goods on
+  // it and the bell stay in reach (when the slip is longer than that, its body scrolls and the buttons stay in view)
   const near = root.querySelector<HTMLElement>('#near');
   const edge = near?.getBoundingClientRect().top;
-  // (on a short screen there is not enough room above the counter for the buttons: it may lap over the counter a little)
   const room = base.height - ui.win.y - 12;
-  win.style.maxHeight = ui.win.moved || edge === undefined ? `${Math.max(200, room)}px` : `${Math.max(edge - base.top - ui.win.y - 10, Math.min(268, room))}px`;
+  win.style.maxHeight = ui.win.moved || edge === undefined ? `${Math.max(200, room)}px` : `${Math.max(150, edge - base.top - ui.win.y - 12)}px`;
   ui.win.x = Math.max(0, Math.min(ui.win.x, root.clientWidth - win.offsetWidth));
   ui.win.y = Math.max(0, Math.min(ui.win.y, root.clientHeight - 48));
   win.style.left = `${ui.win.x}px`;
