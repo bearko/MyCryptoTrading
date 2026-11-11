@@ -409,3 +409,8 @@
   background: var(--ink);
   will-change: opacity;
 }
+
+/* The ambient motes sit over the UI (the layer is outside the game root), so they stay faint. */
+.fx-ambient {
+  opacity: 0.38;
+}

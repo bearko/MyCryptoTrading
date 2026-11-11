@@ -14,6 +14,7 @@ My Crypto Heroes の世界で交易店を営む、スマホ（縦持ち）向け
 - 品は種類ごとに棚で使うマス目の形が違います。並べ替えと回転で置き場所を作ります
 - 良心的な商いで評判が上がると、客が増え、値の張る品が集まります
 - ルールと数字、今後の予定は [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md)
+- 見た目・動き・音・エフェクトの基準は [docs/UI_DIRECTION.md](docs/UI_DIRECTION.md)
 
 ## 開発
 
@@ -34,8 +35,10 @@ npm run sim        # ボットに遊ばせて、クリアまでの日数と破�
 src/
   game/     ルール（balance.ts に数字、logic.ts に取引・マス目・家賃、night.ts に夜のショップ・ウォレット・装備、
             quest.ts にダンジョンと戦闘、shapes.ts にマス目の形、lines.ts に客のせりふ）
-  ui/       画面（app.ts）
-  style.css
+  ui/       画面（app.ts が入口。hud・scene・counter・window・grid・front・shop・gear・modals・title・settings、
+            操作と演出の進行は actions.ts、クエストは quest.ts と quest/）
+            audio.ts＝音（効果音は合成、BGM は素材）、fx.ts＝エフェクト（粒子・数字・スタンプ・帯・画面転換）
+  styles/   CSS（tokens.css に色・書体・動きの変数）
 scripts/    素材の同期
 tests/      Vitest（ルールのテストと、ボットによる経済の計測）
 docs/       ゲーム設計書
@@ -51,8 +54,10 @@ Cloudflare Workers の静的アセットとして配信します（`wrangler.jso
 
 ## 素材とクレジット
 
-- ヒーロー、エクステンション、エネミー、背景、アイコン: My Crypto Heroes（© MCH Co.,Ltd.）。
+- ヒーロー、エクステンション、エネミー、背景、アイコン、BGM、戦闘の効果音: My Crypto Heroes（© MCH Co.,Ltd.）。
   [bearko/mycryptoheroes](https://github.com/bearko/mycryptoheroes) に整理されたものを使用しています。
+
+書体：Dela Gothic One、DotGothic16、Zen Kaku Gothic New、Anton（いずれも SIL Open Font License。Fontsource 経由）。
 
 ソースコードと文書は [MIT License](LICENSE) です。マイクリの素材（画像）は対象外です。
 

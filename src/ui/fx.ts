@@ -1271,7 +1271,7 @@ function mount(target: HTMLElement): void {
   host = div('fx-host');
   host.setAttribute('aria-hidden', 'true');
   ambCanvas = document.createElement('canvas');
-  ambCanvas.className = 'fx-canvas';
+  ambCanvas.className = 'fx-canvas fx-ambient';
   host.appendChild(ambCanvas);
   ambCtx = ambCanvas.getContext('2d');
   layerBack = div('fx-layer', host);
