@@ -1,3 +1,4 @@
+import { morningExtras } from './hooks';
 import { B, WEEKDAYS } from '../game/balance';
 import { PARAM_JA } from '../game/catalog';
 import * as G from '../game/logic';
@@ -51,6 +52,7 @@ function morningCard(g: GameState): string {
       <p class="news-lead">${eventText(g)}</p>
       ${g.nightNote ? `<p class="news-note">${esc(g.nightNote)}</p>` : ''}
       ${g.lateOpen ? `<p class="news-late">夜に出歩いたため開店が遅れ、お客さんを ${B.lateOpenLoss} 人取り逃しました。</p><span class="stamp late" aria-hidden="true">開店遅れ<small>−${B.lateOpenLoss}人</small></span>` : ''}
+      ${morningExtras(g)}
       <footer class="news-foot"><span>今日のお客さんは</span><b>${G.visitorsExpected(g)}</b><span>人の見込み。</span></footer>
     </article>
     <div class="cta">${btn('open', '店を開ける', { cls: 'primary big', sfx: 'none' })}</div>

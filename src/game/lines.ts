@@ -18,6 +18,11 @@ const MORE_SELLER = ['残りもどうだい？', '残りの品もいかがです
 const MORE_BUYER = ['まだ予算があるんだ。ほかには？', 'ほかにも見せていただけますか。', 'まだ買える。次を出せ。'];
 const DEAL_BUYER = ['いい買い物ができた！', 'ありがとうございます。', '悪くない品だ。'];
 const PASS = ['そうか、残念だ。', 'では、またの機会に。', 'ふん。'];
+const SPECIAL = {
+  rich: '気に入った品は、いくらでも買おう。見せてくれたまえ。',
+  hurry: '船が出るんだ！ 安くていい、いますぐ全部引き取ってくれ！',
+  collector: '珍しい品を集めていてね。レア以上なら、言い値で構わないよ。',
+};
 const NO_MATCH = 'それは探している物と違うな。';
 
 export function wantText(want: Want): string {
@@ -40,4 +45,5 @@ export const lines = {
   dealBuyer: (temper: number) => DEAL_BUYER[temper],
   pass: (temper: number) => PASS[temper],
   noMatch: () => NO_MATCH,
+  special: (kind: 'rich' | 'hurry' | 'collector') => SPECIAL[kind],
 };

@@ -1,3 +1,4 @@
+import { perkById } from '../game/perks';
 import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
 import * as N from '../game/night';
@@ -609,6 +610,18 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       const uid = ui.sel.uid;
       closeModal();
       gearChange(g, () => N.equip(g, cat, uid), slot);
+      break;
+    }
+
+    // ---- 商才: one of three after a rent payment
+    case 'perk': {
+      const id = g.perkOffer?.[n];
+      if (id && G.choosePerk(g, id)) {
+        audio.sfx('equip');
+        haptic('medium');
+        fx.burst('stars', { x: ctx.root.clientWidth / 2, y: ctx.root.clientHeight / 2 }, { count: 18 });
+        fx.stamp(perkById(id).name, { x: ctx.root.clientWidth / 2, y: ctx.root.clientHeight * 0.36 }, { size: 40 });
+      }
       break;
     }
 

@@ -5,7 +5,8 @@
 - このリポジトリは「My Crypto Trading」。My Crypto Heroes の世界で交易店を営む、スマホ（縦持ち）向けの店舗経営・取引ゲーム。サイトを開くと `index.html` → `src/main.ts` → `src/ui/app.ts` で始まる。公開は Cloudflare Workers の静的配信（`wrangler.jsonc`）。本番のブランチは `main`。
 - **見た目・動き・音・エフェクトの基準は `docs/UI_DIRECTION.md`（アートバイブル）**。画面を作る・直すときは必ず読む。色は `src/styles/tokens.css` の変数だけを使い、操作には見た目・音（`src/ui/audio.ts`）・エフェクト（`src/ui/fx.ts`）・振動で必ず返す。
 - ゲームの全体像・ルール・今後の予定は `docs/GAME_DESIGN.md`。新しい機能はこの方向に沿って作り、ルールを変えたらこの文書も直す。
-- 構成：`src/game/` はルール（DOM に触らない・乱数は種つきで再現できる）、`src/ui/` は画面。経済の数字はすべて `src/game/balance.ts` に置く。`logic.ts`＝取引・マス目・1 日の進行、`night.ts`＝夜のショップ・ウォレット・装備、`quest.ts`＝ダンジョンと戦闘。
+- 構成：`src/game/` はルール（DOM に触らない・乱数は種つきで再現できる）、`src/ui/` は画面。経済の数字はすべて `src/game/balance.ts` に置く。`logic.ts`＝取引・マス目・1 日の進行、`night.ts`＝夜のショップ・ウォレット・装備、`quest.ts`＝ダンジョンと戦闘、`perks.ts`＝商才の一覧。
+- 「つい続けてしまう」ための仕掛け（最初の 1 日の手引き・本日の注文・COMBO・特別な客・商才）は `docs/GAME_DESIGN.md` の 4.12。ルールは `logic.ts`、表示と演出は `src/ui/hooks.ts`・`src/styles/hooks.css`。GUM が入る道を増やしたら、必ず `npm run sim` で家賃と権利書の釣り合いを見直す。
 - 品の色はパラメーター系統（PHY＝赤・INT＝青・AGI＝緑）で分ける。レアリティで色分けしない。系統ラベル・装備する場所・戦闘用の効果は `scripts/sync-assets.mjs` がスキルの文面とシリーズ名から作る。
 - 素材は `vendor/mycryptoheroes`（サブモジュール）から `scripts/sync-assets.mjs` が使うものだけを `public/mch/` に写し、`src/generated/catalog.json` を作る（どちらも Git には入れない）。
 - チェック：`npm test`・`npm run typecheck`・`npm run build`。数字を変えたら `npm run sim`（ボットに 300 回遊ばせて、クリアまでの日数と破産の割合を見る）で確かめ、`docs/GAME_DESIGN.md` の計測結果を直す。

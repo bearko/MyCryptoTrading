@@ -91,6 +91,8 @@ export function helpModal(): string {
       <li>閉店後、左のドアから外出できます（一晩に一か所。翌朝はお客さんが ${B.lateOpenLoss} 人減ります）。</li>
       <li>ショップ：品を買い、ウォレットに入れた分だけ持ち帰れます。</li>
       <li>クエスト：装備した品のスキルで戦い、進むか帰るかを選びます。倒れると、その回に拾った品を失います。</li>
+            <li>毎朝「本日の注文」が出ます。達成するとその場で GUM がもらえます。成約を続けると COMBO がつき、売値におまけが乗ります（何も取引せずに帰すと切れます）。</li>
+      <li>家賃を払うたびに「商才」を 3 つから 1 つ選べます。3 日目からは、大富豪・急ぎの旅人・収集家といった特別なお客さんも来ます。</li>
       <li>7日ごとに家賃を払います（毎回上がります）。${num(B.deedPrice)} GUM で店の権利書を買い取ればクリアです。</li>
     </ol>
     <p class="credit">素材：My Crypto Heroes（© MCH Co.,Ltd.）。本作は非公式の二次創作です。</p>
@@ -139,6 +141,9 @@ export function ending(g: GameState): string {
           <div class="rc-line"><span>買った品</span><i></i><b>${num(g.totals.bought)}</b></div>
           <div class="rc-line"><span>最高の売上</span><i></i><b>${gum(g.totals.bestSale)}</b></div>
           <div class="rc-line"><span>ダンジョンの最深到達</span><i></i><b>地下 ${g.totals.deepest} 階</b></div>
+          <div class="rc-line"><span>注文の達成</span><i></i><b>${num(g.totals.orders)} 回</b></div>
+          <div class="rc-line"><span>最長の COMBO</span><i></i><b>${num(g.totals.bestCombo)}</b></div>
+          <div class="rc-line"><span>身につけた商才</span><i></i><b>${num(g.perks.length)}</b></div>
         </div>
         <i class="teeth" aria-hidden="true"></i>
       </section>

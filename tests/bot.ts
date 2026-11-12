@@ -10,6 +10,7 @@ export type Style = 'plain' | 'careful';
 export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): GameState {
   const s = G.newGame(seed, cat);
   while (s.phase !== 'lost' && !s.owned && s.day <= maxDays) {
+    if (s.perkOffer) G.choosePerk(s, s.perkOffer[0]);
     G.openShop(s, cat);
     while (s.phase === 'open') {
       const v = G.currentVisitor(s)!;

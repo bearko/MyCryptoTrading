@@ -13,6 +13,10 @@ My Crypto Heroes の世界で交易店を営む、スマホ（縦持ち）向け
 - 品を装備すると、クエストでそのスキルを使って戦えます
 - 品は種類ごとに棚で使うマス目の形が違います。並べ替えと回転で置き場所を作ります
 - 良心的な商いで評判が上がると、客が増え、値の張る品が集まります
+- 毎朝「本日の注文」が出ます。達成すると、その場で報酬が入ります
+- 取引を続けてまとめると COMBO が伸び、売上におまけがつきます
+- 3 日目からは、大富豪・急ぎの売り手・収集家といった特別な客も来ます
+- 家賃を払うたびに「商才」を 3 つの中から 1 つ選べます。選びかたで、店の育ちかたが変わります
 - ルールと数字、今後の予定は [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md)
 - 見た目・動き・音・エフェクトの基準は [docs/UI_DIRECTION.md](docs/UI_DIRECTION.md)
 
@@ -34,8 +38,8 @@ npm run sim        # ボットに遊ばせて、クリアまでの日数と破�
 ```
 src/
   game/     ルール（balance.ts に数字、logic.ts に取引・マス目・家賃、night.ts に夜のショップ・ウォレット・装備、
-            quest.ts にダンジョンと戦闘、shapes.ts にマス目の形、lines.ts に客のせりふ）
-  ui/       画面（app.ts が入口。hud・scene・counter・window・grid・front・shop・gear・modals・title・settings、
+            quest.ts にダンジョンと戦闘、perks.ts に商才、shapes.ts にマス目の形、lines.ts に客のせりふ）
+  ui/       画面（app.ts が入口。hud・scene・counter・window・grid・front・shop・gear・modals・title・settings・hooks（注文・COMBO・商才）、
             操作と演出の進行は actions.ts、クエストは quest.ts と quest/）
             audio.ts＝音（効果音は合成、BGM は素材）、fx.ts＝エフェクト（粒子・数字・スタンプ・帯・画面転換）
   styles/   CSS（tokens.css に色・書体・動きの変数）

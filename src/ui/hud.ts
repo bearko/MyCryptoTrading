@@ -5,6 +5,7 @@ import type { GameState } from '../game/state';
 import { audio } from './audio';
 import { ctx } from './core';
 import { fx } from './fx';
+import { goalChips } from './hooks';
 import { num } from './html';
 import { ICON } from './icons';
 import { anim, rollNumber } from './motion';
@@ -66,6 +67,7 @@ export function hud(g: GameState): string {
       <button class="hud-btn" data-act="settings" data-sfx="open" aria-label="設定と遊びかた">${ICON.gearCog}</button>
     </div>
     ${rent}
+    ${goalChips(g)}
   </header>`;
 }
 

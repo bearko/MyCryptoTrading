@@ -10,6 +10,15 @@ export function load(): GameState | null {
     if (!s || s.v !== 4) return null;
     // older saves kept the turn as true / false
     for (const x of [...s.stock, ...s.wallet.items]) x.rot = typeof x.rot === 'number' ? x.rot & 3 : x.rot ? 1 : 0;
+    // saves from before streaks, orders and 商才
+    s.combo ??= 0;
+    s.order ??= null;
+    s.perks ??= [];
+    s.perkOffer ??= null;
+    s.last ??= { bonus: 0, orderReward: 0 };
+    s.totals.orders ??= 0;
+    s.totals.bestCombo ??= 0;
+    for (const v of s.queue) v.deals ??= 0;
     return s;
   } catch {
     return null;

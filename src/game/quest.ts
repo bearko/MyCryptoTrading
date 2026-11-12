@@ -1,6 +1,6 @@
 import { B } from './balance';
 import type { Catalog, Enemy, Fx, StatKey } from './catalog';
-import { addTo } from './logic';
+import { addTo, hasPerk } from './logic';
 import { canGoOut, goHome, playerStats } from './night';
 import { pick, pickWeighted, rand, randRange } from './rng';
 import { SLOT_IDS, type Battle, type Fighter, type GameState, type LooseItem, type Quest } from './state';
@@ -280,7 +280,8 @@ export function startQuest(s: GameState, cat: Catalog): boolean {
   if (!canGoOut(s)) return false;
   s.wentOut = true;
   s.phase = 'quest';
-  const [hp, phy, int, agi] = playerStats(s, cat);
+  const [hp0, phy, int, agi] = playerStats(s, cat);
+  const hp = hp0 * (hasPerk(s, 'tough') ? B.perkTough : 1);
   s.quest = { depth: 0, me: fighter(hp, phy, int, agi), battle: null, log: ['ダンジョンの入口に立った。'], found: null, loot: [], gumFound: 0, ended: null, events: [], eid: 0 };
   tell(s.quest, { t: 'enter' });
   return true;
@@ -372,7 +373,7 @@ export function runChance(s: GameState): number {
   const b = s.quest?.battle;
   if (!s.quest || !b) return 0;
   if (b.runs >= 2) return 1;
-  return Math.min(B.runMax, Math.max(B.runMin, B.runBase + (s.quest.me.agi - b.foe.agi) * B.runPerAgi));
+  return Math.min(B.runMax, Math.max(B.runMin, B.runBase + (hasPerk(s, 'swift') ? B.perkSwift : 0) + (s.quest.me.agi - b.foe.agi) * B.runPerAgi));
 }
 
 function foeTurn(s: GameState, cat: Catalog, q: Quest, b: Battle): void {
