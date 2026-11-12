@@ -122,6 +122,7 @@ describe('game rules', () => {
   it('a buyer never pays over budget and never takes the wrong kind of good', () => {
     const s = G.newGame(6, catalog);
     s.gum = 1_000_000; // rent is never a problem here
+    s.day = 2; // past the guided first day
     for (let n = 0; n < 40; n++) {
       until(s, 'buy');
       const v = G.currentVisitor(s)!;
@@ -129,6 +130,8 @@ describe('game rules', () => {
         const gum = s.gum;
         const fair = G.salePrice(catalog, item, 0);
         const budget = v.budget;
+        s.order = null; // no order reward and no streak bonus in this check
+        s.combo = 0;
         const result = G.sell(s, catalog, [item.uid], 0);
         if (!G.matches(catalog, v.want, item.itemId)) {
           expect(result).toBe('nomatch');
@@ -156,6 +159,8 @@ describe('game rules', () => {
     v.want = { type: 'any' };
     v.budget = 10;
     const uids = s.stock.slice(0, 2).map((x) => x.uid);
+    s.order = null;
+    s.combo = 0;
     const quote = G.quoteSale(s, catalog, v, uids, 0);
     expect(quote.over).toBe(quote.asked - 10);
     expect(quote.paid).toBe(10);
@@ -359,5 +364,101 @@ describe('game rules', () => {
     expect(sword.roles).not.toContain('buff'); // raising and lowering its own PHY is a stat swap, not a buff
     expect(G.matches(catalog, { type: 'param', param: 'int' }, sword.id)).toBe(true);
     expect(G.matches(catalog, { type: 'role', role: 'heal' }, sword.id)).toBe(false);
+  });
+
+  it('the first day teaches the trade: a cheap good to buy, then a buyer who wants it', () => {
+    const s = G.newGame(31, catalog);
+    G.openShop(s, catalog);
+    const seller = G.currentVisitor(s)!;
+    expect(seller.kind).toBe('sell');
+    expect(seller.offers).toHaveLength(1);
+    expect(seller.offers[0].ask).toBeLessThanOrEqual(s.gum);
+    expect(G.buy(s, catalog, [0])).toBe(true);
+    G.callNext(s, catalog);
+    const buyer = G.currentVisitor(s)!;
+    const bought = s.stock[s.stock.length - 1];
+    expect(buyer.kind).toBe('buy');
+    expect(G.matches(catalog, buyer.want, bought.itemId)).toBe(true);
+    const gum = s.gum;
+    expect(G.sell(s, catalog, [bought.uid], 0)).toBe('sold');
+    expect(s.gum - gum).toBeGreaterThan(bought.paid); // a sure profit
+    expect(s.order?.done).toBe(true); // the first day's order: one sale
+  });
+
+  it('a streak of deals adds a bonus to sales, and a customer leaving empty-handed breaks it', () => {
+    const s = G.newGame(32, catalog);
+    s.gum = 1_000_000;
+    s.rows = 8;
+    s.day = 2;
+    until(s, 'sell');
+    G.buy(s, catalog, [0]);
+    expect(s.combo).toBe(1);
+    expect(G.comboRate(s)).toBeCloseTo(B.comboStep);
+    until(s, 'buy'); // customers passed on the way leave empty-handed
+    expect(s.combo).toBe(0);
+    s.combo = 3;
+    const v = G.currentVisitor(s)!;
+    v.want = { type: 'any' };
+    v.budget = 100000;
+    const item = s.stock[0];
+    const fair = G.salePrice(catalog, item, 0);
+    const gum = s.gum;
+    const order = s.order;
+    s.order = null;
+    expect(G.sell(s, catalog, [item.uid], 0)).toBe('sold');
+    expect(s.gum - gum).toBe(fair + Math.round(fair * B.comboStep * 3));
+    expect(s.last.bonus).toBe(Math.round(fair * B.comboStep * 3));
+    expect(s.combo).toBe(4);
+    s.order = order;
+  });
+
+  it("today's order pays its reward the moment it is met", () => {
+    const s = G.newGame(33, catalog);
+    s.gum = 1_000_000;
+    s.day = 2;
+    until(s, 'buy');
+    const v = G.currentVisitor(s)!;
+    v.want = { type: 'any' };
+    v.budget = 100000;
+    s.order = { kind: 'sellCount', need: 1, have: 0, reward: 77, done: false };
+    s.combo = 0;
+    const item = s.stock[0];
+    const gum = s.gum;
+    G.sell(s, catalog, [item.uid], 0);
+    expect(s.order.done).toBe(true);
+    expect(s.gum - gum).toBe(G.salePrice(catalog, item, 0) + 77);
+    expect(s.last.orderReward).toBe(77);
+  });
+
+  it('paying the rent offers three knacks; the chosen one changes the rules', () => {
+    const s = G.newGame(34, catalog);
+    s.gum = 100000;
+    s.day = B.rentEvery;
+    s.phase = 'evening';
+    G.endDay(s);
+    expect(s.perkOffer).toHaveLength(3);
+    expect(new Set(s.perkOffer).size).toBe(3);
+    expect(G.choosePerk(s, 'regular')).toBe(s.perkOffer!.includes('regular'));
+    s.perkOffer = ['regular', 'shelf', 'talker'];
+    const usual = G.visitorsExpected(s);
+    expect(G.choosePerk(s, 'regular')).toBe(true);
+    expect(s.perkOffer).toBeNull();
+    expect(G.visitorsExpected(s)).toBe(usual + 1);
+    const rows = s.rows;
+    s.perkOffer = ['shelf'];
+    G.choosePerk(s, 'shelf');
+    expect(s.rows).toBe(rows + 1);
+  });
+
+  it('the third day always brings a rich customer second in line', () => {
+    const s = G.newGame(35, catalog);
+    s.day = B.specialFromDay;
+    G.openShop(s, catalog);
+    G.pass(s);
+    G.callNext(s, catalog);
+    const v = G.currentVisitor(s)!;
+    expect(v.special).toBe('rich');
+    expect(v.kind).toBe('buy');
+    expect(v.budget).toBeGreaterThan(B.rarityValue[2] * B.richBudget);
   });
 });

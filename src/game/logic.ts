@@ -3,7 +3,8 @@ import type { Catalog, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randRange } from './rng';
 import { ROTATED, sameCells, type Shape } from './shapes';
-import { emptySummary, type DayEvent, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
+import { PERKS, type PerkId } from './perks';
+import { emptySummary, type DayEvent, type DayOrder, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
 
 const clamp = (v: number, min: number, max: number): number => Math.min(max, Math.max(min, v));
 
@@ -29,7 +30,8 @@ function chance(s: GameState, base: number, temper: number): number {
   if (base >= 1) return 1;
   return clamp(base + B.temperMod[temper] + (s.rep - 50) / B.repDivisor, 0.05, 0.95);
 }
-export const discountChance = (s: GameState, v: Visitor, tier: number): number => chance(s, B.discountChance[tier], v.temper);
+export const hasPerk = (s: GameState, id: PerkId): boolean => s.perks.includes(id);
+export const discountChance = (s: GameState, v: Visitor, tier: number): number => chance(s, B.discountChance[tier] + (hasPerk(s, 'talker') ? B.perkTalker : 0), v.temper);
 
 /** How often a customer accepts paying `markup` over the fair price (0.15 = +15%). */
 function markupBase(markup: number): number {
@@ -163,7 +165,8 @@ export const visitorsFor = (rep: number): number => B.visitorsBase + Math.floor(
 /** Customers expected today: reputation, today's event, and a late opening after a night out. */
 export function visitorsExpected(s: GameState): number {
   const event = s.event.id === 'caravan' ? B.caravanVisitors : s.event.id === 'rain' ? B.rainVisitors : 0;
-  return Math.max(B.visitorsMin, visitorsFor(s.rep) + event - (s.lateOpen ? B.lateOpenLoss : 0));
+  const late = s.lateOpen && !hasPerk(s, 'nightowl') ? B.lateOpenLoss : 0;
+  return Math.max(B.visitorsMin, visitorsFor(s.rep) + event + (hasPerk(s, 'regular') ? 1 : 0) - late);
 }
 export const shelfCost = (s: GameState): number | null => B.shelfCost[s.shelfLevel] ?? null;
 
@@ -204,6 +207,69 @@ function startMorning(s: GameState): void {
   s.wentOut = false;
   s.shop = null;
   s.quest = null;
+  s.combo = 0;
+  s.last = { bonus: 0, orderReward: 0 };
+  s.order = rollOrder(s);
+}
+
+/** Today's order. The first day asks only for a first sale. */
+function rollOrder(s: GameState): DayOrder {
+  const reward = B.orderBase + B.orderPerDay * s.day;
+  if (s.day === 1) return { kind: 'sellCount', need: 1, have: 0, reward: 30, done: false };
+  const kind = (['sellParam', 'sellCount', 'buyCount', 'earn'] as const)[pickWeighted(s, [35, 25, 20, 20])];
+  if (kind === 'sellParam') return { kind, param: s.event.id === 'demand' && s.event.param ? s.event.param : pick(s, ['phy', 'int', 'agi'] as const), need: 2, have: 0, reward, done: false };
+  if (kind === 'sellCount') return { kind, need: 3 + Math.min(2, Math.floor(s.day / 10)), have: 0, reward, done: false };
+  if (kind === 'buyCount') return { kind, need: 3, have: 0, reward, done: false };
+  return { kind, need: 80 + s.day * 25, have: 0, reward, done: false };
+}
+
+/** Counts progress on today's order; pays the reward the moment it is met. */
+function orderProgress(s: GameState, kind: DayOrder['kind'], amount: number): void {
+  const o = s.order;
+  if (!o || o.done || o.kind !== kind || amount <= 0) return;
+  o.have = Math.min(o.need, o.have + amount);
+  if (o.have < o.need) return;
+  o.done = true;
+  s.gum += o.reward;
+  s.today.revenue += o.reward;
+  s.last.orderReward = o.reward;
+  s.totals.orders += 1;
+  addRep(s, B.orderRep);
+}
+
+/** The bonus rate the streak adds to the next sale. */
+export function comboRate(s: GameState): number {
+  const mult = hasPerk(s, 'charm') ? 2 : 1;
+  return Math.min(B.comboCap * mult, B.comboStep * mult * s.combo);
+}
+
+function dealClosed(s: GameState, v: Visitor): void {
+  v.deals += 1;
+  s.combo += 1;
+  s.totals.bestCombo = Math.max(s.totals.bestCombo, s.combo);
+}
+
+/** A customer who leaves without a single deal breaks the streak. */
+function leftEmpty(s: GameState, v: Visitor): void {
+  if (v.deals === 0) s.combo = 0;
+}
+
+// ---------------------------------------------------------------- 商才 (knacks)
+
+/** After a rent payment: three knacks to choose from (none when all are owned). */
+function offerPerks(s: GameState): void {
+  const pool = PERKS.map((p) => p.id).filter((id) => !s.perks.includes(id));
+  const offer: PerkId[] = [];
+  while (offer.length < 3 && pool.length > 0) offer.push(pool.splice(Math.floor(rand(s) * pool.length), 1)[0]);
+  s.perkOffer = offer.length > 0 ? offer : null;
+}
+
+export function choosePerk(s: GameState, id: PerkId): boolean {
+  if (!s.perkOffer?.includes(id)) return false;
+  s.perks.push(id);
+  s.perkOffer = null;
+  if (id === 'shelf') s.rows += 1;
+  return true;
 }
 
 export function newGame(seed: number, cat: Catalog): GameState {
@@ -234,7 +300,12 @@ export function newGame(seed: number, cat: Catalog): GameState {
     visitorsToday: 0,
     today: emptySummary(),
     nightNote: '',
-    totals: { sold: 0, bought: 0, bestSale: 0, deepest: 0 },
+    combo: 0,
+    order: null,
+    perks: [],
+    perkOffer: null,
+    last: { bonus: 0, orderReward: 0 },
+    totals: { sold: 0, bought: 0, bestSale: 0, deepest: 0, orders: 0, bestCombo: 0 },
   };
   for (let i = 0; i < B.startStock; i++) {
     const item = pick(s, cat.itemsByRarity[i < 3 ? 1 : 2]);
@@ -262,7 +333,42 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
     done: false,
     offers: [] as Offer[],
     bundleRate: 0,
+    deals: 0,
   };
+
+  // The first day teaches the trade by doing: a friendly seller with one cheap good, then a buyer who wants it.
+  const nth = s.queue.length;
+  if (s.day === 1 && nth === 0) {
+    const item = pick(s, cat.itemsByRarity[1].filter((i) => i.shape === 's1' || i.shape === 'v2' || i.shape === 'h2'));
+    const ask = Math.max(1, Math.round(itemValue(cat, item.id, 1) * 0.6));
+    return { ...base, temper: 0, patience: B.temperPatience[0], kind: 'sell', offers: [{ itemId: item.id, cond: 1, ask }], want: { type: 'any' }, budget: 0, line: lines.sellOpen(s, 0) };
+  }
+  if (s.day === 1 && nth === 1 && s.stock.length > 0) {
+    const target = s.stock[s.stock.length - 1];
+    const want: Want = { type: 'param', param: cat.itemById.get(target.itemId)!.params[0] };
+    const budget = Math.round(itemValue(cat, target.itemId, target.cond) * B.retail * 1.6);
+    return { ...base, temper: 0, patience: B.temperPatience[0], kind: 'buy', want, budget, line: lines.buyOpen(s, want) };
+  }
+
+  // Unusual customers break the routine once it has settled in (the third day always brings the first one).
+  const forced = s.day === B.specialFromDay && nth === 1;
+  if (s.day >= B.specialFromDay && (forced || rand(s) < B.specialChance * (hasPerk(s, 'patron') ? 2 : 1))) {
+    const kind = forced ? 'rich' : pick(s, ['rich', 'hurry', 'collector'] as const);
+    if (kind === 'hurry') {
+      const offers: Offer[] = [];
+      for (let i = 0; i < 2 + Math.floor(rand(s) * 2); i++) {
+        const item = pick(s, cat.itemsByRarity[rollRarity(s, heroBonus)]);
+        const cond = pickWeighted(s, B.condWeights);
+        offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, 0.66, 0.78) * B.hurryAsk)) });
+      }
+      return { ...base, patience: 1, haggled: true, kind: 'sell', offers, want: { type: 'any' }, budget: 0, line: lines.special('hurry'), special: 'hurry' };
+    }
+    const richest = s.stock.reduce<number>((best, x) => Math.max(best, itemValue(cat, x.itemId, x.cond)), B.rarityValue[2]);
+    if (kind === 'rich') {
+      return { ...base, temper: 0, patience: B.temperPatience[0], kind: 'buy', want: { type: 'any' }, budget: Math.round(richest * B.retail * B.richBudget), line: lines.special('rich'), special: 'rich' };
+    }
+    return { ...base, kind: 'buy', want: { type: 'rarity', min: 3 }, budget: Math.round(Math.max(richest, B.rarityValue[3]) * B.retail * B.collectorBudget), line: lines.special('collector'), special: 'collector' };
+  }
 
   if (rand(s) < sellerShare) {
     const count = 1 + pickWeighted(s, B.offerCountWeights);
@@ -340,6 +446,7 @@ function strike(s: GameState, v: Visitor, refusal: string): void {
     v.line = lines.leaveAngry(v.temper);
     addRep(s, B.angryLeaveRep);
     s.today.walkouts += 1;
+    s.combo = 0;
   } else {
     v.line = refusal;
   }
@@ -383,7 +490,8 @@ function fitsAll(s: GameState, cat: Catalog, itemIds: readonly number[]): boolea
 export function quoteBuy(s: GameState, cat: Catalog, v: Visitor, picks: readonly number[]): BuyQuote {
   const chosen = [...new Set(picks)].map((i) => v.offers[i]).filter((o): o is Offer => !!o);
   const full = chosen.reduce((sum, o) => sum + o.ask, 0);
-  const rate = chosen.length === v.offers.length && chosen.length >= 2 ? v.bundleRate : 0;
+  const whole = chosen.length === v.offers.length && chosen.length >= 2 && (v.bundleRate > 0 || (hasPerk(s, 'bulk') && v.special !== 'hurry' && !v.deals));
+  const rate = whole ? v.bundleRate + (hasPerk(s, 'bulk') ? B.perkBulk : 0) : 0;
   const price = Math.round(full * (1 - rate));
   let block: BuyQuote['block'] = null;
   if (chosen.length > 0 && !fitsAll(s, cat, chosen.map((o) => o.itemId))) block = 'shelf';
@@ -414,6 +522,9 @@ export function buy(s: GameState, cat: Catalog, picks: readonly number[]): boole
   s.gum -= quote.price;
   s.today.spend += quote.price;
   s.today.bought += taken.length;
+  s.last = { bonus: 0, orderReward: 0 };
+  dealClosed(s, v);
+  orderProgress(s, 'buyCount', taken.length);
   s.totals.bought += taken.length;
   v.offers = v.offers.filter((_, i) => !chosen.has(i));
   v.bundleRate = 0;
@@ -472,7 +583,7 @@ export function quoteSale(s: GameState, cat: Catalog, v: Visitor, uids: readonly
     asked,
     paid,
     over: Math.max(0, asked - v.budget),
-    chance: chance(s, markupBase(markup), v.temper),
+    chance: chance(s, markupBase(markup) + (markup > 1e-9 && hasPerk(s, 'tagger') ? B.perkTagger : 0), v.temper),
     matches: goods.length > 0 && goods.every((x) => matches(cat, v.want, x.itemId)),
   };
 }
@@ -492,10 +603,18 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
     return 'nomatch';
   }
   if (rand(s) < quote.chance) {
-    s.gum += quote.paid;
+    // the streak adds a little on top (the customer's goodwill; it does not come out of their budget)
+    const bonus = Math.round(quote.paid * comboRate(s));
+    const params = uids.map((uid) => cat.itemById.get(s.stock.find((x) => x.uid === uid)!.itemId)!.params);
+    s.last = { bonus, orderReward: 0 };
+    s.gum += quote.paid + bonus;
     s.stock = s.stock.filter((x) => !uids.includes(x.uid));
-    s.today.revenue += quote.paid;
+    s.today.revenue += quote.paid + bonus;
     s.today.sold += uids.length;
+    dealClosed(s, v);
+    orderProgress(s, 'sellCount', uids.length);
+    orderProgress(s, 'earn', quote.paid + bonus);
+    if (s.order?.kind === 'sellParam') orderProgress(s, 'sellParam', params.filter((ps) => ps.includes(s.order!.param!)).length);
     s.totals.sold += uids.length;
     s.totals.bestSale = Math.max(s.totals.bestSale, quote.paid);
     const markup = quote.paid / quote.fair - 1;
@@ -526,6 +645,7 @@ export function pass(s: GameState): void {
   if (!v || v.done) return;
   v.done = true;
   v.line = lines.pass(v.temper);
+  leftEmpty(s, v);
 }
 
 // ---------------------------------------------------------------- shop management
@@ -573,6 +693,7 @@ export function endDay(s: GameState): void {
       s.gum -= s.rent;
       s.nightNote = `家賃 ${s.rent} GUM を支払いました。`;
       s.rent = Math.round(s.rent * B.rentGrowth);
+      offerPerks(s);
     } else if (s.graceLeft > 0) {
       s.graceLeft -= 1;
       const unpaid = s.rent;

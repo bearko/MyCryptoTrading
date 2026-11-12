@@ -1,3 +1,4 @@
+import { SPECIAL_JA } from './hooks';
 import { B } from '../game/balance';
 import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
@@ -29,8 +30,8 @@ export function scene(v: Visitor | null, opening: boolean, far: { html: string; 
     inner = `<div class="walker ${state} ${opening ? 'late' : ''}" id="cust-${ui.custKey}" data-act="hero" data-sfx="none" role="button" aria-label="${esc(hero.ja)}（タップで伝票を開く）">
         <div class="walker-bob"><img class="hero" src="${hero.img}" alt="${esc(hero.ja)}" draggable="false" /></div>
       </div>
-      <div class="plate kind-${v.kind} ${v.done ? 'out' : ''} ${opening ? 'late' : ''}" id="plate-${ui.custKey}">
-        <span class="plate-kind">${v.kind === 'sell' ? '売りたい!' : '買いたい!'}</span>
+      <div class="plate kind-${v.kind} ${v.special ? 'special' : ''} ${v.done ? 'out' : ''} ${opening ? 'late' : ''}" id="plate-${ui.custKey}">
+        <span class="plate-kind">${v.kind === 'sell' ? '売りたい!' : '買いたい!'}</span>${v.special ? `<span class="plate-special">${SPECIAL_JA[v.special]}</span>` : ''}
         <b class="plate-name ${long}">${esc(hero.ja)}</b>
         <span class="plate-sub"><em class="temper t${v.temper}">${TEMPER_JA[v.temper]}</em><span class="pips" id="pips" aria-label="我慢 ${v.patience}">${pipsHtml(v)}</span></span>
       </div>

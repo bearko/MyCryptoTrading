@@ -1,4 +1,5 @@
 import type { Param, Role } from './catalog';
+import type { PerkId } from './perks';
 
 export interface StockItem {
   uid: number;
@@ -51,6 +52,21 @@ export interface Visitor {
   line: string;
   mood: 'neutral' | 'happy' | 'annoyed';
   /** the customer is leaving: sent away, everything bought, budget spent, or out of patience */
+  done: boolean;
+  /** deals closed with this customer (a customer who leaves with none breaks the streak) */
+  deals: number;
+  /** an unusual customer: 大富豪 / 急ぎの旅人 / 収集家 */
+  special?: 'rich' | 'hurry' | 'collector';
+}
+
+/** Today's order: a small goal for the day, paid at once when it is met. */
+export interface DayOrder {
+  kind: 'sellParam' | 'sellCount' | 'buyCount' | 'earn';
+  param?: Param;
+  need: number;
+  have: number;
+  /** GUM paid on completion */
+  reward: number;
   done: boolean;
 }
 
@@ -163,7 +179,15 @@ export interface GameState {
   today: DaySummary;
   /** what happened when the day closed (rent paid, grace used …) */
   nightNote: string;
-  totals: { sold: number; bought: number; bestSale: number; deepest: number };
+  /** deals closed in a row without a customer leaving empty-handed (earns a bonus on sales) */
+  combo: number;
+  order: DayOrder | null;
+  /** 商才 owned, and the three on offer after a rent payment (pick one) */
+  perks: PerkId[];
+  perkOffer: PerkId[] | null;
+  /** what the last sale added on top: the streak bonus, and an order's reward (for the screen; 0 when none) */
+  last: { bonus: number; orderReward: number };
+  totals: { sold: number; bought: number; bestSale: number; deepest: number; orders: number; bestCombo: number };
 }
 
 export const emptySummary = (): DaySummary => ({ revenue: 0, spend: 0, bought: 0, sold: 0, walkouts: 0 });

@@ -10,6 +10,7 @@ import { fx } from './fx';
 import { gearEffects, gearModal, pickModal } from './gear';
 import { gridSection, measure } from './grid';
 import { hud, hudEffects } from './hud';
+import { hookEffects, perkModal } from './hooks';
 import { destModal, ending, helpModal, inspectModal, leaveModal, menuModal, overModal, settingsModal } from './modals';
 import { nope } from './motion';
 import { questEffects, questScreen } from './quest';
@@ -47,6 +48,7 @@ function screenHtml(): string {
     if (ui.modal === 'gear') html += gearModal(g);
     if (ui.modal === 'pick') html += pickModal(g);
   }
+  if (ctx.s?.perkOffer && ctx.s.phase === 'morning' && ui.screen === 'game' && ui.modal === 'none') html += perkModal(ctx.s);
   if (ui.modal === 'help') html += helpModal();
   if (ui.modal === 'settings') html += settingsModal();
   return html;
@@ -101,6 +103,7 @@ function render(): void {
     if (g.phase === 'quest') questEffects(g, root);
     clampWindow();
     hudEffects(g);
+    if (g.phase === 'open') hookEffects(g);
     sceneEffects(g, ui.lateKey === ui.custKey);
     if (ui.modal === 'gear') gearEffects(g);
   }

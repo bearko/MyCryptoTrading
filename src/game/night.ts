@@ -1,6 +1,6 @@
 import { B } from './balance';
 import type { Catalog, Item } from './catalog';
-import { addTo, canPlaceIn, findSlotIn, gridOf, itemValue, rollRarity, walletSize, type GridId } from './logic';
+import { addTo, canPlaceIn, findSlotIn, gridOf, hasPerk, itemValue, rollRarity, walletSize, type GridId } from './logic';
 import { pick, pickWeighted, rand, randRange } from './rng';
 import { SLOT_IDS, type GameState, type LooseItem, type SlotId } from './state';
 
@@ -18,7 +18,7 @@ export function goShop(s: GameState, cat: Catalog): boolean {
   for (let i = 0; i < B.shopCount; i++) {
     const item = pick(s, cat.itemsByRarity[rollRarity(s, 0)]);
     const cond = pickWeighted(s, B.condWeights);
-    goods.push({ itemId: item.id, cond, price: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, B.shopRate[0], B.shopRate[1]))), sold: false });
+    goods.push({ itemId: item.id, cond, price: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, B.shopRate[0], B.shopRate[1]) * (hasPerk(s, 'eye') ? B.perkEye : 1))), sold: false });
   }
   // sometimes the next wallet up is on sale: a bigger wallet carries more home
   const now = cat.itemById.get(s.wallet.itemId)!.rarity;

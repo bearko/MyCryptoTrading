@@ -105,11 +105,32 @@ export const B = {
   /** damage cut: half the defender's matching stat, in %, capped */
   cutCap: 40,
 
-  rentFirst: 550,
-  rentGrowth: 1.2,
+  /** the streak: each deal in a row adds this much to the next sale, up to the cap */
+  comboStep: 0.02,
+  comboCap: 0.1,
+  /** today's order: reward = orderBase + orderPerDay × day */
+  orderBase: 30,
+  orderPerDay: 6,
+  orderRep: 1,
+  /** unusual customers: from this day on, each customer has this chance to be one */
+  specialFromDay: 3,
+  specialChance: 0.08,
+  richBudget: 3,
+  collectorBudget: 2.5,
+  hurryAsk: 0.6,
+  /** 商才 */
+  perkTalker: 0.12,
+  perkTagger: 0.1,
+  perkBulk: 0.05,
+  perkEye: 0.88,
+  perkTough: 1.3,
+  perkSwift: 0.2,
+
+  rentFirst: 760,
+  rentGrowth: 1.3,
   rentEvery: 7,
   grace: 1,
-  deedPrice: 10000,
+  deedPrice: 22000,
 } as const;
 
 export const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日'];
