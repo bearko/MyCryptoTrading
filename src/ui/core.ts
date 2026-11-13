@@ -21,6 +21,8 @@ export interface Ui {
   /** the customer window: where it is, its size, and whether it is open */
   /** size: s 小 / m 中 / l 大 */
   win: { x: number; y: number; size: 's' | 'm' | 'l'; open: boolean; moved: boolean };
+  /** a newcomer is still saying their first line: the customer window opens when it is said */
+  greeting: boolean;
   /** counts the customers that have stepped up (a new number is a new sprite, so it walks in) */
   custKey: number;
   /** at home: which grid is shown under the counter */
@@ -53,7 +55,8 @@ export const ui: Ui = {
   counter: [],
   picked: [],
   tier: 0,
-  win: { x: 6, y: 0, size: 'm', open: true, moved: false },
+  win: { x: 6, y: 0, size: 'm', open: false, moved: false },
+  greeting: false,
   custKey: 0,
   gridView: 'shelf',
   gearSlot: null,
