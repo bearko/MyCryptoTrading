@@ -13,6 +13,8 @@
 - 画面は縦持ちのスマホが基準（幅 360〜480px）。ボタンは 44px 以上、ドット絵は `image-rendering: pixelated`。
 - プレイヤー自身（店番）の姿は描かない。客はカウンターの奥に大きく立ち、左から入って右へ出る。
 - 客のせりふは場面の左上に出て、言い終えたら消える。来店のときは、せりふが消えてから伝票（客のウィンドウ）が開く（`ui.greeting`、`src/ui/scene.ts` の `sceneEffects`）。吹き出しは `#app` の直下にあり、伝票より手前。
+- 伝票の中は「品と値・合計・買う／売る」だけ。値を動かす操作は、帯の「交渉」ボタンで開く窓（`window.ts` の `negoPanel`、`ui.haggleOpen`）に置く。売り客の品をまとめて手前に移すのは、カウンターの縁の青い丸ボタン（`counter.ts`）。伝票のはじめの大きさは、スマホ＝小・PC＝大（`core.ts` の `defaultWinSize`）。
+- 派閥（朱雀・青龍・玄武・白虎・黄竜）の評価と恩恵は `src/game/factions.ts` と `logic.ts`（`favorRank`・`saleFavor`・`buyFavor`・`sweeten`）、画面は `hooks.ts`（一覧・演出）。数字は `balance.ts`。くわしくは `docs/GAME_DESIGN.md` の 4.13。
 - 客は取引が成立してもすぐには帰らない（ベル・品をすべて買い取った・予算を使い切った・我慢が尽きた、のどれかで帰る）。
 - 画面は HTML の文字列を作り、`morphdom` で差分だけ更新する（`src/ui/app.ts` の `render()`）。残す要素には `id` を付ける。新しく入った要素は、出るときの動きが 1 回だけ流れる。エフェクトの層（`.fx-host`）は `#app` の外にある。
 - 画面の部品は `src/ui/` に分かれている：`hud`・`scene`（客）・`counter`・`window`（伝票）・`grid`（棚とウォレット）・`front`（朝・夜・シャッター）・`shop`・`gear`・`modals`・`title`・`settings`・`drag`、操作と演出の進行は `actions.ts`。クエストは `src/ui/quest.ts` と `src/ui/quest/`（表示用の状態 `view`、演出の再生 `play`、描画 `render`）。CSS は `src/styles/`。

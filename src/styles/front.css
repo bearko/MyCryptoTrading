@@ -1361,3 +1361,46 @@
     height: 38px;
   }
 }
+
+/* ---------- "bring it all over": a round button on the counter's edge, between the customer's side and the shop's */
+.take-all {
+  position: absolute;
+  left: 50%;
+  top: -36px;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  padding: 0;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: var(--cool);
+  box-shadow: 0 4px 0 var(--ink);
+  color: var(--paper);
+  cursor: pointer;
+  transform: translateX(-50%);
+  transition: transform var(--t-press) var(--ease-out), box-shadow var(--t-press) var(--ease-out);
+  animation: take-in 0.3s 0.9s var(--ease-pop) both;
+}
+.take-all svg {
+  animation: take-nudge 1.2s ease-in-out infinite;
+}
+.take-all:active {
+  transform: translate(-50%, 4px);
+  box-shadow: 0 0 0 var(--ink);
+}
+@keyframes take-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px) scale(0.5);
+  }
+}
+@keyframes take-nudge {
+  50% {
+    transform: translateY(3px);
+  }
+}
+html.calm .take-all svg {
+  animation: none;
+}

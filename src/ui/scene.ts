@@ -1,6 +1,7 @@
 import { SPECIAL_JA } from './hooks';
 import { B } from '../game/balance';
 import { catalog as cat } from '../game/catalog';
+import { factionById } from '../game/factions';
 import * as G from '../game/logic';
 import type { GameState, Visitor } from '../game/state';
 import { audio } from './audio';
@@ -33,7 +34,7 @@ export function scene(v: Visitor | null, opening: boolean, far: { html: string; 
       <div class="plate kind-${v.kind} ${v.special ? 'special' : ''} ${v.done ? 'out' : ''} ${opening ? 'late' : ''}" id="plate-${ui.custKey}">
         <span class="plate-kind">${v.kind === 'sell' ? '売りたい!' : '買いたい!'}</span>${v.special ? `<span class="plate-special">${SPECIAL_JA[v.special]}</span>` : ''}
         <b class="plate-name ${long}">${esc(hero.ja)}</b>
-        <span class="plate-sub"><em class="temper t${v.temper}">${TEMPER_JA[v.temper]}</em><span class="pips" id="pips" aria-label="我慢 ${v.patience}">${pipsHtml(v)}</span></span>
+        <span class="plate-sub">${v.faction ? `<em class="fac f-${v.faction}">${factionById(v.faction).ja}</em>` : ''}<em class="temper t${v.temper}">${TEMPER_JA[v.temper]}</em><span class="pips" id="pips" aria-label="我慢 ${v.patience}">${pipsHtml(v)}</span></span>
       </div>
       ${far.html}`;
   }

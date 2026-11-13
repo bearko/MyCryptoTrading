@@ -4,7 +4,8 @@ import * as G from '../src/game/logic';
 import * as N from '../src/game/night';
 import type { GameState } from '../src/game/state';
 
-export type Style = 'plain' | 'careful';
+/** plain: fair prices. careful: haggles and marks up. kind: pays a little more and sells a little under, for the houses' regard. */
+export type Style = 'plain' | 'careful' | 'kind';
 
 /** Plays one game to the end (deed bought, bankrupt, or `maxDays`). */
 export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): GameState {
@@ -51,6 +52,7 @@ function serveSeller(s: GameState, cat: Catalog, style: Style): void {
     const tier = v.temper === 0 ? 1 : 0;
     while (!v.done && !v.haggled && v.patience > 1) G.haggle(s, tier);
   }
+  if (style === 'kind' && !v.haggled && s.gum > 400) G.sweeten(s, 0);
   if (v.done) return;
   // everything at once when it is affordable and fits (it may be discounted) …
   const all = G.quoteBuy(s, cat, v, G.allPicks(v));
@@ -91,7 +93,7 @@ function serveBuyer(s: GameState, cat: Catalog, style: Style): void {
       }
     }
     for (;;) {
-      const result = G.sell(s, cat, [item.uid], v.patience > 1 ? tier : 0);
+      const result = G.sell(s, cat, [item.uid], style === 'kind' ? -1 : v.patience > 1 ? tier : 0);
       if (result === 'refused') tier = Math.max(0, tier - 1);
       else break;
     }

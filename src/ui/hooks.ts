@@ -1,4 +1,6 @@
+import { B } from '../game/balance';
 import { catalog as cat, PARAM_JA } from '../game/catalog';
+import { FACTIONS, RANK_JA, rankOf } from '../game/factions';
 import * as G from '../game/logic';
 import { perkById } from '../game/perks';
 import type { DayOrder, GameState } from '../game/state';
@@ -52,7 +54,40 @@ export function morningExtras(g: GameState): string {
   const perks = g.perks.length
     ? `<p class="news-perks"><span>商才</span>${g.perks.map((id) => `<i title="${esc(perkById(id).text)}">${esc(perkById(id).name)}</i>`).join('')}</p>`
     : '';
-  return order + perks;
+  const ranked = FACTIONS.filter((f) => G.favorRank(g, f.id) > 0);
+  const houses = ranked.length ? `<p class="news-perks news-houses"><span>派閥</span>${ranked.map((f) => `<i class="fac f-${f.id}">${f.ja} ${'★'.repeat(G.favorRank(g, f.id))}</i>`).join('')}</p>` : '';
+  return order + perks + houses;
+}
+
+// ---------------------------------------------------------------- the houses
+
+/** Under the reputation: one pip per house, lit by rank. */
+export function houseDots(g: GameState): string {
+  return `<span class="house-dots" id="house-dots" aria-hidden="true">${FACTIONS.map((f) => `<i class="f-${f.id} r${G.favorRank(g, f.id)}"></i>`).join('')}</span>`;
+}
+
+/** The houses: each one's regard for the shop, and what it grants. */
+export function housesModal(g: GameState): string {
+  const rows = FACTIONS.map((f) => {
+    const pts = g.favor[f.id];
+    const rank = G.favorRank(g, f.id);
+    const from = rank === 0 ? 0 : B.favorRanks[rank - 1];
+    const next = B.favorRanks[rank];
+    const fill = next ? (pts - from) / (next - from) : 1;
+    return `<div class="house r${rank}">
+        <span class="fac f-${f.id}">${f.ja}</span>
+        <span class="house-main"><b>${f.boon}<em>${RANK_JA[rank]}</em></b>
+          <span class="house-bar"><i style="transform:scaleX(${fill.toFixed(3)})"></i></span>
+          <small>${rank > 0 ? `いま：${f.text(rank)}` : ''}${rank > 0 && next ? '<br />' : ''}${next ? `次：${f.text(rank + 1)}` : ''}</small></span>
+        <span class="house-n"><b>${num(pts)}</b>${next ? `<small>/${next}</small>` : '<small>MAX</small>'}</span>
+      </div>`;
+  }).join('');
+  return `<div class="modal" id="modal-houses" data-ui><div class="modal-box">
+    <h2 class="modal-title"><small>HOUSES</small>派閥の評価</h2>
+    <p class="hint">お客さんは 5 つの派閥のどれかに属しています。取引がまとまると、その派閥の評価が上がります。交渉で<b>値引きして売る</b>・<b>色をつけて買う</b>と、大きく上がります。強気の値で通すと上がらず、怒らせると下がります。</p>
+    <div class="houses">${rows}</div>
+    <div class="actions one">${btn('modal-close', '閉じる', { cls: 'primary' })}</div>
+  </div></div>`;
 }
 
 /** After a rent payment: pick one of three knacks. It stays up until one is chosen. */
@@ -80,7 +115,13 @@ export function perkHelp(g: GameState): string {
 
 // ---------------------------------------------------------------- what just changed (called after every redraw)
 
-const seen = { day: -1, orderDone: false, combo: 0, sold: 0, visitors: 0 };
+const seen = { day: -1, orderDone: false, combo: 0, sold: 0, visitors: 0, favor: '' };
+const favorKey = (g: GameState): string => FACTIONS.map((f) => g.favor[f.id]).join(',');
+let favorWas: Record<string, number> = {};
+const keepFavor = (g: GameState): void => {
+  seen.favor = favorKey(g);
+  favorWas = { ...g.favor };
+};
 
 export function hookEffects(g: GameState): void {
   const root = ctx.root;
@@ -92,7 +133,29 @@ export function hookEffects(g: GameState): void {
     seen.combo = g.combo;
     seen.sold = g.totals.sold;
     seen.visitors = g.queue.length;
+    keepFavor(g);
     return;
+  }
+  // a house's regard moved: say so by the customer's name, and make a show of a new rank
+  if (favorKey(g) !== seen.favor) {
+    for (const f of FACTIONS) {
+      const was = favorWas[f.id] ?? 0;
+      const now = g.favor[f.id];
+      if (now === was) continue;
+      const plate = root.querySelector('.plate') ?? '#hud-rep';
+      window.setTimeout(() => fx.text(`${f.ja} ${now > was ? '+' : '−'}${Math.abs(now - was)}`, plate, { kind: now > was ? 'gain' : 'dmg', size: 18 }), 520);
+      const rank = rankOf(now);
+      if (rank > rankOf(was)) {
+        window.setTimeout(() => {
+          audio.sfx('event');
+          haptic('heavy');
+          void fx.banner(`${f.ja}・${RANK_JA[rank]}`, { sub: `${f.boon}：${f.text(rank)}`, ms: 1500 });
+          const dots = root.querySelector('#house-dots');
+          if (dots) fx.burst('stars', dots, { count: 12 });
+        }, 1200);
+      }
+    }
+    keepFavor(g);
   }
   // an unusual customer steps up: the routine breaks
   if (g.queue.length > seen.visitors) {

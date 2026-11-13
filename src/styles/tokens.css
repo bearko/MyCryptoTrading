@@ -25,6 +25,12 @@
   --c-int: var(--cool);
   --c-agi: var(--leaf);
   --c-hp: #c9973a;
+  /* the five houses */
+  --c-suzaku: var(--hot);
+  --c-seiryu: var(--cool);
+  --c-genbu: var(--violet);
+  --c-byakko: var(--paper);
+  --c-koryu: var(--gum);
 
   /* type */
   --f-display: 'Dela Gothic One', 'Hiragino Kaku Gothic ProN', sans-serif;

@@ -1,4 +1,5 @@
 import type { Param, Role } from './catalog';
+import type { FactionId } from './factions';
 import type { PerkId } from './perks';
 
 export interface StockItem {
@@ -42,8 +43,10 @@ export interface Visitor {
   offers: Offer[];
   /** seller: discount for taking everything they brought at once (0.1 = 10% off); 0 after a partial buy */
   bundleRate: number;
-  /** a seller's prices can be talked down only once */
+  /** a seller's prices can be bargained over only once */
   haggled: boolean;
+  /** seller: how that bargain went — 0 none, 1–2 the shop added to the price (a kind tier), −1 to −3 it talked the price down */
+  nego: number;
   /** buyer */
   want: Want;
   /** buyer: what they can still spend */
@@ -53,6 +56,8 @@ export interface Visitor {
   mood: 'neutral' | 'happy' | 'annoyed';
   /** the customer is leaving: sent away, everything bought, budget spent, or out of patience */
   done: boolean;
+  /** the house the hero belongs to (null for a hero without one) */
+  faction: FactionId | null;
   /** deals closed with this customer (a customer who leaves with none breaks the streak) */
   deals: number;
   /** an unusual customer: 大富豪 / 急ぎの旅人 / 収集家 */
@@ -185,6 +190,8 @@ export interface GameState {
   /** 商才 owned, and the three on offer after a rent payment (pick one) */
   perks: PerkId[];
   perkOffer: PerkId[] | null;
+  /** each house's regard for the shop, in points (ranks at B.favorRanks) */
+  favor: Record<FactionId, number>;
   /** what the last sale added on top: the streak bonus, and an order's reward (for the screen; 0 when none) */
   last: { bonus: number; orderReward: number };
   totals: { sold: number; bought: number; bestSale: number; deepest: number; orders: number; bestCombo: number };

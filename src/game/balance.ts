@@ -58,6 +58,22 @@ export const B = {
   /** selling: markup over the fair price, and how often it is accepted (in between: a straight line) */
   markupTiers: [0, 0.15, 0.3, 0.5],
   markupChance: [1, 0.8, 0.5, 0.22],
+  /** a kind price: this much under the fair price when selling, or over the asking price when buying. Never refused */
+  generousTiers: [0.1, 0.2],
+  /** a house's regard for one deal: at a plain price, at each kind price, and after driving a hard bargain */
+  favorDeal: 1,
+  favorGenerous: [5, 10],
+  favorHard: 0,
+  /** a customer who storms off costs their house this much */
+  favorAngry: 2,
+  /** regard needed for ranks 1–3 */
+  favorRanks: [40, 100, 200],
+  /** what a house grants, per rank: customers a day, buyers' budgets, sellers' asking prices, the odds of a bargain, rarity */
+  boonVisitors: 1,
+  boonBudget: 0.08,
+  boonAsk: 0.04,
+  boonChance: 0.04,
+  boonRarity: 1,
   /** reputation for a sale: at the fair price or under, up to +30%, above that */
   saleRep: [1, 0, -1],
 
@@ -130,7 +146,7 @@ export const B = {
   rentGrowth: 1.3,
   rentEvery: 7,
   grace: 1,
-  deedPrice: 22000,
+  deedPrice: 26000,
 } as const;
 
 export const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日'];

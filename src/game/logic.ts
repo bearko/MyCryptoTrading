@@ -3,6 +3,7 @@ import type { Catalog, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randRange } from './rng';
 import { ROTATED, sameCells, type Shape } from './shapes';
+import { factionOfName, noFavor, rankOf, type FactionId } from './factions';
 import { PERKS, type PerkId } from './perks';
 import { emptySummary, type DayEvent, type DayOrder, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
 
@@ -20,15 +21,37 @@ export function itemValue(cat: Catalog, itemId: number, cond: number): number {
 
 /** What a customer is asked to pay at a markup tier. */
 export function salePrice(cat: Catalog, stock: StockItem, tier: number): number {
-  return Math.round(itemValue(cat, stock.itemId, stock.cond) * B.retail * (1 + B.markupTiers[tier]));
+  return Math.round(itemValue(cat, stock.itemId, stock.cond) * B.retail * (1 + markupOf(tier)));
 }
+/** A price tier as a rate: 0 and up are markups over the fair price; −1 and −2 are the kind prices under it. */
+export const markupOf = (tier: number): number => (tier >= 0 ? B.markupTiers[tier] : -B.generousTiers[-tier - 1]);
+/** Every tier a sale can be priced at, from the kindest to the dearest. */
+export const SALE_TIERS: number[] = [...B.generousTiers.map((_, i) => -(i + 1)).reverse(), ...B.markupTiers.map((_, i) => i)];
 
 export const disposePrice = (cat: Catalog, stock: StockItem): number => Math.round(itemValue(cat, stock.itemId, stock.cond) * B.disposeRate);
 export const discountedAsk = (ask: number, tier: number): number => Math.max(1, Math.round(ask * (1 - B.discountTiers[tier])));
 
 function chance(s: GameState, base: number, temper: number): number {
   if (base >= 1) return 1;
-  return clamp(base + B.temperMod[temper] + (s.rep - 50) / B.repDivisor, 0.05, 0.95);
+  return clamp(base + B.temperMod[temper] + (s.rep - 50) / B.repDivisor + B.boonChance * favorRank(s, 'byakko'), 0.05, 0.95);
+}
+
+/** How often this customer accepts a price tier, before the budget comes into it. */
+export const tierChance = (s: GameState, v: Visitor, tier: number): number =>
+  chance(s, markupBase(markupOf(tier)) + (tier > 0 && hasPerk(s, 'tagger') ? B.perkTagger : 0), v.temper);
+
+// ---------------------------------------------------------------- the houses
+
+/** A house's rank with the shop: 0–3. */
+export const favorRank = (s: GameState, id: FactionId): number => rankOf(s.favor[id]);
+
+/** What a house thinks of a deal: more for a kind price, nothing for a hard bargain. */
+export const saleFavor = (tier: number): number => (tier < 0 ? B.favorGenerous[-tier - 1] : tier >= 2 ? B.favorHard : B.favorDeal);
+export const buyFavor = (v: Visitor): number => (v.nego > 0 ? B.favorGenerous[v.nego - 1] : v.nego <= -2 ? B.favorHard : B.favorDeal);
+
+function addFavor(s: GameState, v: Visitor, delta: number): void {
+  if (!v.faction || delta === 0) return;
+  s.favor[v.faction] = Math.max(0, s.favor[v.faction] + delta);
 }
 export const hasPerk = (s: GameState, id: PerkId): boolean => s.perks.includes(id);
 export const discountChance = (s: GameState, v: Visitor, tier: number): number => chance(s, B.discountChance[tier] + (hasPerk(s, 'talker') ? B.perkTalker : 0), v.temper);
@@ -166,7 +189,7 @@ export const visitorsFor = (rep: number): number => B.visitorsBase + Math.floor(
 export function visitorsExpected(s: GameState): number {
   const event = s.event.id === 'caravan' ? B.caravanVisitors : s.event.id === 'rain' ? B.rainVisitors : 0;
   const late = s.lateOpen && !hasPerk(s, 'nightowl') ? B.lateOpenLoss : 0;
-  return Math.max(B.visitorsMin, visitorsFor(s.rep) + event + (hasPerk(s, 'regular') ? 1 : 0) - late);
+  return Math.max(B.visitorsMin, visitorsFor(s.rep) + event + (hasPerk(s, 'regular') ? 1 : 0) + B.boonVisitors * favorRank(s, 'suzaku') - late);
 }
 export const shelfCost = (s: GameState): number | null => B.shelfCost[s.shelfLevel] ?? null;
 
@@ -177,6 +200,7 @@ export function addRep(s: GameState, delta: number): void {
 // ---------------------------------------------------------------- new game and mornings
 
 export function rollRarity(s: GameState, heroBonus: number): number {
+  heroBonus += B.boonRarity * favorRank(s, 'koryu');
   return (
     1 +
     pickWeighted(s, [
@@ -304,6 +328,7 @@ export function newGame(seed: number, cat: Catalog): GameState {
     order: null,
     perks: [],
     perkOffer: null,
+    favor: noFavor(),
     last: { bonus: 0, orderReward: 0 },
     totals: { sold: 0, bought: 0, bestSale: 0, deepest: 0, orders: 0, bestCombo: 0 },
   };
@@ -329,6 +354,8 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
     temper,
     patience: B.temperPatience[temper],
     haggled: false,
+    nego: 0,
+    faction: factionOfName(hero.faction),
     mood: 'neutral' as const,
     done: false,
     offers: [] as Offer[],
@@ -378,7 +405,7 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
       const item = pick(s, cat.itemsByRarity[rollRarity(s, heroBonus)]);
       const cond = pickWeighted(s, B.condWeights);
       const hurry = s.event.id === 'bargain' ? B.bargainAsk : 1;
-      offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi) * hurry)) });
+      offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi) * hurry * (1 - B.boonAsk * favorRank(s, 'genbu')))) });
     }
     const bundleRate = count >= 2 ? B.bundleRates[pickWeighted(s, B.bundleWeights)] : 0;
     return { ...base, kind: 'sell', offers, bundleRate, want: { type: 'any' }, budget: 0, line: lines.sellOpen(s, temper) };
@@ -412,7 +439,7 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
   }
   // some customers carry enough for two or three goods; rarer heroes more often
   const goods = 1 + pickWeighted(s, [B.budgetCountWeights[0], B.budgetCountWeights[1] + heroBonus * 4, B.budgetCountWeights[2] + heroBonus * 4]);
-  const budget = Math.round(ref * B.retail * randRange(s, 1.05, 1.55) * (1 + heroBonus * 0.05) * goods * demand);
+  const budget = Math.round(ref * B.retail * randRange(s, 1.05, 1.55) * (1 + heroBonus * 0.05) * goods * demand * (1 + B.boonBudget * favorRank(s, 'seiryu')));
   return { ...base, kind: 'buy', want, budget, line: lines.buyOpen(s, want) };
 }
 
@@ -445,6 +472,7 @@ function strike(s: GameState, v: Visitor, refusal: string): void {
     v.done = true;
     v.line = lines.leaveAngry(v.temper);
     addRep(s, B.angryLeaveRep);
+    addFavor(s, v, -B.favorAngry);
     s.today.walkouts += 1;
     s.combo = 0;
   } else {
@@ -524,6 +552,7 @@ export function buy(s: GameState, cat: Catalog, picks: readonly number[]): boole
   s.today.bought += taken.length;
   s.last = { bonus: 0, orderReward: 0 };
   dealClosed(s, v);
+  addFavor(s, v, buyFavor(v));
   orderProgress(s, 'buyCount', taken.length);
   s.totals.bought += taken.length;
   v.offers = v.offers.filter((_, i) => !chosen.has(i));
@@ -545,6 +574,7 @@ export function haggle(s: GameState, tier: number): boolean {
   if (rand(s) < discountChance(s, v, tier)) {
     for (const o of v.offers) o.ask = discountedAsk(o.ask, tier);
     v.haggled = true;
+    v.nego = -(tier + 1);
     v.mood = 'neutral';
     v.line = lines.haggleOk(v.temper);
     addRep(s, B.discountRep[tier]);
@@ -552,6 +582,18 @@ export function haggle(s: GameState, tier: number): boolean {
   }
   strike(s, v, lines.haggleNg(v.temper));
   return false;
+}
+
+/** Adds to everything the seller still has (a kind tier: 0 or 1). Never refused; it takes the place of haggling. */
+export function sweeten(s: GameState, tier: number): boolean {
+  const v = currentVisitor(s);
+  if (!v || v.done || v.kind !== 'sell' || v.haggled || !(tier in B.generousTiers)) return false;
+  for (const o of v.offers) o.ask = Math.max(o.ask + 1, Math.round(o.ask * (1 + B.generousTiers[tier])));
+  v.haggled = true;
+  v.nego = tier + 1;
+  v.mood = 'happy';
+  v.line = lines.sweetened(v.temper);
+  return true;
 }
 
 // ---------------------------------------------------------------- selling to a customer
@@ -612,6 +654,7 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
     s.today.revenue += quote.paid + bonus;
     s.today.sold += uids.length;
     dealClosed(s, v);
+    addFavor(s, v, saleFavor(tier));
     orderProgress(s, 'sellCount', uids.length);
     orderProgress(s, 'earn', quote.paid + bonus);
     if (s.order?.kind === 'sellParam') orderProgress(s, 'sellParam', params.filter((ps) => ps.includes(s.order!.param!)).length);
@@ -625,7 +668,7 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
       v.done = true;
       v.line = lines.dealBuyer(v.temper);
     } else {
-      v.line = lines.moreBuyer(v.temper);
+      v.line = tier < 0 ? lines.kindPrice(v.temper) : lines.moreBuyer(v.temper);
     }
     return 'sold';
   }
