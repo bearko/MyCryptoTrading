@@ -35,8 +35,7 @@ export function scene(v: Visitor | null, opening: boolean, far: { html: string; 
         <b class="plate-name ${long}">${esc(hero.ja)}</b>
         <span class="plate-sub"><em class="temper t${v.temper}">${TEMPER_JA[v.temper]}</em><span class="pips" id="pips" aria-label="我慢 ${v.patience}">${pipsHtml(v)}</span></span>
       </div>
-      ${far.html}
-      <div class="bubble" id="bubble" data-live></div>`;
+      ${far.html}`;
   }
   return `<section class="scene ${v ? '' : 'empty'}" id="scene" style="--far-rows:${far.rows}">
     <div class="scene-bg" style="background-image:url('${cat.backdrop}')"></div>
@@ -49,7 +48,23 @@ export function scene(v: Visitor | null, opening: boolean, far: { html: string; 
 
 // ---------------------------------------------------------------- the speech bubble (typed out)
 
-const typing = { key: '', timer: 0, hide: 0 };
+/**
+ * The customer's line: on the left, clear of the face. It is said once and goes away — a newcomer's first line
+ * comes before the slip, and the slip opens when the line is done (a tap on the bubble skips ahead).
+ * It sits in the root, not in the scene, so that a later line can show over the slip for a moment.
+ */
+export const bubbleHtml = (): string => '<div class="bubble" id="bubble" data-live data-act="bubble" data-sfx="none" role="button" aria-label="せりふ（タップで閉じる）"></div>';
+
+const typing = { key: '', timer: 0, hide: 0, open: 0 };
+
+/** how long a line takes to type out (matches `type`) */
+const typeMs = (text: string): number => (display.still ? 0 : 120 + [...text].length * 34 + (text.match(/[、。！？]/g)?.length ?? 0) * 116);
+
+/** Puts the line away now (the slip was opened by hand, or the bubble was tapped). */
+export function hushBubble(): void {
+  window.clearTimeout(typing.hide);
+  ctx.root.querySelector('#bubble')?.classList.add('fade');
+}
 
 function type(el: HTMLElement, text: string, pitch: number, delay: number): void {
   window.clearTimeout(typing.timer);
@@ -135,9 +150,14 @@ export function sceneEffects(g: GameState, opening: boolean): void {
   if (!v || !bubble) {
     window.clearTimeout(typing.timer);
     window.clearTimeout(typing.hide);
+    window.clearTimeout(typing.open);
+    typing.open = 0;
     typing.key = '';
     return;
   }
+  // the bubble hangs from the top-left corner of the scene
+  const sceneEl = ctx.root.querySelector<HTMLElement>('#scene');
+  if (sceneEl) bubble.style.top = `${Math.round(sceneEl.getBoundingClientRect().top - ctx.root.getBoundingClientRect().top) + 10}px`;
   const fresh = seenCust !== ui.custKey;
   let arrive = 0;
   if (fresh) {
@@ -159,22 +179,47 @@ export function sceneEffects(g: GameState, opening: boolean): void {
   const text = ui.beat ? '………' : v.line;
   const key = `${ui.custKey}|${text}`;
   const retyped = key !== typing.key || !bubble.firstChild;
+  const startIn = display.still ? 0 : Math.max(0, arrive - 120);
   if (retyped) {
     typing.key = key;
-    type(bubble, text, TEMPER_PITCH[v.temper] ?? 1, display.still ? 0 : Math.max(0, arrive - 120));
+    type(bubble, text, TEMPER_PITCH[v.temper] ?? 1, startIn);
   }
-  // once the customer has walked off, the bubble goes with them
-  if (v.done && !bubble.classList.contains('fade')) {
-    window.clearTimeout(typing.hide);
-    typing.hide = window.setTimeout(() => bubble.classList.add('fade'), 1500);
-  } else if (!v.done && retyped && !ui.beat) {
-    // on a short screen the bubble would hide the customer's face: it steps aside after a while
-    // (a tap on the customer says the line again)
-    const scene = ctx.root.querySelector<HTMLElement>('#scene');
-    if (scene && scene.clientHeight < 250) {
+  const said = startIn + typeMs(text);
+  const chars = [...text].length;
+  // the slip was opened by hand before the greeting was over (or the customer is already leaving)
+  if (ui.greeting && (ui.win.open || v.done)) {
+    ui.greeting = false;
+    window.clearTimeout(typing.open);
+    typing.open = 0;
+    if (!retyped && !v.done) hushBubble();
+  }
+  if (v.done) {
+    // once the customer has walked off, the bubble goes with them
+    if (!bubble.classList.contains('fade')) {
       window.clearTimeout(typing.hide);
-      typing.hide = window.setTimeout(() => bubble.classList.add('fade'), Math.max(0, arrive - 120) + 2200 + [...text].length * 70);
+      typing.hide = window.setTimeout(() => bubble.classList.add('fade'), 1500);
     }
+  } else if (ui.greeting) {
+    // a newcomer: the line first, then the slip
+    if (retyped || !typing.open) {
+      window.clearTimeout(typing.open);
+      const cust = ui.custKey;
+      typing.open = window.setTimeout(() => {
+        typing.open = 0;
+        const now = ctx.s?.phase === 'open' ? G.currentVisitor(ctx.s) : null;
+        if (cust !== ui.custKey || !ui.greeting || !now || now.done) return;
+        ui.greeting = false;
+        ui.win.open = true;
+        hushBubble();
+        audio.sfx('open');
+        ctx.render();
+      }, (retyped ? said : 0) + 450 + chars * 35);
+    }
+  } else if (retyped && !ui.beat) {
+    // a line said mid-deal shows over the slip for as long as it takes to read, then steps aside
+    // (a tap on the customer says it again)
+    window.clearTimeout(typing.hide);
+    typing.hide = window.setTimeout(() => bubble.classList.add('fade'), said + 1100 + chars * 55);
   }
 }
 
@@ -190,4 +235,6 @@ export function resetScene(): void {
   typing.key = '';
   window.clearTimeout(typing.timer);
   window.clearTimeout(typing.hide);
+  window.clearTimeout(typing.open);
+  typing.open = 0;
 }

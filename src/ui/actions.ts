@@ -13,7 +13,7 @@ import { itemTile } from './html';
 import { holdGum, resetHud } from './hud';
 import { anim, centre, flip, flyGhost, locked, nope, pointOn, settle, tok, wait, within } from './motion';
 import { questAct } from './quest';
-import { bubbleShake, custHop, custShake, custThink, OPEN_MS, pipBreak, resetScene, sayAgain } from './scene';
+import { bubbleShake, custHop, custShake, custThink, hushBubble, OPEN_MS, pipBreak, resetScene, sayAgain } from './scene';
 import { display } from './settings';
 import { note } from './toast';
 import { BEAT_MS } from './window';
@@ -43,7 +43,9 @@ function newCustomer(): void {
   ui.tier = 0;
   ui.beat = null;
   ui.struck = null;
-  ui.win.open = true;
+  // the customer speaks first: the slip opens when the line is said (see sceneEffects)
+  ui.win.open = false;
+  ui.greeting = true;
 }
 
 /** A change of scene: the screen is swapped under an ink wipe, and input waits until it is over. */
@@ -479,6 +481,13 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
         custHop();
         sayAgain();
       }
+      break;
+    case 'bubble':
+      // a tap on the line: skip to the slip (a newcomer), or put the line away
+      if (v && !v.done && ui.greeting) {
+        ui.win.open = true;
+        audio.sfx('open');
+      } else hushBubble();
       break;
     case 'win-close':
       ui.win.open = false;

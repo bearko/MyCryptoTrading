@@ -14,7 +14,7 @@ import { hookEffects, perkModal } from './hooks';
 import { destModal, ending, helpModal, inspectModal, leaveModal, menuModal, overModal, settingsModal } from './modals';
 import { nope } from './motion';
 import { questEffects, questScreen } from './quest';
-import { sceneEffects } from './scene';
+import { bubbleHtml, sceneEffects } from './scene';
 import { display } from './settings';
 import { shopScreen } from './shop';
 import { title } from './title';
@@ -38,7 +38,7 @@ function screenHtml(): string {
       if (g.phase === 'shop') ({ top, side } = shopScreen(g));
       else if (g.phase === 'quest') top = questScreen(g);
       else top = front(g, v, ui.lateKey === ui.custKey);
-      html = `${hud(g)}${top}${gridSection(g, side)}${v ? customerWindow(g, v) : ''}`;
+      html = `${hud(g)}${top}${gridSection(g, side)}${v ? customerWindow(g, v) : ''}${v && g.phase === 'open' ? bubbleHtml() : ''}`;
     }
     if (ui.modal === 'inspect') html += inspectModal(g);
     if (ui.modal === 'menu') html += menuModal(g);
