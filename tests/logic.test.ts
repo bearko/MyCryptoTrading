@@ -461,4 +461,79 @@ describe('game rules', () => {
     expect(v.kind).toBe('buy');
     expect(v.budget).toBeGreaterThan(B.rarityValue[2] * B.richBudget);
   });
+  it('a kind price is never refused and earns the regard of the customer\'s house', () => {
+    const s = G.newGame(21, catalog);
+    s.day = 2;
+    G.openShop(s, catalog);
+    until(s, 'sell');
+    const v = G.currentVisitor(s)!;
+    v.faction = 'suzaku';
+    const asks = v.offers.map((o) => o.ask);
+    expect(G.sweeten(s, 1)).toBe(true);
+    v.offers.forEach((o, i) => expect(o.ask).toBeGreaterThan(asks[i]));
+    // it takes the place of haggling
+    expect(G.haggle(s, 0)).toBe(false);
+    expect(G.sweeten(s, 0)).toBe(false);
+    s.gum = 99999;
+    expect(G.buy(s, catalog, [0])).toBe(true);
+    expect(s.favor.suzaku).toBe(B.favorGenerous[1]);
+
+    // selling under the fair price: always accepted, and worth more regard than a plain deal
+    const t = G.newGame(22, catalog);
+    t.day = 2;
+    G.openShop(t, catalog);
+    for (let n = 0; n < 200; n++) {
+      until(t, 'buy');
+      const b = G.currentVisitor(t)!;
+      const item = t.stock.find((x) => G.matches(catalog, b.want, x.itemId));
+      if (item) {
+        b.faction = 'seiryu';
+        b.temper = 2;
+        b.budget = 99999;
+        const kind = G.quoteSale(t, catalog, b, [item.uid], -1);
+        expect(kind.chance).toBe(1);
+        expect(kind.asked).toBeLessThan(G.quoteSale(t, catalog, b, [item.uid], 0).asked);
+        expect(G.sell(t, catalog, [item.uid], -1)).toBe('sold');
+        expect(t.favor.seiryu).toBe(B.favorGenerous[0]);
+        expect(G.saleFavor(0)).toBe(B.favorDeal);
+        expect(G.saleFavor(3)).toBe(B.favorHard);
+        return;
+      }
+      G.pass(t);
+      G.callNext(t, catalog);
+    }
+    throw new Error('no buyer found a good');
+  });
+
+  it('a house grants more with each rank, and an angry customer costs its regard', () => {
+    const s = G.newGame(23, catalog);
+    const before = G.visitorsExpected(s);
+    s.favor.suzaku = B.favorRanks[0];
+    expect(G.favorRank(s, 'suzaku')).toBe(1);
+    expect(G.visitorsExpected(s)).toBe(before + B.boonVisitors);
+    s.favor.suzaku = B.favorRanks[2];
+    expect(G.visitorsExpected(s)).toBe(before + B.boonVisitors * 3);
+
+    s.day = 2;
+    G.openShop(s, catalog);
+    until(s, 'sell');
+    const v = G.currentVisitor(s)!;
+    v.faction = 'genbu';
+    v.haggled = false;
+    v.patience = 1;
+    s.favor.genbu = 5;
+    // the hardest bargain against a stubborn seller, until it fails once
+    v.temper = 2;
+    s.rep = 0;
+    let failed = false;
+    for (let n = 0; n < 50 && !failed; n++) {
+      v.haggled = false;
+      v.done = false;
+      v.patience = 1;
+      failed = !G.haggle(s, 2);
+    }
+    expect(failed).toBe(true);
+    expect(v.done).toBe(true);
+    expect(s.favor.genbu).toBe(5 - B.favorAngry);
+  });
 });

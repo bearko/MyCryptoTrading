@@ -1,7 +1,7 @@
 import type * as G from '../game/logic';
 import type { GameState, SlotId } from '../game/state';
 
-export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick';
+export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses';
 
 /** Screen state that is not part of the saved game. */
 export interface Ui {
@@ -55,7 +55,7 @@ export const ui: Ui = {
   counter: [],
   picked: [],
   tier: 0,
-  win: { x: 6, y: 0, size: 'm', open: false, moved: false },
+  win: { x: 6, y: 0, size: 's', open: false, moved: false },
   greeting: false,
   custKey: 0,
   gridView: 'shelf',
@@ -68,6 +68,9 @@ export const ui: Ui = {
   gearFlash: null,
   lateKey: -1,
 };
+
+/** The slip starts small on a phone (the customer stays in view) and large where there is a mouse and room. */
+export const defaultWinSize = (): 's' | 'l' => (typeof window !== 'undefined' && window.innerWidth >= 700 && window.matchMedia('(hover: hover) and (pointer: fine)').matches ? 'l' : 's');
 
 /** What every module shares: the game, the root element, the cell size, and the way to redraw. */
 export const ctx = {

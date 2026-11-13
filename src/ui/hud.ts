@@ -5,7 +5,7 @@ import type { GameState } from '../game/state';
 import { audio } from './audio';
 import { ctx } from './core';
 import { fx } from './fx';
-import { goalChips } from './hooks';
+import { goalChips, houseDots } from './hooks';
 import { num } from './html';
 import { ICON } from './icons';
 import { anim, rollNumber } from './motion';
@@ -60,10 +60,11 @@ export function hud(g: GameState): string {
     <div class="hud-row">
       <div class="day-tag" id="day-tag"><small>DAY</small><b>${g.day}</b><i>${weekday}</i></div>
       <div class="hud-gum" id="hud-gum" aria-label="所持 GUM"><img src="${cat.icons.gum}" alt="" /><b id="gum-num" data-live>${num(shown.gum)}</b><small>GUM</small></div>
-      <div class="hud-rep" id="hud-rep" aria-label="評判 ${g.rep}">
+      <button class="hud-rep" id="hud-rep" data-act="houses" data-sfx="open" aria-label="評判 ${g.rep}（タップで派閥の評価を見る）">
         <span class="rep-top"><small>評判</small><b id="rep-num">${g.rep}</b></span>
         <span class="rep-stars"><span class="rep-fill" style="width:${stars}%">★★★★★</span>★★★★★</span>
-      </div>
+        ${houseDots(g)}
+      </button>
       <button class="hud-btn" data-act="settings" data-sfx="open" aria-label="設定と遊びかた">${ICON.gearCog}</button>
     </div>
     ${rent}

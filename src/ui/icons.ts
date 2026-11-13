@@ -3,6 +3,8 @@ const svg = (size: number, body: string, box = 24): string => `<svg viewBox="0 0
 
 export const ICON = {
   size: svg(18, '<rect x="2" y="2" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="2" y="9" width="7" height="7" fill="currentColor"/>', 18),
+  nego: svg(18, '<path d="M2 6h11M10 2.500l3.500 3.500-3.500 3.500M16 12H5M8 8.500 4.500 12 8 15.500" fill="none" stroke="currentColor" stroke-width="2.400" stroke-linecap="square"/>', 18),
+  down: svg(22, '<path d="M11 3v13M4.500 10.500 11 17l6.500-6.500" fill="none" stroke="currentColor" stroke-width="3.400" stroke-linecap="square"/>', 22),
   close: svg(18, '<path d="M3 3l12 12M15 3L3 15" stroke="currentColor" stroke-width="3" stroke-linecap="square"/>', 18),
   gearCog: svg(
     22,

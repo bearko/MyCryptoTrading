@@ -1,3 +1,4 @@
+import { noFavor } from './factions';
 import type { GameState } from './state';
 
 const KEY = 'mycryptotrading.save.v4';
@@ -19,6 +20,12 @@ export function load(): GameState | null {
     s.totals.orders ??= 0;
     s.totals.bestCombo ??= 0;
     for (const v of s.queue) v.deals ??= 0;
+    // saves from before the houses
+    s.favor = { ...noFavor(), ...(s.favor ?? {}) };
+    for (const v of s.queue) {
+      v.nego ??= 0;
+      v.faction ??= null;
+    }
     return s;
   } catch {
     return null;

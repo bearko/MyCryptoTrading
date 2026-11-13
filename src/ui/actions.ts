@@ -7,7 +7,7 @@ import * as store from '../game/save';
 import type { GameState, SlotId, Visitor } from '../game/state';
 import { audio, haptic, hapticSettings } from './audio';
 import { offerKey } from './counter';
-import { ctx, ui } from './core';
+import { ctx, defaultWinSize, ui } from './core';
 import { fx } from './fx';
 import { itemTile } from './html';
 import { holdGum, resetHud } from './hud';
@@ -71,7 +71,7 @@ function enterGame(g: GameState | null): void {
     ui.gridView = 'shelf';
     ui.printDay = 0;
     ui.win.moved = false;
-    ui.win.size = 'm';
+    ui.win.size = defaultWinSize();
     closeModal();
     resetHud(g);
     resetScene();
@@ -249,6 +249,22 @@ function haggle(g: GameState, v: Visitor, tier: number): void {
   });
 }
 
+/** A kind word on the price: the seller is paid more than asked. Never refused. */
+function sweeten(g: GameState, v: Visitor, tier: number): void {
+  const old = v.offers.map((o) => o.ask);
+  if (!G.sweeten(g, tier)) return;
+  ui.haggleOpen = false;
+  ui.struck = old;
+  store.save(g);
+  render();
+  audio.sfx('confirm');
+  haptic('light');
+  custHop();
+  const walker = $('.walker');
+  if (walker) fx.burst('stars', pointOn(walker, 0.5, 0.25), { count: 8, color: tok('--gum') });
+  for (const el of ctx.root.querySelectorAll('.offer .ptag')) settle(el);
+}
+
 function doSell(g: GameState, v: Visitor): void {
   ui.modal = 'none';
   const quote = G.quoteSale(g, cat, v, ui.counter, ui.tier);
@@ -272,6 +288,7 @@ function doSell(g: GameState, v: Visitor): void {
       const release = holdGum(1500);
       ui.counter = [];
       ui.tier = 0;
+      ui.haggleOpen = false;
       if (v.done) ui.win.open = false;
       render();
       audio.sfx('stamp');
@@ -491,6 +508,7 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       break;
     case 'win-close':
       ui.win.open = false;
+      ui.haggleOpen = false;
       break;
     case 'win-size':
       // 中 → 小 → 大 → 中
@@ -527,7 +545,16 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       if (v && v.kind === 'sell' && !v.done) buy(g, v, name === 'buy-all' ? G.allPicks(v) : [...ui.picked], el);
       return;
     case 'haggle-open':
-      ui.haggleOpen = true;
+      // the bargaining panel beside the slip: the same button opens and closes it
+      if (!v || v.done) break;
+      ui.haggleOpen = !ui.haggleOpen;
+      audio.sfx(ui.haggleOpen ? 'open' : 'close');
+      break;
+    case 'sweeten':
+      if (v && !v.done) sweeten(g, v, n);
+      return;
+    case 'houses':
+      ui.modal = 'houses';
       break;
     case 'haggle-close':
       ui.haggleOpen = false;
@@ -537,6 +564,8 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       return;
     case 'tier':
       ui.tier = n;
+      // where the panel lies over the slip (no room beside it), it steps aside once the price is chosen
+      if (ui.win.size !== 's') ui.haggleOpen = false;
       render();
       settle($('#win .total'));
       for (const tag of ctx.root.querySelectorAll('#near .ptag')) settle(tag);

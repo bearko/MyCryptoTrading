@@ -529,7 +529,18 @@ html.calm .beat-bar b {
   font-weight: 900;
 }
 .win.mini {
-  width: min(46%, 186px);
+  width: min(54%, 210px);
+}
+/* the bar of a small slip: the kind in two letters, and three buttons that still take a thumb */
+.win.mini .win-kind .wide {
+  display: none;
+}
+.win.mini .win-kind {
+  padding: 1px 6px;
+}
+.win.mini .win-bar {
+  gap: 4px;
+  padding-left: 6px;
 }
 .win.mini .win-grip,
 .win.mini .hint,
@@ -574,4 +585,245 @@ html.calm .beat-bar b {
   white-space: normal;
   line-height: 1.15;
   font-size: 0.6875rem;
+}
+
+/* ---------- the bar's buttons with a word under the picture (size, bargaining) */
+.win-size,
+.win-nego {
+  width: 44px;
+  padding: 0;
+  gap: 0;
+  align-content: center;
+  line-height: 1;
+}
+.win-size b,
+.win-nego b {
+  font-family: var(--f-body);
+  font-size: 0.625rem;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.win-nego {
+  color: var(--gum);
+}
+.win-nego.on {
+  background: var(--gum);
+  color: var(--ink);
+}
+.win-nego.spent {
+  color: var(--mute);
+}
+.win-nego.spent b {
+  letter-spacing: -0.08em;
+}
+
+/* the price was moved in the bargaining panel: the slip says by how much */
+.sum.tierline {
+  font-size: 0.75rem;
+  color: var(--hot-deep);
+}
+.sum.tierline.kind {
+  color: var(--leaf-deep);
+}
+.sum.tierline b {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 1rem;
+}
+
+/* ---------- a house's mark */
+.fac {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  border: 1.5px solid var(--ink);
+  background: var(--fc, var(--mute));
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-style: normal;
+  font-size: 0.6875rem;
+  font-weight: 900;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+.f-suzaku {
+  --fc: var(--c-suzaku);
+}
+.f-seiryu {
+  --fc: var(--c-seiryu);
+}
+.f-genbu {
+  --fc: var(--c-genbu);
+}
+.f-byakko {
+  --fc: var(--c-byakko);
+}
+.f-koryu {
+  --fc: var(--c-koryu);
+}
+.fac.f-genbu {
+  color: var(--paper);
+}
+
+/* ---------- the bargaining panel: beside the slip, over the customer */
+.nego {
+  position: absolute;
+  z-index: 31;
+  display: flex;
+  flex-direction: column;
+  width: 170px;
+  min-height: 0;
+  box-shadow: 5px 5px 0 var(--ink-50);
+  animation: nego-in 0.24s var(--ease-pop) both;
+  transform-origin: 0 20px;
+}
+@keyframes nego-in {
+  from {
+    opacity: 0;
+    transform: translateX(-14px) scale(0.9);
+  }
+}
+.nego-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding-left: 10px;
+  background: var(--ink);
+  color: var(--gum);
+}
+.nego-bar b {
+  font-family: var(--f-display);
+  font-size: 0.9375rem;
+  letter-spacing: 0.08em;
+}
+.nego-bar small {
+  margin: 0 auto 0 8px;
+  font-size: 0.625rem;
+  font-weight: 900;
+  color: var(--mute);
+}
+.nego-bar .win-btn {
+  height: 40px;
+}
+.nego-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 5px;
+  padding: 7px 8px 9px;
+}
+.nego-h {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 0.8125rem;
+  line-height: 1.2;
+}
+.nego-h small {
+  font-family: var(--f-body);
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--sub);
+  line-height: 1.3;
+}
+.nego-h.kind {
+  margin-top: 3px;
+  padding-top: 6px;
+  border-top: 2px dashed var(--rule);
+}
+.nopts {
+  display: grid;
+  gap: 5px;
+}
+.nopts.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.nopts.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.nopts.three .nopt b {
+  font-size: 0.875rem;
+}
+.nopt {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 3px 1px;
+  border: 2.5px solid var(--ink);
+  background: var(--face, var(--paper-2));
+  box-shadow: 0 3px 0 var(--ink);
+  color: var(--ink);
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out), box-shadow var(--t-press) var(--ease-out);
+}
+.nopt:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.nopt b {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 1.0625rem;
+}
+.nopt small {
+  font-family: var(--f-body);
+  font-size: 0.625rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.nopt.safe {
+  --face: color-mix(in srgb, var(--leaf) 55%, var(--paper));
+}
+.nopt.even {
+  --face: var(--gum-wash);
+}
+.nopt.risky {
+  --face: color-mix(in srgb, var(--hot) 45%, var(--paper));
+}
+.nopt.kind {
+  --face: color-mix(in srgb, var(--cool) 40%, var(--paper));
+}
+.nopt.fair {
+  --face: var(--paper);
+}
+.nopt.on {
+  background: var(--ink);
+  color: var(--gum);
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.nego-note {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--sub);
+}
+.nego-fac {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  margin-top: 2px;
+  padding-top: 6px;
+  border-top: 2px solid var(--ink);
+  font-size: 0.6875rem;
+  font-weight: 900;
+}
+.nego-fac b {
+  margin-left: auto;
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 1.0625rem;
+}
+.nego-fac small {
+  font-size: 0.6875rem;
+  color: var(--sub);
 }

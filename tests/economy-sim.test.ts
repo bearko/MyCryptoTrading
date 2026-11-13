@@ -20,8 +20,9 @@ function measure(style: Style) {
 describe('economy', () => {
   const plain = measure('plain');
   const careful = measure('careful');
-  console.log('plain  ', plain);
-  console.log('careful', careful);
+  console.log('plain  ', JSON.stringify(plain));
+  console.log('careful', JSON.stringify(careful));
+  console.log('kind   ', JSON.stringify(measure('kind')));
 
   it('a careful shopkeeper usually buys the shop in 4–9 weeks', () => {
     expect(careful.won).toBeGreaterThan(0.85);

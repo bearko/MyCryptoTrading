@@ -75,11 +75,17 @@ export function counterBar(g: GameState, v: Visitor | null): string {
     nearLabel = '売る品（タップで棚へ戻す）';
     nearCls = 'drop';
   }
+  // a seller's goods come over in one go: a round button on the counter's edge, between their side and the shop's
+  const takeAll =
+    v && !v.done && v.kind === 'sell' && ui.picked.length < v.offers.length
+      ? `<button class="take-all" id="take-all" data-act="take-all" data-sfx="none" aria-label="お客さんの品を、すべて手前に置く">${ICON.down}</button>`
+      : '';
   const ready = !!v && bellReady(g, v);
   const left = G.visitorsLeft(g);
   const queue = !v ? '' : left > 0 ? `<small class="bell-queue" id="queue" aria-label="このあと ${left} 人">あと<b>${left}</b>人</small>` : '<small class="bell-queue last" id="queue">最後の客</small>';
   return `<div class="ledge" aria-hidden="true"></div>
     <div class="counter ${nearCls}" id="near">
+      ${takeAll}
       <div class="counter-mat">${nearLabel ? `<span class="zone-label">${nearLabel}</span>` : ''}<div class="zone-goods">${near}</div></div>
       <button class="bell ${ready ? 'ring' : ''}" id="bell" data-act="bell" data-sfx="none" ${v ? '' : 'tabindex="-1"'} aria-label="${!v || v.done ? '次のお客さんを呼ぶ' : 'このお客さんを帰して、次のお客さんを呼ぶ'}">${ICON.bell}${queue}</button>
     </div>`;
