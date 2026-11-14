@@ -594,6 +594,9 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       return;
 
     // ---- a good's detail and menu windows
+    case 'dispose-no':
+      ui.confirmDispose = false;
+      break;
     case 'dispose':
     case 'drop':
       if (!ui.sel) break;

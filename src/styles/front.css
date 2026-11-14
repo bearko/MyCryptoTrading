@@ -766,14 +766,21 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  padding: 12px 18px 14px;
+  gap: 12px;
+  padding: 10px 18px 12px;
+  container-type: size;
 }
+/* the button that opens the shop is always in view: when the paper is long, its middle scrolls */
 .morning .cta {
+  flex: 0 0 auto;
   max-width: 300px;
   animation: late-in 0.3s 0.5s var(--ease-pop) both;
 }
 .news {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
   width: 100%;
   max-width: 360px;
   padding: 10px 14px 11px;
@@ -907,13 +914,19 @@
   font-weight: 900;
   line-height: 1.5;
 }
+/* the stamp sits beside the line it is about (and scrolls with it) */
+.news-late-row {
+  position: relative;
+}
 .stamp.late {
   position: absolute;
-  right: 8px;
-  bottom: 30px;
-  padding: 4px 10px;
+  right: 2px;
+  top: 50%;
+  margin-top: -20px;
+  padding: 2px 8px;
   background: color-mix(in srgb, var(--paper) 70%, transparent);
-  font-size: 1.0625rem;
+  font-size: 0.9375rem;
+  line-height: 1.2;
   text-align: center;
   transform: rotate(-12deg);
   animation: stamp-late 0.4s 0.75s var(--ease-pop) both;
@@ -1437,5 +1450,64 @@ html.calm .take-all svg {
 @keyframes skip-hint {
   from {
     opacity: 0.55;
+  }
+}
+
+/* ---------- the morning paper on a short screen: its middle scrolls, and everything is set a little smaller */
+.news-mast,
+.news-foot {
+  flex: 0 0 auto;
+}
+.news-body {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  /* a shade at an edge that has more behind it */
+  background:
+    linear-gradient(var(--paper), var(--paper)) top / 100% 14px no-repeat local,
+    linear-gradient(var(--paper), var(--paper)) bottom / 100% 14px no-repeat local,
+    linear-gradient(var(--ink-50), transparent) top / 100% 7px no-repeat scroll,
+    linear-gradient(transparent, var(--ink-50)) bottom / 100% 7px no-repeat scroll;
+}
+@container (max-height: 400px) {
+  .morning {
+    gap: 9px;
+    padding: 6px 14px 9px;
+  }
+  .news {
+    padding: 7px 12px 8px;
+  }
+  .news-mast b {
+    font-size: 1.1875rem;
+  }
+  .news-main {
+    gap: 9px;
+    margin-top: 6px;
+  }
+  .news-icon {
+    width: 46px;
+    height: 46px;
+  }
+  .news-icon svg {
+    width: 30px;
+    height: 30px;
+  }
+  .news h2 {
+    font-size: 1.25rem;
+  }
+  .news-lead {
+    margin-top: 5px;
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+  .news-foot {
+    margin-top: 5px;
+    padding-top: 3px;
+  }
+  .morning .btn.big {
+    min-height: 50px;
+    font-size: 1.125rem;
   }
 }

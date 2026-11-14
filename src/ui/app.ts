@@ -141,7 +141,13 @@ export function mount(el: HTMLElement): void {
     act(ui.modal === 'pick' ? 'gear-back' : 'modal-close', undefined, null);
   });
 
+  // a new touch: whatever click was being waited out is over
+  window.addEventListener('pointerdown', () => (ctx.swallowClick = false), true);
   el.addEventListener('click', (event) => {
+    if (ctx.swallowClick) {
+      ctx.swallowClick = false;
+      return;
+    }
     const hit = event.target as HTMLElement;
     // a tap on the dark around a window closes it (not the ones that ask a question)
     if (hit.classList.contains('modal') && ctx.busy === 0 && ui.modal !== 'over' && ui.modal !== 'leave' && ui.modal !== 'dest') {

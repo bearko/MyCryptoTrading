@@ -16,6 +16,9 @@
 - 伝票の中は「品と値・合計・買う／売る」だけ。値を動かす操作は、帯の「交渉」ボタンで開く窓（`window.ts` の `negoPanel`、`ui.haggleOpen`）に置く。買い客の予算は値付けで動く（安くした分だけ増え、高くした分だけ減る。`logic.ts` の `budgetAt`）。売り客の品をまとめて手前に移すのは、カウンターの縁の、青くて小さな四角いボタン（`counter.ts`）。伝票のはじめの大きさは、スマホ＝小・PC＝大（`core.ts` の `defaultWinSize`）。
 - 派閥（朱雀・青龍・玄武・白虎・黄竜）の評価と恩恵は `src/game/factions.ts` と `logic.ts`（`favorRank`・`saleFavor`・`buyFavor`・`sweeten`）、画面は `hooks.ts`（一覧・演出）。数字は `balance.ts`。くわしくは `docs/GAME_DESIGN.md` の 4.13。
 - 客は取引が成立してもすぐには帰らない（ベル・品をすべて買い取った・予算を使い切った・我慢が尽きた、のどれかで帰る）。
+- 指を離した瞬間（`pointerup`）や長押しで窓を開くときは、`ctx.swallowClick = true` を立てる。同じタッチがあとから送る `click` が、開いたばかりの窓のボタンや外側に当たるのを防ぐ（`drag.ts`・`app.ts`）。タッチでの確認は、Playwright の `has_touch` と `touchscreen.tap` で行う（マウスでは再現しない）。
+- 取り消せない操作（処分・捨てる）の確認ボタンは、最初のボタンと同じ場所に出さない（同じ場所の二度押しは「やめる」になる）。
+- 朝の紙面は、長いときは中ほどがスクロールする。「店を開ける」はいつも見えている。
 - 画面は HTML の文字列を作り、`morphdom` で差分だけ更新する（`src/ui/app.ts` の `render()`）。残す要素には `id` を付ける。新しく入った要素は、出るときの動きが 1 回だけ流れる。エフェクトの層（`.fx-host`）は `#app` の外にある。
 - 画面の部品は `src/ui/` に分かれている：`hud`・`scene`（客）・`counter`・`window`（伝票）・`grid`（棚とウォレット）・`front`（朝・夜・シャッター）・`shop`・`gear`・`modals`・`title`・`settings`・`drag`、操作と演出の進行は `actions.ts`。クエストは `src/ui/quest.ts` と `src/ui/quest/`（表示用の状態 `view`、演出の再生 `play`、描画 `render`）。CSS は `src/styles/`。
 - 店にいるあいだ、品は棚・ウォレット・装備のあいだをドラッグで移せる（タブの上で 1 秒待つとタブが開く。`src/ui/drag.ts`、ルールは `night.ts` の `transfer`・`equip`・`unequip`）。品の向きは 0〜3（90° ずつ）。
