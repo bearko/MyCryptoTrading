@@ -7,7 +7,16 @@ import type { GameState } from '../src/game/state';
 
 /** crafty: careful, and puts goods through the pot whenever that makes something worth more than what goes in. */
 /** plain: fair prices. careful: haggles and marks up. kind: pays a little more and sells a little under, for the houses' regard. */
-export type Style = 'plain' | 'careful' | 'kind' | 'crafty';
+export type Style = 'plain' | 'careful' | 'kind' | 'crafty' | 'partisan';
+
+/** partisan: sides with two houses (kind to them), and drives hard bargains with their rivals. */
+const FRIENDS = ['suzaku', 'seiryu'];
+const FOES = ['genbu', 'byakko'];
+/** The way a customer is treated: a style, seen through the customer's house. */
+function stance(style: Style, v: { faction: string | null }): Style {
+  if (style !== 'partisan') return style;
+  return v.faction && FRIENDS.includes(v.faction) ? 'kind' : v.faction && FOES.includes(v.faction) ? 'careful' : 'plain';
+}
 
 /** Plays one game to the end (deed bought, bankrupt, or `maxDays`). */
 export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): GameState {
@@ -82,8 +91,9 @@ function craftAll(s: GameState, cat: Catalog): void {
   }
 }
 
-function serveSeller(s: GameState, cat: Catalog, style: Style): void {
+function serveSeller(s: GameState, cat: Catalog, base: Style): void {
   const v = G.currentVisitor(s)!;
+  const style = stance(base, v);
   const reserve = G.daysToRent(s) <= 1 && !s.owned ? s.rent : 0;
   if ((style === 'careful' || style === 'crafty') && v.temper < 2) {
     const tier = v.temper === 0 ? 1 : 0;
@@ -109,8 +119,9 @@ function serveSeller(s: GameState, cat: Catalog, style: Style): void {
   if (!v.done) G.pass(s);
 }
 
-function serveBuyer(s: GameState, cat: Catalog, style: Style): void {
+function serveBuyer(s: GameState, cat: Catalog, base: Style): void {
   const v = G.currentVisitor(s)!;
+  const style = stance(base, v);
   // sells one good after another while the customer stays and something fits what they have left
   while (!v.done) {
     const fits = s.stock

@@ -335,3 +335,52 @@ button.hud-rep {
 .news-houses .fac {
   margin-right: 4px;
 }
+
+/* the houses at odds: a rival's name, and a house that has turned against the shop */
+.house-rival {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--f-body);
+  font-size: 0.625rem;
+  font-weight: 900;
+  color: var(--sub);
+}
+.house-rival .fac {
+  font-size: 0.625rem;
+  padding: 0 5px;
+}
+.house.low {
+  background: color-mix(in srgb, var(--hot) 12%, var(--paper));
+}
+.house.low .house-bar i {
+  background: var(--hot);
+}
+.house.low .house-n b,
+.house.low .house-main em {
+  color: var(--hot);
+}
+.house-dots i.r-1,
+.house-dots i.r-2 {
+  background: var(--ink-3);
+  box-shadow: inset 0 -2px 0 var(--hot);
+}
+.house-dots i.r-2 {
+  background: var(--hot);
+}
+.news-houses .fac.low {
+  background: var(--ink);
+  color: var(--hot);
+}
+.nego-fac.rival {
+  margin-top: 2px;
+  opacity: 0.8;
+}
+.nego-grudge {
+  margin: 3px 0 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--sub);
+}
