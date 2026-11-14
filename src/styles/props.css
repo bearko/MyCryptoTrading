@@ -403,3 +403,102 @@ html.calm .prop.bed.ready svg {
 .svc.locked .svc-main {
   opacity: 0.55;
 }
+
+/* goods ordered by telephone: the parameter line to send for, and the parcel that waits by the telephone */
+.supply-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 2px 0 4px;
+}
+.supply-line small {
+  margin-right: 4px;
+  font-size: 0.6875rem;
+  font-weight: 900;
+  color: var(--sub);
+}
+.supply-line .seek {
+  min-height: 34px;
+  border-color: var(--ink);
+  background: var(--paper);
+  color: var(--sub);
+  font-size: 0.75rem;
+}
+.supply-line .seek.on {
+  box-shadow: var(--shadow-sm);
+}
+#modal-network .rc-sub small {
+  margin-left: 8px;
+  font-family: var(--f-body);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--sub);
+}
+.parcel {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 6px;
+  padding: 4px 10px 4px 4px;
+  border: 3px solid var(--ink);
+  background: var(--gum);
+  box-shadow: 4px 4px 0 var(--ink-50);
+  color: var(--ink);
+  cursor: pointer;
+  animation: parcel-in 0.5s var(--ease-pop) both, parcel-nudge 2.4s 1s ease-in-out infinite;
+}
+.parcel svg {
+  width: 36px;
+  height: 36px;
+}
+.parcel .p-ink {
+  fill: var(--ink);
+}
+.parcel .p-fill {
+  fill: var(--c-hp);
+}
+.parcel .p-paper {
+  fill: var(--paper);
+}
+.parcel b {
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 0.8125rem;
+}
+.parcel em {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 22px;
+  padding: 0 5px;
+  background: var(--hot);
+  color: var(--paper);
+  font-style: normal;
+  font-family: var(--f-num);
+  font-size: 0.875rem;
+  line-height: 22px;
+  text-align: center;
+}
+@keyframes parcel-in {
+  from {
+    transform: translateY(-18px) scale(0.8);
+    opacity: 0;
+  }
+}
+@keyframes parcel-nudge {
+  0%,
+  86%,
+  100% {
+    transform: none;
+  }
+  90% {
+    transform: rotate(-4deg);
+  }
+  95% {
+    transform: rotate(4deg);
+  }
+}
+html.calm .parcel {
+  animation: none;
+}

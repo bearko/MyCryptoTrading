@@ -100,4 +100,48 @@ describe('the guild', () => {
     expect(s.trust).toBe(0);
     expect(C.craftsLeft(s)).toBe(left + 1);
   });
+
+  it('goods ordered by telephone come the next morning, and wait at the door until there is room', () => {
+    const s = G.newGame(55, catalog);
+    s.gum = 1000;
+    expect(N.supplyBlock(s, 'epic', 'trust')).toBe('short');
+    expect(G.placeSupply(s, catalog, 'lot', 'agi', 'gum')).toBe(true);
+    expect(s.gum).toBe(1000 - B.supplies.lot.gum);
+    // one order at a time
+    expect(N.supplyBlock(s, 'rare', 'gum')).toBe('busy');
+    expect(G.placeSupply(s, catalog, 'rare', 'int', 'gum')).toBe(false);
+    expect(s.parcel).toHaveLength(0);
+
+    s.phase = 'evening';
+    G.endDay(s);
+    expect(s.supply).toBeNull();
+    expect(s.parcel).toHaveLength(B.supplies.lot.count);
+    for (const x of s.parcel) {
+      const item = catalog.itemById.get(x.itemId)!;
+      expect(item.params).toContain('agi');
+      expect(item.rarity).toBeLessThanOrEqual(2);
+    }
+    // with trust, and an epic this time: it costs no GUM
+    s.trust = B.supplies.epic.trust;
+    const gum = s.gum;
+    expect(G.placeSupply(s, catalog, 'epic', 'phy', 'trust')).toBe(true);
+    expect(s.gum).toBe(gum);
+    expect(s.trust).toBe(0);
+    expect(catalog.itemById.get(s.supply!.goods[0].itemId)!.rarity).toBe(4);
+    expect(catalog.itemById.get(s.supply!.goods[0].itemId)!.limited).toBeFalsy();
+
+    // an empty shelf takes everything in; a full shop takes nothing, and the goods stay at the door
+    s.stock = [];
+    const before = s.parcel.length;
+    expect(G.unpackAll(s, catalog)).toBe(before);
+    expect(s.stock).toHaveLength(before);
+    expect(s.parcel).toHaveLength(0);
+    s.parcel.push({ itemId: s.stock[0].itemId, cond: 1, paid: 0 });
+    s.rows = 0;
+    s.wallet.items = [];
+    const room = G.gridOf(s, catalog, 'wallet');
+    for (let y = 0; y < room.rows; y++) for (let x = 0; x < room.cols; x++) s.wallet.items.push({ uid: 9000 + y * 20 + x, itemId: catalog.itemsByRarity[1].find((i) => i.shape === 's1')!.id, cond: 1, paid: 0, x, y, rot: 0 });
+    expect(G.unpack(s, catalog, 0)).toBe(false);
+    expect(s.parcel).toHaveLength(1);
+  });
 });

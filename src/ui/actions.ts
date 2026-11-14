@@ -2,7 +2,7 @@ import { perkById } from '../game/perks';
 import { catalog as cat } from '../game/catalog';
 import { craft, CRAFT_MAX } from '../game/craft';
 import * as G from '../game/logic';
-import { buyService, serviceById, type ServiceId } from '../game/network';
+import { buyService, serviceById, supplyById, type ServiceId, type SupplyId } from '../game/network';
 import * as N from '../game/night';
 import * as Q from '../game/quest';
 import * as store from '../game/save';
@@ -704,6 +704,37 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
     case 'seek':
       g.seek = g.seek === arg ? '' : (arg as 'phy' | 'int' | 'agi');
       break;
+    case 'supply-param':
+      ui.supplyParam = arg as 'phy' | 'int' | 'agi';
+      break;
+    case 'supply': {
+      const [id, pay] = arg.split(':') as [SupplyId, 'gum' | 'trust'];
+      if (!G.placeSupply(g, cat, id, ui.supplyParam, pay)) {
+        nope(el);
+        return;
+      }
+      store.save(g);
+      render();
+      audio.sfx('buy');
+      haptic('medium');
+      note(`${supplyById(id).name}を頼みました。明日の朝に届きます`);
+      return;
+    }
+    case 'parcel':
+      ui.modal = 'parcel';
+      break;
+    case 'unpack': {
+      const taken = arg === 'all' ? G.unpackAll(g, cat) : G.unpack(g, cat, n) ? 1 : 0;
+      if (taken === 0) {
+        note('棚にもウォレットにも、置く場所がありません');
+        return;
+      }
+      audio.sfx('drop');
+      haptic('light');
+      if (g.parcel.length === 0) closeModal();
+      else if (arg === 'all') note(`${taken} 個を受け取りました。残りは置く場所がありません`);
+      break;
+    }
     case 'untrash':
       if (!G.fromTrash(g, cat, n)) {
         note('棚にもウォレットにも、戻す場所がありません');

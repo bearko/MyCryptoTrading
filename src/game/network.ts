@@ -1,6 +1,7 @@
 import { B } from './balance';
 import type { GameState } from './state';
 
+
 /**
  * The merchants' guild, on the other end of the shop's telephone: lasting favours for the shop.
  * Each can be paid for in GUM, or with the guild's trust — which grows a little every day.
@@ -56,3 +57,29 @@ export function buyService(s: GameState, id: ServiceId, pay: 'gum' | 'trust'): b
 
 /** How much the guild's trust grows each morning (a well-thought-of shop is trusted a little faster). */
 export const trustDaily = (s: GameState): number => B.trustDaily + Math.floor(s.rep / B.trustPerRep);
+
+// ---------------------------------------------------------------- goods to order
+
+/** What the guild sends when asked: goods of the parameter line the shop names, at the door the next morning. */
+export type SupplyId = keyof typeof B.supplies;
+
+export interface Supply {
+  id: SupplyId;
+  name: string;
+  text: string;
+}
+
+export const SUPPLIES: Supply[] = [
+  { id: 'lot', name: '詰め合わせ', text: `コモン〜アンコモンを ${B.supplies.lot.count} 個` },
+  { id: 'rare', name: 'レアの取り寄せ', text: 'レアを 1 個' },
+  { id: 'epic', name: 'エピックの取り寄せ', text: 'エピックを 1 個' },
+];
+
+export const supplyById = (id: SupplyId): Supply => SUPPLIES.find((x) => x.id === id)!;
+
+/** Why an order cannot be placed this way right now ('' when it can): one order at a time. */
+export function supplyBlock(s: GameState, id: SupplyId, pay: 'gum' | 'trust'): '' | 'busy' | 'short' {
+  if (s.supply) return 'busy';
+  const price = B.supplies[id];
+  return (pay === 'gum' ? s.gum < price.gum : s.trust < price.trust) ? 'short' : '';
+}
