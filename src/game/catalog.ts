@@ -87,7 +87,8 @@ export function buildCatalog(data: CatalogData): Catalog {
   const itemsByRarity: Item[][] = [[], [], [], [], [], []];
   // wallets are not ordinary goods: customers do not bring them, the night shop sells them
   // (ids run in lines: 1001 → 2001 → … → 5001, and a line's limited legendary is 5501)
-  for (const item of data.items) item.limited = item.rarity === 5 && item.id % 1000 >= 500;
+  const byId = new Map(data.items.map((item) => [item.id, item]));
+  for (const item of data.items) item.limited = item.rarity === 5 && item.id % 1000 >= 500 && byId.get(item.id - 500)?.series === item.series;
   for (const item of data.items) if (!item.wallet && !item.limited) itemsByRarity[item.rarity].push(item);
   const heroesByRarity: Hero[][] = [[], [], [], [], [], []];
   for (const hero of data.heroes) heroesByRarity[hero.rarity].push(hero);

@@ -80,7 +80,12 @@ function buyerBody(g: GameState, v: Visitor): string {
   return `<div class="win-scroll">${want}<div class="lines">${goods}</div></div>
     <div class="win-foot">
       <div class="sum ${over ? 'bad' : ''}"><span>売上金額</span><b class="total">${gum(q.asked)}</b></div>
-      ${over ? `<div class="sum minor bad"><span>予算オーバー</span><b>${num(q.over)} GUM（受け取りは ${num(q.paid)}）</b></div>` : `<div class="sum minor"><span>予算（残り）${budgetTag()}</span><b>${gum(q.budget)}</b></div>`}
+      ${
+        over
+          ? `<div class="sum minor bad"><span>予算オーバー</span><b>${num(q.over)} GUM（受け取りは ${num(q.paid)}）</b></div>`
+          : // what the customer still has after this sale: how much more can be put on the counter
+            `<div class="sum rest" id="sum-rest"><span>予算の残り${budgetTag()}</span><b><s>${num(q.budget)}</s><i>▶</i>${gum(q.budget - q.asked)}</b></div>`
+      }
       ${ui.tier !== 0 ? `<div class="sum tierline ${ui.tier < 0 ? 'kind' : ''}"><span>${ui.tier < 0 ? '値引き' : '上乗せ'}</span><b>${rateText(G.markupOf(ui.tier))}</b></div>` : ''}
       ${!q.matches ? '<p class="note bad">希望と違う品は受け取ってもらえません。</p>' : q.chance < 1 ? chanceBar(q.chance) : ''}
       ${foot}

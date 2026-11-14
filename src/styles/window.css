@@ -870,3 +870,26 @@ html.calm .beat-bar b {
 .nego-bud span + b {
   margin-left: auto;
 }
+
+/* ---------- selling: what the customer still has once the goods on the counter are paid for */
+.sum.rest {
+  font-size: 0.75rem;
+}
+.sum.rest b {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 1.125rem;
+  color: var(--leaf-deep);
+}
+.sum.rest s {
+  font-size: 0.8125rem;
+  color: var(--sub);
+}
+.sum.rest i {
+  font-style: normal;
+  font-size: 0.5625rem;
+  color: var(--sub);
+}

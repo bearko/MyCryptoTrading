@@ -50,8 +50,17 @@ export function craftBoard(g: GameState): string {
     ? `<p class="pout-text"><b class="pix">${esc(plan.result.ja)}</b><small>${mark(plan.result)}・${COND_JA[plan.cond]}</small><small>相場 ${gum(G.itemValue(cat, plan.result.id, plan.cond))}</small></p>`
     : `<p class="pout-text"><small>${plan.block ? WHY[plan.block] : ''}</small></p>`;
   const left = C.craftsLeft(g);
+  // what the base could turn into with the right partner (a hint to plan by)
+  const lineName = (line: number): string => (C.goodOfLine(cat, line, 1) ?? C.goodOfLine(cat, line, 2) ?? C.goodOfLine(cat, line, 5))?.series ?? '？';
+  const pairs = plan.base && !plan.cross ? C.crossesOfLine(C.lineNo(plan.base)).filter(([, out]) => C.goodOfLine(cat, out, plan.base!.rarity + 1)) : [];
+  const hint = pairs.length
+    ? `<p class="phint"><b>変わり配合</b>${pairs
+        .slice(0, 2)
+        .map(([other, out]) => `${esc(lineName(other))} と ▶ ${g.crosses.includes(C.crossKey(C.lineNo(plan.base!), other)) ? esc(lineName(out)) : '？'}`)
+        .join('　')}${pairs.length > 2 ? `　ほか ${pairs.length - 2}` : ''}</p>`
+    : '';
   const chips = plan.base
-    ? `<span class="pchip ${plan.have >= plan.need ? 'ok' : 'ng'}">相手 <b>${plan.have}</b>/${plan.need} 点</span>${plan.match ? '<span class="pchip ok">相性◎ 品質+1</span>' : ''}${plan.result ? `<span class="pchip ${g.gum >= plan.fee ? '' : 'ng'}">お布施 <b>${num(plan.fee)}</b></span>` : ''}`
+    ? `${plan.cross ? '<span class="pchip cross">変わり配合！ 美品</span>' : ''}<span class="pchip ${plan.have >= plan.need ? 'ok' : 'ng'}">相手 <b>${plan.have}</b>/${plan.need} 点</span>${plan.match && !plan.cross ? '<span class="pchip ok">相性◎ 品質+1</span>' : ''}${plan.result ? `<span class="pchip ${g.gum >= plan.fee ? '' : 'ng'}">お布施 <b>${num(plan.fee)}</b></span>` : ''}`
     : '';
   const used = new Set(ui.craft);
   const mine = [...g.stock, ...g.wallet.items]
@@ -72,6 +81,7 @@ export function craftBoard(g: GameState): string {
       ${result}
     </div>
     ${resultText}
+    ${hint}
     <div class="pinfo">${chips}<span class="pchip ${left === 0 ? 'ng' : ''}">今日あと <b>${left}</b> 回</span>${plan.block && plan.result ? `<span class="pwhy">${WHY[plan.block]}</span>` : ''}</div>
     <div class="pacts">${btn('craft-go', '配合する', { cls: 'primary', disabled: !!plan.block, sfx: 'none' })}${btn('recipes', '配合表', { cls: 'ghost', sfx: 'open' })}</div>
     <div class="pgoods" id="pgoods" aria-label="持ちもの（タップで壺に入れる）">${mine || '<small class="pnone">入れられる品がありません</small>'}</div>
@@ -94,6 +104,20 @@ export function recipesModal(g: GameState): string {
         .map((item) => `<span class="lin ${item.id === plan.base!.id ? 'here' : ''} ${g.made.includes(item.id) ? 'made' : ''}" style="${tone(item)}">${itemTile(item, 'sm')}<small>${esc(item.ja)}</small><em>${mark(item)}</em></span>`)
         .join('<i class="lin-arrow">▶</i>')}</div>`
     : '';
+  // the special pairings: the ones the base in the pot takes part in come first
+  const tile = (line: number): Item | null => C.goodOfLine(cat, line, 1) ?? C.goodOfLine(cat, line, 2) ?? C.goodOfLine(cat, line, 5);
+  const mine = plan.base ? C.lineNo(plan.base) : -1;
+  const crossRows = [...C.CROSSES]
+    .sort((x, y) => Number(y[0] === mine || y[1] === mine) - Number(x[0] === mine || x[1] === mine))
+    .map(([a, b, out]) => {
+      const known = g.crosses.includes(C.crossKey(a, b));
+      const cell = (line: number, hide = false): string => {
+        const item = tile(line);
+        return item ? `<span class="cx-cell ${hide ? 'unknown' : ''}">${hide ? '<b>？</b>' : itemTile(item, 'sm')}<small>${hide ? '？？？' : esc(item.series)}</small></span>` : '';
+      };
+      return `<div class="cx ${known ? 'known' : ''} ${a === mine || b === mine ? 'mine' : ''}">${cell(a)}<i>×</i>${cell(b)}<i>▶</i>${cell(out, !known)}</div>`;
+    })
+    .join('');
   const limited = cat.items.filter((i) => i.limited);
   const got = limited.filter((i) => g.made.includes(i.id)).length;
   const book = limited
@@ -112,15 +136,32 @@ export function recipesModal(g: GameState): string {
         <li><b>相手</b>（1〜2 個）の点の合計が、<b>土台と同じ点</b>に届けば配合できます。安い相手 2 個でも足ります。</li>
         <li>相手がすべて土台と<b>同じ系統</b>（PHY・INT・AGI）なら<b>相性◎</b>。品質が 1 段上がります。</li>
         <li>壺は <b>1 日 ${B.craftPerDay} 回</b>まで。配合のたびに、お布施（できる品の相場の ${Math.round(B.craftFee * 100)}%）を納めます。</li>
+        <li><b>変わり配合</b>：決まった 2 つの系列を合わせると、別の系列の品になります（下の一覧）。</li>
         <li><b>リミテッド</b>（リミテッドレジェンダリー）は、お客さんが持ちこむことはありません。レジェンダリーを土台に、壺で作るしかありません。</li>
       </ul>
       <table class="rc-table"><thead><tr><th>品</th><th>点</th><th>土台にするとできる品</th><th>お布施</th></tr></thead><tbody>${rows}</tbody></table>
       ${line}
+      <h3 class="rc-sub">変わり配合 <em>${g.crosses.length} / ${C.CROSSES.length}</em></h3>
+      <p class="rc-note">決まった 2 つの系列を合わせると、別の系列の品（土台の 1 つ上のレアリティ・必ず美品）になります。どちらを土台にしてもかまいません。できる品は、作ると載ります。</p>
+      <div class="cxbook">${crossRows}</div>
       <h3 class="rc-sub">リミテッド図鑑 <em>${got} / ${limited.length}</em></h3>
       <div class="limbook">${book}</div>
     </div>
     <div class="actions one">${btn('modal-close', '閉じる', { cls: 'primary' })}</div>
   </div></div>`;
+}
+
+/** In a good's details: what the pot can make of it (so that buying it can be weighed against that). */
+export function craftNote(g: GameState, item: Item): string {
+  if (item.wallet) return '';
+  const next = C.nextOf(cat, item);
+  const name = (line: number): string => (C.goodOfLine(cat, line, 1) ?? C.goodOfLine(cat, line, 2) ?? C.goodOfLine(cat, line, 5))?.series ?? '？';
+  const line = C.lineNo(item);
+  const pairs = item.limited ? [] : C.crossesOfLine(line).filter(([, out]) => C.goodOfLine(cat, out, item.rarity + 1));
+  if (!next && pairs.length === 0) return '';
+  const own = next ? `<li>土台にすると ▶ <b>${esc(next.ja)}</b>（${mark(next)}・相手 ${C.pointsOf(item)} 点・お布施 ${num(C.feeOf(next))}）</li>` : '';
+  const cross = pairs.map(([other, out]) => `<li>変わり配合：${esc(name(other))} と ▶ <b>${g.crosses.includes(C.crossKey(line, other)) ? esc(name(out)) : '？？？'}</b></li>`).join('');
+  return `<div class="item-craft"><h4>合成</h4><ul>${own}${cross}<li>相手にすると ${C.pointsOf(item)} 点</li></ul></div>`;
 }
 
 /** Where the board's pieces are, for the show (after a render). */

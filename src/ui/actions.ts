@@ -272,9 +272,9 @@ function doCraft(g: GameState): void {
   }
   render();
   window.setTimeout(() => {
-    audio.sfx(result.first ? 'event' : 'haggleOk');
-    fx.stamp(result.item.limited ? 'LIMITED!' : '配合成功', { x: ctx.root.clientWidth / 2, y: ctx.root.clientHeight * 0.32 }, { size: 42 });
-    if (result.first) void fx.banner(result.item.ja, { sub: result.item.limited ? 'リミテッドレジェンダリーを作った！' : 'はじめて作った品（配合表に載りました）', ms: 1500 });
+    audio.sfx(result.first || result.found ? 'event' : 'haggleOk');
+    fx.stamp(result.item.limited ? 'LIMITED!' : result.cross ? '変わり配合！' : '配合成功', { x: ctx.root.clientWidth / 2, y: ctx.root.clientHeight * 0.32 }, { size: 42 });
+    if (result.first || result.found) void fx.banner(result.item.ja, { sub: result.item.limited ? 'リミテッドレジェンダリーを作った！' : result.found ? '変わり配合を見つけた！（評判 +1）' : 'はじめて作った品（配合表に載りました）', ms: 1500 });
   }, 260);
 }
 
