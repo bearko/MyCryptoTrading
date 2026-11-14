@@ -36,7 +36,8 @@ export function scene(v: Visitor | null, opening: boolean, far: { html: string; 
         <b class="plate-name ${long}">${esc(hero.ja)}</b>
         <span class="plate-sub">${v.faction ? `<em class="fac f-${v.faction}">${factionById(v.faction).ja}</em>` : ''}<em class="temper t${v.temper}">${TEMPER_JA[v.temper]}</em><span class="pips" id="pips" aria-label="我慢 ${v.patience}">${pipsHtml(v)}</span></span>
       </div>
-      ${far.html}`;
+      ${far.html}
+      ${ui.greeting && !v.done ? '<button class="greet-skip" id="greet-skip" data-act="bubble" data-sfx="none" aria-label="せりふを飛ばして、伝票を開く"><span>タップでスキップ</span></button>' : ''}`;
   }
   return `<section class="scene ${v ? '' : 'empty'}" id="scene" style="--far-rows:${far.rows}">
     <div class="scene-bg" style="background-image:url('${cat.backdrop}')"></div>
@@ -61,10 +62,15 @@ const typing = { key: '', timer: 0, hide: 0, open: 0 };
 /** how long a line takes to type out (matches `type`) */
 const typeMs = (text: string): number => (display.still ? 0 : 120 + [...text].length * 34 + (text.match(/[、。！？]/g)?.length ?? 0) * 116);
 
-/** Puts the line away now (the slip was opened by hand, or the bubble was tapped). */
+/** Puts the line away now (the slip was opened by hand, or the bubble was tapped). A line cut short is not said again. */
 export function hushBubble(): void {
   window.clearTimeout(typing.hide);
-  ctx.root.querySelector('#bubble')?.classList.add('fade');
+  window.clearTimeout(typing.timer);
+  const el = ctx.root.querySelector<HTMLElement>('#bubble');
+  if (!el) return;
+  // skipped before the first letter: it still counts as said (a tap on the customer says it again)
+  if (!el.firstChild) el.innerHTML = '<p class="bubble-text"></p>';
+  el.classList.add('fade');
 }
 
 function type(el: HTMLElement, text: string, pitch: number, delay: number): void {
@@ -179,6 +185,15 @@ export function sceneEffects(g: GameState, opening: boolean): void {
   }
   const text = ui.beat ? '………' : v.line;
   const key = `${ui.custKey}|${text}`;
+  // the first line was skipped (a tap, or the slip was opened by hand): it is put away at once and not typed again
+  if (ui.greeting && ui.win.open && !v.done && key === typing.key) {
+    ui.greeting = false;
+    window.clearTimeout(typing.open);
+    typing.open = 0;
+    hushBubble();
+    ctx.root.querySelector('#greet-skip')?.remove();
+    return;
+  }
   const retyped = key !== typing.key || !bubble.firstChild;
   const startIn = display.still ? 0 : Math.max(0, arrive - 120);
   if (retyped) {
@@ -192,7 +207,7 @@ export function sceneEffects(g: GameState, opening: boolean): void {
     ui.greeting = false;
     window.clearTimeout(typing.open);
     typing.open = 0;
-    if (!retyped && !v.done) hushBubble();
+    ctx.root.querySelector('#greet-skip')?.remove();
   }
   if (v.done) {
     // once the customer has walked off, the bubble goes with them
