@@ -3,6 +3,7 @@ import { catalog as cat, SLOT_JA } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState, Visitor } from '../game/state';
 import { audio, hapticSettings } from './audio';
+import { craftNote } from './craft';
 import { atHome, ctx, ui } from './core';
 import { btn, esc, gum, itemCard, itemDetail, itemTile, num } from './html';
 import { ICON } from './icons';
@@ -33,6 +34,7 @@ export function inspectModal(g: GameState): string {
     <div class="modal-scroll">
     ${itemCard(x.itemId, x.cond, `<div class="item-note">仕入れ値 ${num(x.paid)}　定価 ${num(G.salePrice(cat, x, 0))}</div>`)}
     ${itemDetail(item)}
+    ${craftNote(g, item)}
     </div>
     ${foot}
   </div></div>`;
@@ -99,8 +101,8 @@ export function helpModal(): string {
       <li>お客さんの伝票は、上のボタンで大きさを 小 → 大 → 中 と切り替えられます。その右の「交渉」で、値切り・上乗せ・値引きを選ぶ窓が開きます。</li>
       <li>買いに来たお客さんの予算は、値付けで動きます。安くした分だけ増え、高くした分だけ減ります。在庫を早く回したいときは安く、品を残して単価を上げたいときは高く。</li>
       <li>お客さんは 5 つの派閥（朱雀・青龍・玄武・白虎・黄竜）のどれかに属しています。交渉で値引きして売る・色をつけて買うと、その派閥の評価が大きく上がり、評価が貯まると恩恵を受けられます（左上の「評判」をタップで確認）。</li>
-      <li>買い取りの伝票には、品が棚でしめる形（マス目）が出ます。</li>
-      <li>「合成」のタブの壺に、品を 2〜3 個入れると、1 つ目（土台）が 1 つ上のレアリティの品になります。相手の点の合計が土台の点に届けば作れます（くわしくは壺の「配合表」）。1 日 2 回まで、お布施がかかります。</li>
+      <li>買い取りの伝票には、品が棚でしめる形（マス目）が出ます。販売の伝票には、品を置いたあとの「予算の残り」が出ます。</li>
+      <li>「合成」のタブの壺に、品を 2〜3 個入れると、1 つ目（土台）が 1 つ上のレアリティの品になります。相手の点の合計が土台の点に届けば作れます。決まった 2 系列を合わせると別の系列の品になる「変わり配合」もあります（くわしくは壺の「配合表」）。1 日 2 回まで、お布施がかかります。</li>
       <li>お客さんの予算は、ヒーローのレアリティで決まります。エピックやレジェンダリーの品は、買える人が限られます。レジェンダリーのヒーローは大富豪です。</li>
       <li>PC では、横長の画面になります（左に店、右に棚）。品にマウスを乗せると詳細の札、右クリックでメニュー、つまんだまま <b>R</b>（または右クリック）で回転。キーは <b>Space</b>＝ベル、<b>Enter</b>＝決定、<b>Esc</b>＝閉じる、<b>1〜3</b>＝棚・ウォレット・装備。</li>
       <li>閉店後、左のドアから外出できます（一晩に一か所。翌朝はお客さんが ${B.lateOpenLoss} 人減ります）。</li>

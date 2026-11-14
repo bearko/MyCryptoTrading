@@ -90,4 +90,34 @@ describe('the pot', () => {
     for (let r = 1; r < 5; r++) expect(mean(byRarity[r + 1])).toBeGreaterThan(mean(byRarity[r]) * 1.3);
     expect(Math.min(...byRarity[5])).toBeGreaterThanOrEqual(B.richFloor);
   });
+  it('a special pairing turns the base into a good of a third line, in the best condition', () => {
+    // every pairing in the table names lines that exist, and its result has goods to give
+    for (const [a, b, out] of C.CROSSES) {
+      for (const line of [a, b, out]) expect(C.goodOfLine(catalog, line, 1) ?? C.goodOfLine(catalog, line, 2)).toBeTruthy();
+      expect(C.goodOfLine(catalog, out, 3)).toBeTruthy();
+    }
+    expect(new Set(C.CROSSES.map(([a, b]) => C.crossKey(a, b))).size).toBe(C.CROSSES.length);
+
+    // a blade (line 1) with a katana (line 6): twin blades (line 82), one rarity above the base — either way round
+    const { s, uids } = shopWith([[1001, 0], [1006, 1]]);
+    const plan = C.planCraft(s, catalog, uids);
+    expect(plan).toMatchObject({ cross: C.crossKey(1, 6), cond: 2, block: '' });
+    expect(plan.result!.id).toBe(2082);
+    expect(C.planCraft(s, catalog, [uids[1], uids[0]]).result!.id).toBe(2082);
+    const rep = s.rep;
+    const made = C.craft(s, catalog, uids);
+    expect(made).toMatchObject({ ok: true, cross: true, found: true });
+    expect(s.crosses).toEqual([C.crossKey(1, 6)]);
+    expect(s.rep).toBe(rep + B.crossRep);
+
+    // a legendary base comes out as the other line's limited legendary, where it has one
+    const top = shopWith([[5001, 1], [5006, 1]]);
+    expect(C.planCraft(top.s, catalog, top.uids).result!.id).toBe(5582);
+    // without a pairing, the base stays in its own line
+    const plain = shopWith([[1001, 1], [1002, 1]]);
+    expect(C.planCraft(plain.s, catalog, plain.uids)).toMatchObject({ cross: '' });
+    expect(C.planCraft(plain.s, catalog, plain.uids).result!.id).toBe(2001);
+    // an epic never comes out as a limited legendary by the back door
+    expect(C.nextOf(catalog, item(4600))).toBeNull();
+  });
 });

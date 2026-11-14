@@ -22,6 +22,7 @@ export function load(): GameState | null {
     for (const v of s.queue) v.deals ??= 0;
     // saves from before the pot
     s.made ??= [];
+    s.crosses ??= [];
     s.today.crafts ??= 0;
     s.totals.crafts ??= 0;
     // saves from before the houses

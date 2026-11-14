@@ -36,6 +36,8 @@ export const B = {
   craftFee: 0.2,
   /** and it can be used this many times a day */
   craftPerDay: 2,
+  /** finding a special pairing for the first time is talked about */
+  crossRep: 1,
   /** condition: 傷あり / 並品 / 美品 */
   condMult: [0.7, 1, 1.25],
   condWeights: [25, 55, 20],

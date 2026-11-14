@@ -478,3 +478,107 @@ html.calm .pot img {
 #modal-recipes .modal-box {
   min-width: 0;
 }
+
+/* ---------- special pairings */
+.pchip.cross {
+  border-color: var(--gum);
+  background: var(--gum);
+  color: var(--ink);
+  font-weight: 900;
+}
+.phint {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--mute);
+}
+.phint b {
+  margin-right: 6px;
+  padding: 0 5px;
+  background: var(--gum);
+  color: var(--ink);
+  font-weight: 900;
+}
+.rc-note {
+  margin: 0 0 7px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+.cxbook {
+  display: grid;
+  gap: 4px;
+}
+.cx {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 5px;
+  border: 2px dashed var(--rule);
+}
+.cx.known {
+  border: 2px solid var(--ink);
+  background: var(--gum-wash);
+}
+.cx.mine {
+  box-shadow: inset 4px 0 0 var(--gum);
+}
+.cx > i {
+  font-style: normal;
+  font-size: 0.6875rem;
+  font-weight: 900;
+  color: var(--sub);
+}
+.cx-cell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.cx-cell small {
+  overflow: hidden;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.25;
+  word-break: break-all;
+}
+.cx-cell.unknown b {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: var(--rule);
+  color: var(--paper);
+  font-family: var(--f-display);
+  font-weight: 400;
+}
+.cx-cell.unknown small {
+  color: var(--sub);
+}
+
+/* in a good's details: what the pot can make of it */
+.item-craft {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 2px dashed var(--rule);
+}
+.item-craft h4 {
+  display: inline-block;
+  margin: 0 0 4px;
+  padding: 0 7px;
+  background: var(--ink);
+  color: var(--gum);
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 0.75rem;
+}
+.item-craft ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding-left: 1.1em;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}

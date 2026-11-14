@@ -199,6 +199,8 @@ export interface GameState {
   totals: { sold: number; bought: number; bestSale: number; deepest: number; orders: number; bestCombo: number; crafts: number };
   /** every good that has come out of the pot (item ids): the recipe book marks them */
   made: number[];
+  /** the special pairings found so far (their keys, see craft.ts) */
+  crosses: string[];
 }
 
 export const emptySummary = (): DaySummary => ({ revenue: 0, spend: 0, bought: 0, sold: 0, walkouts: 0, crafts: 0 });

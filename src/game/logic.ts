@@ -323,6 +323,7 @@ export function newGame(seed: number, cat: Catalog): GameState {
     last: { bonus: 0, orderReward: 0 },
     totals: { sold: 0, bought: 0, bestSale: 0, deepest: 0, orders: 0, bestCombo: 0, crafts: 0 },
     made: [],
+    crosses: [],
   };
   for (let i = 0; i < B.startStock; i++) {
     const item = pick(s, cat.itemsByRarity[i < 3 ? 1 : 2]);
