@@ -5,7 +5,7 @@ import * as N from '../game/night';
 import { SLOT_IDS, type SlotId } from '../game/state';
 import { craftsLeft } from '../game/craft';
 import { craftBoard } from './craft';
-import { atHome, ctx, hasMouse, isWide, shownGrid, shownTab, sideWidth, ui } from './core';
+import { atHome, ctx, deckWidth, hasMouse, isWide, shownGrid, shownTab, ui } from './core';
 import { esc, glyphs, tone } from './html';
 import { ICON } from './icons';
 
@@ -126,9 +126,10 @@ export function measure(g: GameState): void {
   const cap = Math.max(44, Math.min(58, h * 0.067));
   if (isWide()) {
     // a wide screen: the grid has a column of its own, as tall as the screen under the bar at the top
-    const col = sideWidth() - 34;
-    const tall = h - (root.querySelector<HTMLElement>('#hud')?.offsetHeight ?? 110) - 96;
-    const fit = (cols: number, rows: number): number => Math.floor(Math.max(28, Math.min(col / cols, 66, tall / rows)));
+    // a wide screen: the shelf is a long counter along the bottom, between the bin and the bed
+    const col = deckWidth() - 34;
+    const tall = h * (atHome(g) ? 0.27 : 0.36);
+    const fit = (cols: number, rows: number): number => Math.floor(Math.max(26, Math.min(col / cols, 60, tall / rows)));
     boardMin = 0;
     if (atHome(g)) {
       const shelf = G.gridOf(g, cat, 'shelf');
@@ -144,7 +145,7 @@ export function measure(g: GameState): void {
     // the shelf sets the room; the wallet tab fits itself into the same room
     const shelf = G.gridOf(g, cat, 'shelf');
     const share = h < 700 ? 0.38 : 0.44;
-    const shelfCell = Math.floor(Math.max(28, Math.min((w - 24) / shelf.cols, cap, (h * share - 40) / shelf.rows)));
+    const shelfCell = Math.floor(Math.max(36, Math.min((w - 24) / shelf.cols, cap, (h * share - 40) / shelf.rows)));
     boardMin = shelf.rows * shelfCell + 18;
     ctx.cell = grid === shelf || shownGrid(g) === 'shelf' ? shelfCell : Math.floor(Math.max(28, Math.min((w - 24) / grid.cols, cap, (shelf.rows * shelfCell) / grid.rows)));
     return;

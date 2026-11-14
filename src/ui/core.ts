@@ -1,7 +1,7 @@
 import type * as G from '../game/logic';
 import type { GameState, SlotId } from '../game/state';
 
-export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes';
+export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash';
 
 /** Screen state that is not part of the saved game. */
 export interface Ui {
@@ -82,16 +82,13 @@ export const isWide = (): boolean => typeof window !== 'undefined' && typeof win
 /** True where there is a mouse (hover cards, the right button and the keys are worth mentioning). */
 export const hasMouse = (): boolean => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-/** The width of the shop's side of the screen: the whole screen on a phone, the left column on a wide screen. */
-export function stageWidth(): number {
-  const root = ctx.root;
-  if (!isWide()) return root.clientWidth;
-  return root.querySelector<HTMLElement>('#front, #shop, #quest')?.clientWidth || root.clientWidth - sideWidth();
-}
-/** The width of the shelf's column on a wide screen (the same sum as the CSS: clamp(380px, 40%, 500px)). */
-export const sideWidth = (): number => Math.max(380, Math.min(500, appWidth() * 0.4));
+/** The width of the shop's side of the screen (the slip and its panel keep inside it): the whole screen. */
+export const stageWidth = (): number => ctx.root.clientWidth;
 /** How wide the game is on a wide screen (it is narrower on the title screen, so this is not read off the page). */
-const appWidth = (): number => Math.min(document.documentElement.clientWidth, 1180) - 6;
+const appWidth = (): number => Math.min(document.documentElement.clientWidth, 1280) - 6;
+/** The width of the things beside the shelf on a wide screen (the bin, the bed), and of the shelf between them. */
+export const PROP_W = 128;
+export const deckWidth = (): number => appWidth() - PROP_W * 2;
 
 /**
  * The slip starts small on a phone (the customer stays in view). With a mouse and room it starts large;
@@ -99,7 +96,7 @@ const appWidth = (): number => Math.min(document.documentElement.clientWidth, 11
  */
 export function defaultWinSize(): 's' | 'm' | 'l' {
   if (typeof window === 'undefined') return 's';
-  if (isWide()) return appWidth() - sideWidth() >= 640 ? 'l' : 'm';
+  if (isWide()) return 'l';
   return window.innerWidth >= 700 && window.matchMedia('(hover: hover) and (pointer: fine)').matches ? 'l' : 's';
 }
 

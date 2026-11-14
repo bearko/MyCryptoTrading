@@ -74,6 +74,11 @@ function enterGame(g: GameState | null): void {
     ui.win.moved = false;
     ui.win.size = defaultWinSize();
     ui.craft = [];
+    // a save from before the wide shelf: its goods are laid out again, once
+    if (g && !g.wide) {
+      G.repackShelf(g, cat);
+      store.save(g);
+    }
     closeModal();
     resetHud(g);
     resetScene();
@@ -649,6 +654,26 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       if (ui.sel && ui.craft.length < CRAFT_MAX && !ui.craft.includes(ui.sel.uid)) ui.craft.push(ui.sel.uid);
       ui.gridView = 'craft';
       closeModal();
+      break;
+    case 'bed':
+      // the bed: sleeping ends the day (once the shop is shut)
+      if (g.phase === 'evening') {
+        endDay(g);
+        return;
+      }
+      nope(document.getElementById('bed'));
+      note(g.phase === 'open' ? '眠るのは、店を閉めてから' : 'いまは朝です');
+      return;
+    case 'trash':
+      ui.modal = 'trash';
+      break;
+    case 'untrash':
+      if (!G.fromTrash(g, cat, n)) {
+        note('棚にもウォレットにも、戻す場所がありません');
+        return;
+      }
+      audio.sfx('drop');
+      if (g.trash.length === 0) closeModal();
       break;
     case 'dispose-no':
       ui.confirmDispose = false;

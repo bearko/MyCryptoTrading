@@ -199,6 +199,12 @@ export interface GameState {
   totals: { sold: number; bought: number; bestSale: number; deepest: number; orders: number; bestCombo: number; crafts: number };
   /** every good that has come out of the pot (item ids): the recipe book marks them */
   made: number[];
+  /** goods dropped in the bin: they can be taken back until the night, when they are carried off and paid for */
+  trash: StockItem[];
+  /** what the night's collection will pay for them */
+  trashGum: number;
+  /** the shelf is laid out wide (saves from before are repacked once) */
+  wide: boolean;
   /** the special pairings found so far (their keys, see craft.ts) */
   crosses: string[];
 }

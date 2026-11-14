@@ -5,7 +5,9 @@ export const B = {
   startStock: 4,
 
   /** the shelf is a grid; each good takes a footprint on it. Each upgrade adds a row */
-  gridCols: 6,
+  /** the shelf is a long counter under the shop: this deep, and two columns wider with each level (`rows` in the state is that level) */
+  shelfDepth: 3,
+  shelfColsPerLevel: 2,
   startRows: 4,
   shelfCost: [200, 400, 700, 1100],
 

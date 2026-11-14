@@ -25,7 +25,8 @@ export function btn(act: string, label: string, opts: { cls?: string; arg?: stri
 export function tone(item: Item): string {
   const a = item.params[0];
   const b = item.params[1] ?? a;
-  return `--ta:var(--c-${a});--tb:var(--c-${b})`;
+  // (the fill says the parameter line; the frame says the rarity)
+  return `--ta:var(--c-${a});--tb:var(--c-${b});--rar:var(--r${item.rarity})`;
 }
 
 /** A shape for each parameter line, so the lines can be told apart without colour. */

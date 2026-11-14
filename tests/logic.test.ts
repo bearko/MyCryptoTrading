@@ -187,11 +187,11 @@ describe('game rules', () => {
         const key = `${item.x + cx},${item.y + cy}`;
         expect(seen.has(key)).toBe(false);
         seen.add(key);
-        expect(item.x + cx).toBeLessThan(B.gridCols);
+        expect(item.x + cx).toBeLessThan(G.gridOf(s, catalog, 'shelf').cols);
         expect(item.y + cy).toBeLessThan(s.rows);
       }
     }
-    expect(seen.size).toBeGreaterThan(B.gridCols * s.rows * 0.6); // the shelf really fills up
+    expect(seen.size).toBeGreaterThan(G.gridOf(s, catalog, 'shelf').cols * B.shelfDepth * 0.6); // the shelf really fills up
     // a good cannot be moved onto another one; moving it to where it already is works
     const [a, b] = s.stock;
     const bCell = G.shapeOf(catalog, b.itemId, b.rot).cells[0];
@@ -333,7 +333,7 @@ describe('game rules', () => {
     expect(s.stock).toHaveLength(0);
     expect(s.wallet.items[0]).toMatchObject({ uid, x: 2, y: 1 });
     // a cell it does not fit is refused, and nothing moves
-    expect(N.transfer(s, catalog, 'wallet', uid, 'shelf', B.gridCols - 1, s.rows - 1)).toBe(false);
+    expect(N.transfer(s, catalog, 'wallet', uid, 'shelf', G.gridOf(s, catalog, 'shelf').cols - 1, B.shelfDepth - 1)).toBe(false);
     expect(s.wallet.items).toHaveLength(1);
     // wallet → gear, then gear → wallet at a cell
     expect(N.equip(s, catalog, uid, 'arm', 'wallet')).toBe('ok');
@@ -575,5 +575,47 @@ describe('game rules', () => {
       G.callNext(s, catalog);
     }
     throw new Error('no buyer found a good');
+  });
+  it('the bin holds goods until the night: they can be taken back, or are carried off and paid for', () => {
+    const s = G.newGame(41, catalog);
+    const x = s.stock[0];
+    const count = s.stock.length;
+    const price = G.disposePrice(catalog, x);
+    expect(G.toTrash(s, catalog, x.uid)).toBe(true);
+    expect(s.stock.length).toBe(count - 1);
+    expect(s.trashGum).toBe(price);
+    // changed my mind
+    expect(G.fromTrash(s, catalog, x.uid)).toBe(true);
+    expect(s.stock.length).toBe(count);
+    expect(s.trashGum).toBe(0);
+    // left in: the night's collection pays for it
+    G.toTrash(s, catalog, x.uid);
+    const gum = s.gum;
+    s.phase = 'evening';
+    G.endDay(s);
+    expect(s.trash).toEqual([]);
+    expect(s.gum).toBe(gum + price);
+  });
+
+  it('the shelf is a wide counter, and an old deep one is laid out again without losing goods', () => {
+    const s = G.newGame(42, catalog);
+    expect(G.gridOf(s, catalog, 'shelf')).toMatchObject({ cols: B.startRows * B.shelfColsPerLevel, rows: B.shelfDepth });
+    // an old save: goods stacked four deep in six columns
+    const ids = s.stock.map((x) => x.itemId);
+    s.stock.forEach((x, i) => Object.assign(x, { x: i % 6, y: 3, rot: 0 }));
+    s.wide = false;
+    G.repackShelf(s, catalog);
+    expect(s.wide).toBe(true);
+    expect([...s.stock, ...s.wallet.items].map((x) => x.itemId).sort()).toEqual([...ids].sort());
+    const grid = G.gridOf(s, catalog, 'shelf');
+    const seen = new Set<string>();
+    for (const x of s.stock) {
+      for (const [cx, cy] of G.shapeOf(catalog, x.itemId, x.rot).cells) {
+        expect(x.x + cx).toBeLessThan(grid.cols);
+        expect(x.y + cy).toBeLessThan(grid.rows);
+        expect(seen.has(`${x.x + cx},${x.y + cy}`)).toBe(false);
+        seen.add(`${x.x + cx},${x.y + cy}`);
+      }
+    }
   });
 });

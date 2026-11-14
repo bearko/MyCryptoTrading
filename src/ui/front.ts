@@ -97,6 +97,7 @@ function nightCard(g: GameState): string {
     <p class="night-hint">${g.wentOut ? '今夜はもう外出しました。' : '左のドアから外出できます（一晩に一か所。翌朝は開店が遅れます）。'}</p>
     <div class="actions three night-acts">${deed}${shelfBtn}${btn('gear', '装備', { cls: 'small', sfx: 'open' })}</div>
     <div class="cta">${btn('endday', `${ICON.moon}眠って翌日へ`, { cls: 'primary big', sfx: 'none' })}</div>
+    <p class="night-bedhint">右下の寝床をクリックすると、眠って翌日になります。</p>
   </div>`;
 }
 

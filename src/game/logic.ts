@@ -94,7 +94,7 @@ export function walletSize(s: GameState, cat: Catalog): { cols: number; rows: nu
 }
 
 export function gridOf(s: GameState, cat: Catalog, id: GridId): Grid {
-  return id === 'shelf' ? { cols: B.gridCols, rows: s.rows, items: s.stock } : { ...walletSize(s, cat), items: s.wallet.items };
+  return id === 'shelf' ? { cols: s.rows * B.shelfColsPerLevel, rows: B.shelfDepth, items: s.stock } : { ...walletSize(s, cat), items: s.wallet.items };
 }
 
 /** Cells taken, as "x,y" keys. `ignoreUid` leaves one good out (the one being moved). */
@@ -323,6 +323,9 @@ export function newGame(seed: number, cat: Catalog): GameState {
     last: { bonus: 0, orderReward: 0 },
     totals: { sold: 0, bought: 0, bestSale: 0, deepest: 0, orders: 0, bestCombo: 0, crafts: 0 },
     made: [],
+    trash: [],
+    trashGum: 0,
+    wide: true,
     crosses: [],
   };
   for (let i = 0; i < B.startStock; i++) {
@@ -713,6 +716,61 @@ export function dispose(s: GameState, cat: Catalog, uid: number, id: GridId = 's
   return true;
 }
 
+// ---------------------------------------------------------------- the bin
+
+/** Into the bin: nothing is paid yet, and it can be taken back until the night. */
+export function toTrash(s: GameState, cat: Catalog, uid: number, id: GridId = 'shelf'): boolean {
+  const items = id === 'shelf' ? s.stock : s.wallet.items;
+  const index = items.findIndex((x) => x.uid === uid);
+  if (index < 0) return false;
+  const [x] = items.splice(index, 1);
+  s.trash.push(x);
+  s.trashGum += disposePrice(cat, x);
+  return true;
+}
+
+/** Back out of the bin, onto the shelf (or into the wallet when the shelf is full). */
+export function fromTrash(s: GameState, cat: Catalog, uid: number): boolean {
+  const index = s.trash.findIndex((x) => x.uid === uid);
+  if (index < 0) return false;
+  const x = s.trash[index];
+  for (const id of ['shelf', 'wallet'] as const) {
+    const g = gridOf(s, cat, id);
+    const slot = findSlotIn(g, cat, x.itemId);
+    if (!slot) continue;
+    s.trash.splice(index, 1);
+    s.trashGum = Math.max(0, s.trashGum - disposePrice(cat, x));
+    g.items.push({ ...x, ...slot });
+    return true;
+  }
+  return false;
+}
+
+/** The night's collection: what is in the bin is carried off and paid for. */
+function emptyTrash(s: GameState): void {
+  s.gum += s.trashGum;
+  s.today.revenue += s.trashGum;
+  s.trash = [];
+  s.trashGum = 0;
+}
+
+/** Lays an old (deep) shelf out again as a wide one. What cannot be placed goes to the wallet, or is sold off. */
+export function repackShelf(s: GameState, cat: Catalog): void {
+  const goods = [...s.stock].sort((a, b) => shapeOf(cat, b.itemId, 0).cells.length - shapeOf(cat, a.itemId, 0).cells.length);
+  s.stock = [];
+  for (const x of goods) {
+    const shelf = findSlotIn(gridOf(s, cat, 'shelf'), cat, x.itemId);
+    if (shelf) {
+      s.stock.push({ ...x, ...shelf });
+      continue;
+    }
+    const bag = findSlotIn(gridOf(s, cat, 'wallet'), cat, x.itemId);
+    if (bag) s.wallet.items.push({ ...x, ...bag });
+    else s.gum += itemValue(cat, x.itemId, x.cond);
+  }
+  s.wide = true;
+}
+
 export function upgradeShelf(s: GameState): boolean {
   const cost = shelfCost(s);
   if (cost === null || s.gum < cost) return false;
@@ -739,6 +797,8 @@ export function continueAfterWin(s: GameState): void {
 /** Closes the day: collects rent on rent days, then starts the next morning. */
 export function endDay(s: GameState): void {
   if (s.phase !== 'evening') return;
+  // (before the rent is counted: what the bin pays can help with it)
+  emptyTrash(s);
   s.nightNote = '';
   if (isRentDay(s)) {
     if (s.gum >= s.rent) {

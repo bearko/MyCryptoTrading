@@ -30,6 +30,8 @@ type ItemDrag = {
   rot: number;
   /** turned while held (R, or the right button): the turn it had when picked up, and where the pointer is */
   rot0?: number;
+  /** over the bin */
+  bin?: boolean;
   px?: number;
   py?: number;
   /** the tab the good is being held over, and the timer that opens it */
@@ -293,6 +295,17 @@ function onMove(event: PointerEvent): void {
   const counter = d.grid === 'shelf' && !d.slot ? root.querySelector('#near.drop') : null;
   const overCounter = !!counter && inside(counter.getBoundingClientRect(), event.clientX, event.clientY);
   counter?.classList.toggle('hot', overCounter);
+  // the bin beside the shelf: a good of the shop's can be dropped in it
+  const bin = root.querySelector<HTMLElement>('#trash');
+  const overBin = !!bin && bin.offsetParent !== null && inside(bin.getBoundingClientRect(), event.clientX, event.clientY);
+  bin?.classList.toggle('hot', overBin);
+  d.bin = overBin;
+  if (overBin) {
+    d.ok = !d.slot && d.uid >= 0 && !ui.counter.includes(d.uid);
+    d.ghost!.classList.toggle('bad', !d.ok);
+    root.querySelector<HTMLElement>('#preview')?.classList.remove('show');
+    return;
+  }
   if (tab === 'gear') {
     // over the gear: the place under the finger lights up when the good fits it
     const place = overCounter ? null : slotAt(event.clientX, event.clientY);
@@ -441,7 +454,21 @@ function onUp(event: PointerEvent): void {
     if (why) note(why, 'info');
   };
   const home = (): HTMLElement | null => document.getElementById(d.slot ? `gslot-${d.slot}` : `item-${d.uid}`);
-  if (counter && v && !v.done && v.kind === 'buy' && inside(counter.getBoundingClientRect(), event.clientX, event.clientY)) {
+  root.querySelector('#trash')?.classList.remove('hot');
+  if (d.bin) {
+    // dropped in the bin: it waits there until the night
+    if (d.ok && G.toTrash(g, cat, d.uid, d.grid)) {
+      ui.craft = ui.craft.filter((uid) => uid !== d.uid);
+      ctx.render();
+      const el = root.querySelector<HTMLElement>('#trash');
+      audio.sfx('drop');
+      haptic('medium');
+      if (el) fx.burst('dust', pointOn(el, 0.5, 0.3), { count: 10 });
+    } else {
+      ctx.render();
+      bad(home(), d.slot ? '装備中の品は、外してから捨ててください' : '');
+    }
+  } else if (counter && v && !v.done && v.kind === 'buy' && inside(counter.getBoundingClientRect(), event.clientX, event.clientY)) {
     const stock = g.stock.find((x) => x.uid === d.uid);
     if (stock && !G.matches(cat, v.want, stock.itemId)) {
       G.refuseGood(g);
