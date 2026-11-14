@@ -51,7 +51,7 @@ export function itemCard(itemId: number, cond: number, extra = ''): string {
     <div class="item-body">
       <div class="item-name">${esc(item.ja)}</div>
       <div class="tags">${labels(item)}</div>
-      <div class="tags"><span class="tag rar r${item.rarity}">${RARITY_JA[item.rarity]}</span><span class="tag cond c${cond}">${COND_JA[cond]}</span></div>
+      <div class="tags"><span class="tag rar r${item.rarity}">${item.limited ? 'リミテッド' : RARITY_JA[item.rarity]}</span><span class="tag cond c${cond}">${COND_JA[cond]}</span></div>
       <div class="item-val">相場 ${gum(G.itemValue(cat, itemId, cond))}</div>
       ${extra}
     </div>
@@ -75,4 +75,10 @@ export function itemDetail(item: Item): string {
     <div class="kv"><span>スキル</span><b class="pix">${esc(item.skill)}</b></div>
     <p class="skill-text">${esc(item.skillText)}</p>
   </div>`;
+}
+
+/** A good's footprint on the grid, drawn small (so that room can be made for it before it is bought). */
+export function shapeIcon(itemId: number): string {
+  const shape = G.shapeOf(cat, itemId, 0);
+  return `<span class="shape" style="--w:${shape.w};--h:${shape.h}" role="img" aria-label="${shape.cells.length} マス（横 ${shape.w}・縦 ${shape.h}）">${shape.cells.map(([x, y]) => `<i style="grid-column:${x + 1};grid-row:${y + 1}"></i>`).join('')}</span>`;
 }

@@ -81,6 +81,8 @@ export interface DaySummary {
   bought: number;
   sold: number;
   walkouts: number;
+  /** how many times the pot was used today */
+  crafts: number;
 }
 
 /** The six places gear is worn. */
@@ -194,7 +196,9 @@ export interface GameState {
   favor: Record<FactionId, number>;
   /** what the last sale added on top: the streak bonus, and an order's reward (for the screen; 0 when none) */
   last: { bonus: number; orderReward: number };
-  totals: { sold: number; bought: number; bestSale: number; deepest: number; orders: number; bestCombo: number };
+  totals: { sold: number; bought: number; bestSale: number; deepest: number; orders: number; bestCombo: number; crafts: number };
+  /** every good that has come out of the pot (item ids): the recipe book marks them */
+  made: number[];
 }
 
-export const emptySummary = (): DaySummary => ({ revenue: 0, spend: 0, bought: 0, sold: 0, walkouts: 0 });
+export const emptySummary = (): DaySummary => ({ revenue: 0, spend: 0, bought: 0, sold: 0, walkouts: 0, crafts: 0 });

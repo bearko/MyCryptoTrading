@@ -23,6 +23,7 @@ describe('economy', () => {
   console.log('plain  ', JSON.stringify(plain));
   console.log('careful', JSON.stringify(careful));
   console.log('kind   ', JSON.stringify(measure('kind')));
+  console.log('crafty ', JSON.stringify(measure('crafty')));
 
   it('a careful shopkeeper usually buys the shop in 4–9 weeks', () => {
     expect(careful.won).toBeGreaterThan(0.85);
@@ -33,6 +34,10 @@ describe('economy', () => {
   it('haggling pays: careful play finishes clearly sooner than plain play', () => {
     // (a dear price now shrinks the budget, so a markup trades volume for unit price: the edge comes mostly from haggling when buying)
     expect(careful.median).toBeLessThan(plain.median * 0.95);
+    // the pot adds value: putting goods through it finishes clearly sooner still, without breaking the game open
+    const crafty = measure('crafty');
+    expect(crafty.median).toBeLessThan(careful.median * 0.9);
+    expect(crafty.median).toBeGreaterThan(careful.median * 0.55);
   });
 
   it('playing without haggling is still survivable most of the time', () => {

@@ -10,6 +10,7 @@ import { fx } from './fx';
 import { gearEffects, gearModal, pickModal } from './gear';
 import { gridSection, measure } from './grid';
 import { hud, hudEffects } from './hud';
+import { recipesModal } from './craft';
 import { mountDesk } from './desk';
 import { hookEffects, housesModal, perkModal } from './hooks';
 import { destModal, ending, helpModal, inspectModal, leaveModal, menuModal, overModal, settingsModal } from './modals';
@@ -51,6 +52,7 @@ function screenHtml(): string {
   }
   if (ctx.s?.perkOffer && ctx.s.phase === 'morning' && ui.screen === 'game' && ui.modal === 'none') html += perkModal(ctx.s);
   if (ui.modal === 'houses' && ctx.s) html += housesModal(ctx.s);
+  if (ui.modal === 'recipes' && ctx.s) html += recipesModal(ctx.s);
   if (ui.modal === 'help') html += helpModal();
   if (ui.modal === 'settings') html += settingsModal();
   return html;

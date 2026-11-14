@@ -33,6 +33,15 @@ function cardFor(el: HTMLElement): { key: string; html: string } | null {
     const item = G.findItem(cat, x.itemId);
     return { key: `i${uid}`, html: `${itemCard(x.itemId, x.cond)}<p class="tip-skill"><b>${esc(item.skill)}</b>${esc(item.skillText)}</p>` };
   }
+  // (the goods in and under the pot)
+  const potGood = el.closest<HTMLElement>('.pgood, .pslot:not(.empty)');
+  if (potGood) {
+    const uid = Number(potGood.id.split('-')[1]);
+    const x = s.stock.find((it) => it.uid === uid) ?? s.wallet.items.find((it) => it.uid === uid);
+    if (!x) return null;
+    const item = G.findItem(cat, x.itemId);
+    return { key: `p${uid}`, html: `${itemCard(x.itemId, x.cond)}<p class="tip-skill"><b>${esc(item.skill)}</b>${esc(item.skillText)}</p>` };
+  }
   const offer = el.closest<HTMLElement>('.offer[data-offer]');
   const v = G.currentVisitor(s);
   if (offer && v && v.kind === 'sell') {

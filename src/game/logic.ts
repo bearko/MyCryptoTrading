@@ -16,7 +16,7 @@ export function itemValue(cat: Catalog, itemId: number, cond: number): number {
   const item = cat.itemById.get(itemId)!;
   const hash = (Math.imul(item.id, 2654435761) >>> 0) % 1000;
   const spread = 1 + (hash / 999 - 0.5) * 2 * B.itemSpread;
-  return Math.max(1, Math.round(B.rarityValue[item.rarity] * spread * B.condMult[cond]));
+  return Math.max(1, Math.round((item.limited ? B.limitedValue : B.rarityValue[item.rarity]) * spread * B.condMult[cond]));
 }
 
 /** What a customer is asked to pay at a markup tier. */
@@ -201,16 +201,7 @@ export function addRep(s: GameState, delta: number): void {
 
 export function rollRarity(s: GameState, heroBonus: number): number {
   heroBonus += B.boonRarity * favorRank(s, 'koryu');
-  return (
-    1 +
-    pickWeighted(s, [
-      50 - s.rep * 0.25,
-      30,
-      14 + s.rep * 0.1 + heroBonus * 2,
-      5 + s.rep * 0.1 + heroBonus * 2,
-      1 + s.rep * 0.05 + heroBonus,
-    ])
-  );
+  return 1 + pickWeighted(s, B.rarityOdds.map(([base, rep, hero]) => Math.max(0, base + s.rep * rep + heroBonus * hero)));
 }
 
 const addStock = (s: GameState, cat: Catalog, itemId: number, cond: number, paid: number): boolean => addTo(s, cat, 'shelf', itemId, cond, paid) !== null;
@@ -330,7 +321,8 @@ export function newGame(seed: number, cat: Catalog): GameState {
     perkOffer: null,
     favor: noFavor(),
     last: { bonus: 0, orderReward: 0 },
-    totals: { sold: 0, bought: 0, bestSale: 0, deepest: 0, orders: 0, bestCombo: 0 },
+    totals: { sold: 0, bought: 0, bestSale: 0, deepest: 0, orders: 0, bestCombo: 0, crafts: 0 },
+    made: [],
   };
   for (let i = 0; i < B.startStock; i++) {
     const item = pick(s, cat.itemsByRarity[i < 3 ? 1 : 2]);
@@ -343,7 +335,12 @@ export function newGame(seed: number, cat: Catalog): GameState {
 // ---------------------------------------------------------------- customers
 
 function makeVisitor(s: GameState, cat: Catalog): Visitor {
-  const hero = pick(s, cat.heroes);
+  // which hero: rarer ones come less often. A legendary hero is a rich buyer — none before the routine has
+  // settled in, and the third day's second customer is always one
+  const nthToday = s.queue.length;
+  const forcedRich = s.day === B.specialFromDay && nthToday === 1;
+  const odds = B.heroOdds.map((w, rarity) => (rarity === 5 ? (s.day < B.specialFromDay || (s.day === B.specialFromDay && nthToday < 1) ? 0 : w * (hasPerk(s, 'patron') ? 2 : 1)) : w));
+  const hero = pick(s, cat.heroesByRarity[forcedRich ? 5 : pickWeighted(s, odds)]);
   const heroBonus = hero.rarity - 1;
   const temper = pickWeighted(s, B.temperWeights);
   let sellerShare: number = B.sellerShare;
@@ -378,9 +375,8 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
   }
 
   // Unusual customers break the routine once it has settled in (the third day always brings the first one).
-  const forced = s.day === B.specialFromDay && nth === 1;
-  if (s.day >= B.specialFromDay && (forced || rand(s) < B.specialChance * (hasPerk(s, 'patron') ? 2 : 1))) {
-    const kind = forced ? 'rich' : pick(s, ['rich', 'hurry', 'collector'] as const);
+  if (s.day >= B.specialFromDay && (hero.rarity === 5 || rand(s) < B.specialChance * (hasPerk(s, 'patron') ? 2 : 1))) {
+    const kind = hero.rarity === 5 ? 'rich' : pick(s, ['hurry', 'collector'] as const);
     if (kind === 'hurry') {
       const offers: Offer[] = [];
       for (let i = 0; i < 2 + Math.floor(rand(s) * 2); i++) {
@@ -392,9 +388,9 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
     }
     const richest = s.stock.reduce<number>((best, x) => Math.max(best, itemValue(cat, x.itemId, x.cond)), B.rarityValue[2]);
     if (kind === 'rich') {
-      return { ...base, temper: 0, patience: B.temperPatience[0], kind: 'buy', want: { type: 'any' }, budget: Math.round(richest * B.retail * B.richBudget), line: lines.special('rich'), special: 'rich' };
+      return { ...base, temper: 0, patience: B.temperPatience[0], kind: 'buy', want: { type: 'any' }, budget: Math.round(Math.max(B.richFloor, richest * B.retail * B.richBudget) * randRange(s, 1, 1.3)), line: lines.special('rich'), special: 'rich' };
     }
-    return { ...base, kind: 'buy', want: { type: 'rarity', min: 3 }, budget: Math.round(Math.max(richest, B.rarityValue[3]) * B.retail * B.collectorBudget), line: lines.special('collector'), special: 'collector' };
+    return { ...base, kind: 'buy', want: { type: 'rarity', min: 3 }, budget: Math.round(B.heroWealth[4] * B.collectorBudget * randRange(s, 0.9, 1.2)), line: lines.special('collector'), special: 'collector' };
   }
 
   if (rand(s) < sellerShare) {
@@ -412,7 +408,6 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
   }
 
   let want: Want;
-  let ref: number;
   if (s.stock.length > 0 && rand(s) < B.buyerKnowsStock) {
     const target = pick(s, s.stock);
     const item = cat.itemById.get(target.itemId)!;
@@ -421,7 +416,6 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
     else if (roll < 0.6 && item.roles.length > 0) want = { type: 'role', role: pick(s, item.roles) };
     else if (roll < 0.8 && item.rarity >= 2) want = { type: 'rarity', min: Math.min(item.rarity, 4) };
     else want = { type: 'any' };
-    ref = itemValue(cat, target.itemId, target.cond);
   } else {
     const rarity = rollRarity(s, heroBonus);
     const roll = rand(s);
@@ -429,7 +423,6 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
     else if (roll < 0.65) want = { type: 'role', role: pick(s, ['atk', 'buff', 'debuff', 'heal', 'status'] as const) };
     else if (roll < 0.85) want = { type: 'rarity', min: clamp(rarity, 2, 4) };
     else want = { type: 'any' };
-    ref = B.rarityValue[rarity];
   }
   // on a demand day, most buyers are after that parameter line and bring more money for it
   let demand = 1;
@@ -439,7 +432,9 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
   }
   // some customers carry enough for two or three goods; rarer heroes more often
   const goods = 1 + pickWeighted(s, [B.budgetCountWeights[0], B.budgetCountWeights[1] + heroBonus * 4, B.budgetCountWeights[2] + heroBonus * 4]);
-  const budget = Math.round(ref * B.retail * randRange(s, 1.05, 1.55) * (1 + heroBonus * 0.05) * goods * demand * (1 + B.boonBudget * favorRank(s, 'seiryu')));
+  // the purse is the hero's own (rarer heroes are richer): it does not follow what the shop happens to hold
+  const purse = B.heroWealth[Math.min(hero.rarity, 4)] * randRange(s, B.wealthSpread[0], B.wealthSpread[1]) * (1 + s.rep * B.wealthPerRep);
+  const budget = Math.round(purse * goods * demand * (1 + B.boonBudget * favorRank(s, 'seiryu')));
   return { ...base, kind: 'buy', want, budget, line: lines.buyOpen(s, want) };
 }
 

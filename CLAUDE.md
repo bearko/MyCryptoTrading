@@ -5,7 +5,7 @@
 - このリポジトリは「My Crypto Trading」。My Crypto Heroes の世界で交易店を営む、スマホ（縦持ち）向けの店舗経営・取引ゲーム。サイトを開くと `index.html` → `src/main.ts` → `src/ui/app.ts` で始まる。公開は Cloudflare Workers の静的配信（`wrangler.jsonc`）。本番のブランチは `main`。
 - **見た目・動き・音・エフェクトの基準は `docs/UI_DIRECTION.md`（アートバイブル）**。画面を作る・直すときは必ず読む。色は `src/styles/tokens.css` の変数だけを使い、操作には見た目・音（`src/ui/audio.ts`）・エフェクト（`src/ui/fx.ts`）・振動で必ず返す。
 - ゲームの全体像・ルール・今後の予定は `docs/GAME_DESIGN.md`。新しい機能はこの方向に沿って作り、ルールを変えたらこの文書も直す。
-- 構成：`src/game/` はルール（DOM に触らない・乱数は種つきで再現できる）、`src/ui/` は画面。経済の数字はすべて `src/game/balance.ts` に置く。`logic.ts`＝取引・マス目・1 日の進行、`night.ts`＝夜のショップ・ウォレット・装備、`quest.ts`＝ダンジョンと戦闘、`perks.ts`＝商才の一覧。
+- 構成：`src/game/` はルール（DOM に触らない・乱数は種つきで再現できる）、`src/ui/` は画面。経済の数字はすべて `src/game/balance.ts` に置く。`logic.ts`＝取引・マス目・1 日の進行、`night.ts`＝夜のショップ・ウォレット・装備、`quest.ts`＝ダンジョンと戦闘、`perks.ts`＝商才の一覧、`craft.ts`＝合成、`factions.ts`＝派閥。
 - 「つい続けてしまう」ための仕掛け（最初の 1 日の手引き・本日の注文・COMBO・特別な客・商才）は `docs/GAME_DESIGN.md` の 4.12。ルールは `logic.ts`、表示と演出は `src/ui/hooks.ts`・`src/styles/hooks.css`。GUM が入る道を増やしたら、必ず `npm run sim` で家賃と権利書の釣り合いを見直す。
 - 品の色はパラメーター系統（PHY＝赤・INT＝青・AGI＝緑）で分ける。レアリティで色分けしない。系統ラベル・装備する場所・戦闘用の効果は `scripts/sync-assets.mjs` がスキルの文面とシリーズ名から作る。
 - 素材は `vendor/mycryptoheroes`（サブモジュール）から `scripts/sync-assets.mjs` が使うものだけを `public/mch/` に写し、`src/generated/catalog.json` を作る（どちらも Git には入れない）。
@@ -16,6 +16,8 @@
 - 客のせりふは場面の左上に出て、言い終えたら消える。来店のときは、せりふが消えてから伝票（客のウィンドウ）が開く（`ui.greeting`、`src/ui/scene.ts` の `sceneEffects`）。来店のせりふは、場面のどこをタップしても飛ばせる（`#greet-skip`）。吹き出しは `#app` の直下にあり、伝票より手前。
 - 伝票の中は「品と値・合計・買う／売る」だけ。値を動かす操作は、帯の「交渉」ボタンで開く窓（`window.ts` の `negoPanel`、`ui.haggleOpen`）に置く。買い客の予算は値付けで動く（安くした分だけ増え、高くした分だけ減る。`logic.ts` の `budgetAt`）。売り客の品をまとめて手前に移すのは、カウンターの縁の、青くて小さな四角いボタン（`counter.ts`）。伝票のはじめの大きさは、スマホ＝小・PC＝大（`core.ts` の `defaultWinSize`）。
 - 派閥（朱雀・青龍・玄武・白虎・黄竜）の評価と恩恵は `src/game/factions.ts` と `logic.ts`（`favorRank`・`saleFavor`・`buyFavor`・`sweeten`）、画面は `hooks.ts`（一覧・演出）。数字は `balance.ts`。くわしくは `docs/GAME_DESIGN.md` の 4.13。
+- 合成（壺）は `src/game/craft.ts`（`nextOf`・`planCraft`・`craft`）と `src/ui/craft.ts`・`src/styles/craft.css`。品の系列は id で決まる（+1000 で 1 つ上、レジェンダリー +500 がリミテッド）。リミテッド（`item.limited`）は持ちこまれない。くわしくは `docs/GAME_DESIGN.md` の 4.14。壺や相場の数字を変えたら `npm run sim` で 4 つの遊びかたを比べる。
+- 客の予算は、在庫ではなくヒーローのレアリティで決まる（`balance.ts` の `heroWealth`・`heroOdds`）。レジェンダリーのヒーローは大富豪。
 - 客は取引が成立してもすぐには帰らない（ベル・品をすべて買い取った・予算を使い切った・我慢が尽きた、のどれかで帰る）。
 - 指を離した瞬間（`pointerup`）や長押しで窓を開くときは、`ctx.swallowClick = true` を立てる。同じタッチがあとから送る `click` が、開いたばかりの窓のボタンや外側に当たるのを防ぐ（`drag.ts`・`app.ts`）。タッチでの確認は、Playwright の `has_touch` と `touchscreen.tap` で行う（マウスでは再現しない）。
 - 取り消せない操作（処分・捨てる）の確認ボタンは、最初のボタンと同じ場所に出さない（同じ場所の二度押しは「やめる」になる）。
