@@ -1,7 +1,7 @@
 import { B } from '../game/balance';
 import { catalog as cat, COND_JA, RARITY_JA } from '../game/catalog';
 import { wantText } from '../game/lines';
-import { factionById } from '../game/factions';
+import { factionById, rivalOf } from '../game/factions';
 import * as G from '../game/logic';
 import type { GameState, Visitor } from '../game/state';
 import { offerKey } from './counter';
@@ -97,8 +97,10 @@ function favorLine(g: GameState, v: Visitor): string {
   if (!v.faction) return '';
   const f = factionById(v.faction);
   const pts = g.favor[v.faction];
-  const next = B.favorRanks.find((need) => pts < need);
-  return `<div class="nego-fac"><span class="fac f-${f.id}">${f.ja}</span><span>の評価</span><b>${num(pts)}</b>${next ? `<small>/${next}</small>` : '<small>MAX</small>'}</div>`;
+  const next = pts < 0 ? B.favorLow.find((low) => pts > low) : B.favorRanks.find((need) => pts < need);
+  const rival = rivalOf(v.faction);
+  const versus = rival ? `<div class="nego-fac rival"><span>対立</span><span class="fac f-${rival}">${factionById(rival).ja}</span><b>${num(g.favor[rival])}</b></div>` : '';
+  return `<div class="nego-fac"><span class="fac f-${f.id}">${f.ja}</span><span>の評価</span><b>${num(pts)}</b>${next !== undefined ? `<small>/${num(next)}</small>` : `<small>${pts < 0 ? 'どん底' : 'MAX'}</small>`}</div>${versus}`;
 }
 
 /**
@@ -108,7 +110,9 @@ function favorLine(g: GameState, v: Visitor): string {
  */
 function negoPanel(g: GameState, v: Visitor): string {
   if (!ui.haggleOpen || ui.beat) return '';
-  const house = v.faction ? `${factionById(v.faction).ja}の評価が上がる` : '気前のいい値';
+  const rival = v.faction ? rivalOf(v.faction) : null;
+  const house = v.faction ? `${factionById(v.faction).ja}の評価が上がる${rival ? `（対立する${factionById(rival).ja}は下がる）` : ''}` : '気前のいい値';
+  const grudge = v.faction ? `<p class="nego-grudge">${v.kind === 'sell' ? '大きく値切る' : '大きく上乗せする'}と、${factionById(v.faction).ja}の評価が下がる${rival ? `（${factionById(rival).ja}は喜ぶ）` : ''}</p>` : '';
   let body: string;
   if (v.kind === 'sell') {
     if (v.haggled) {
@@ -123,7 +127,7 @@ function negoPanel(g: GameState, v: Visitor): string {
       const kind = B.generousTiers
         .map((rate, tier) => `<button class="nopt kind" data-act="sweeten" data-arg="${tier}" data-sfx="none"><b>+${Math.round(rate * 100)}%</b><small>評価 +${B.favorGenerous[tier]}</small></button>`)
         .join('');
-      body = `<p class="nego-h">値切る<small>成功率。断られると我慢が減る</small></p><div class="nopts three">${hard}</div>
+      body = `<p class="nego-h">値切る<small>成功率。断られると我慢が減る</small></p><div class="nopts three">${hard}</div>${grudge}
         <p class="nego-h kind">色をつける<small>多く払う。${house}</small></p><div class="nopts two">${kind}</div>`;
     }
   } else {
@@ -133,7 +137,7 @@ function negoPanel(g: GameState, v: Visitor): string {
       return `<button class="nopt ${tier < 0 ? 'kind' : tier === 0 ? 'fair' : oddsTone(p)} ${tier === ui.tier ? 'on' : ''}" data-act="tier" data-arg="${tier}" aria-pressed="${tier === ui.tier}"><b>${tier === 0 ? '定価' : rateText(G.markupOf(tier))}</b><small>${sub}</small></button>`;
     }).join('');
     const now = G.budgetAt(v, ui.tier);
-    body = `<p class="nego-h">値付け<small>安くすると予算が増え、高くすると減る</small></p><div class="nopts two">${opts}</div>
+    body = `<p class="nego-h">値付け<small>安くすると予算が増え、高くすると減る</small></p><div class="nopts two">${opts}</div>${grudge}
       <div class="nego-bud"><span>予算</span>${ui.tier !== 0 ? `<s>${num(v.budget)}</s>` : ''}<b>${num(now)}</b>${budgetTag()}</div>`;
   }
   return `<div class="nego paper kind-${v.kind}" id="nego" data-ui>

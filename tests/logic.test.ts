@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { B } from '../src/game/balance';
 import { catalog } from '../src/game/catalog';
+import { FACTIONS, rankName } from '../src/game/factions';
 import * as G from '../src/game/logic';
 import * as N from '../src/game/night';
 import type { GameState } from '../src/game/state';
@@ -541,6 +542,53 @@ describe('game rules', () => {
     expect(failed).toBe(true);
     expect(v.done).toBe(true);
     expect(s.favor.genbu).toBe(5 - B.favorAngry);
+  });
+  it('the houses are at odds: a kind price sours the rival, and a slight cheers it', () => {
+    const s = G.newGame(24, catalog);
+    s.day = 2;
+    G.openShop(s, catalog);
+    until(s, 'sell');
+    const v = G.currentVisitor(s)!;
+    v.faction = 'suzaku';
+    s.gum = 99999;
+    expect(G.sweeten(s, 1)).toBe(true);
+    expect(G.buy(s, catalog, [0])).toBe(true);
+    expect(s.favor.suzaku).toBe(B.favorGenerous[1]);
+    expect(s.favor.genbu).toBe(-Math.round(B.favorGenerous[1] * B.rivalShare));
+    // a plain deal moves nobody else; a grudge cheers the rival a little; the house in the middle has no rival
+    expect(G.rivalFavor(B.favorDeal)).toBe(0);
+    expect(G.rivalFavor(B.favorHard)).toBe(B.rivalGlee);
+    expect(G.rivalFavor(-B.favorAngry)).toBe(B.rivalGlee);
+    expect(FACTIONS.filter((f) => f.rival === null).map((f) => f.id)).toEqual(['koryu']);
+    for (const f of FACTIONS) if (f.rival) expect(FACTIONS.find((x) => x.id === f.rival)!.rival).toBe(f.id);
+  });
+  it('a house that has turned against the shop turns its boon around', () => {
+    const s = G.newGame(25, catalog);
+    const before = G.visitorsExpected(s);
+    s.favor.suzaku = B.favorLow[0];
+    expect(G.favorRank(s, 'suzaku')).toBe(-1);
+    expect(G.visitorsExpected(s)).toBe(before - B.boonVisitors);
+    s.favor.suzaku = B.favorLow[1];
+    expect(G.favorRank(s, 'suzaku')).toBe(-2);
+    // every rank, good and bad, has a name and says what it does
+    for (const f of FACTIONS) for (let rank = -2; rank <= 3; rank++) if (rank !== 0) expect(f.text(rank).length).toBeGreaterThan(3);
+    expect([-2, -1, 0, 1, 2, 3].map(rankName)).toEqual(['険悪', '不仲', '—', '顔なじみ', 'お得意さま', '盟友']);
+    // regard stops at the floor
+    const t = G.newGame(26, catalog);
+    t.day = 2;
+    t.favor.genbu = B.favorFloor;
+    G.openShop(t, catalog);
+    until(t, 'sell');
+    const v = G.currentVisitor(t)!;
+    v.faction = 'genbu';
+    v.temper = 2;
+    t.rep = 0;
+    for (let n = 0; n < 50 && !v.done; n++) {
+      v.haggled = false;
+      v.patience = 1;
+      G.haggle(t, 2);
+    }
+    expect(t.favor.genbu).toBe(B.favorFloor);
   });
   it('the budget follows the price: more to spend at a kind price, less at a dear one', () => {
     const s = G.newGame(31, catalog);

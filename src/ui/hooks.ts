@@ -1,6 +1,6 @@
 import { B } from '../game/balance';
 import { catalog as cat, PARAM_JA } from '../game/catalog';
-import { FACTIONS, RANK_JA, rankOf } from '../game/factions';
+import { FACTIONS, factionById, rankName, rankOf } from '../game/factions';
 import * as G from '../game/logic';
 import { perkById } from '../game/perks';
 import type { DayOrder, GameState } from '../game/state';
@@ -54,8 +54,11 @@ export function morningExtras(g: GameState): string {
   const perks = g.perks.length
     ? `<p class="news-perks"><span>商才</span>${g.perks.map((id) => `<i title="${esc(perkById(id).text)}">${esc(perkById(id).name)}</i>`).join('')}</p>`
     : '';
-  const ranked = FACTIONS.filter((f) => G.favorRank(g, f.id) > 0);
-  const houses = ranked.length ? `<p class="news-perks news-houses"><span>派閥</span>${ranked.map((f) => `<i class="fac f-${f.id}">${f.ja} ${'★'.repeat(G.favorRank(g, f.id))}</i>`).join('')}</p>` : '';
+  const ranked = FACTIONS.filter((f) => G.favorRank(g, f.id) !== 0);
+  const mark = (rank: number): string => (rank > 0 ? '★'.repeat(rank) : '▼'.repeat(-rank));
+  const houses = ranked.length
+    ? `<p class="news-perks news-houses"><span>派閥</span>${ranked.map((f) => `<i class="fac f-${f.id}${G.favorRank(g, f.id) < 0 ? ' low' : ''}" title="${esc(f.text(G.favorRank(g, f.id)))}">${f.ja} ${mark(G.favorRank(g, f.id))}</i>`).join('')}</p>`
+    : '';
   return order + perks + houses;
 }
 
@@ -71,20 +74,28 @@ export function housesModal(g: GameState): string {
   const rows = FACTIONS.map((f) => {
     const pts = g.favor[f.id];
     const rank = G.favorRank(g, f.id);
-    const from = rank === 0 ? 0 : B.favorRanks[rank - 1];
-    const next = B.favorRanks[rank];
-    const fill = next ? (pts - from) / (next - from) : 1;
-    return `<div class="house r${rank}">
+    // the bar runs to the next rank up; below zero, down to the next rank lost
+    const from = rank <= 0 ? 0 : B.favorRanks[rank - 1];
+    const next: number | undefined = B.favorRanks[Math.max(0, rank)];
+    const low: number | undefined = B.favorLow[Math.max(0, -rank)];
+    const fill = pts < 0 ? (low !== undefined ? pts / low : 1) : next ? (pts - from) / (next - from) : 1;
+    const lines = [
+      rank !== 0 ? `いま：${f.text(rank)}` : '',
+      pts >= 0 && next ? `次：${f.text(rank + 1)}` : '',
+      pts < 0 && low !== undefined ? `このまま下がると：${f.text(rank - 1)}` : '',
+    ].filter(Boolean);
+    const goal = pts < 0 ? (low !== undefined ? `<small>/${num(low)}</small>` : '<small>どん底</small>') : next ? `<small>/${next}</small>` : '<small>MAX</small>';
+    return `<div class="house r${rank}${pts < 0 ? ' low' : ''}">
         <span class="fac f-${f.id}">${f.ja}</span>
-        <span class="house-main"><b>${f.boon}<em>${RANK_JA[rank]}</em></b>
+        <span class="house-main"><b>${f.boon}<em>${rankName(rank)}</em>${f.rival ? `<span class="house-rival">対立：<i class="fac f-${f.rival}">${factionById(f.rival).ja}</i></span>` : '<span class="house-rival">対立なし</span>'}</b>
           <span class="house-bar"><i style="transform:scaleX(${fill.toFixed(3)})"></i></span>
-          <small>${rank > 0 ? `いま：${f.text(rank)}` : ''}${rank > 0 && next ? '<br />' : ''}${next ? `次：${f.text(rank + 1)}` : ''}</small></span>
-        <span class="house-n"><b>${num(pts)}</b>${next ? `<small>/${next}</small>` : '<small>MAX</small>'}</span>
+          <small>${lines.join('<br />')}</small></span>
+        <span class="house-n"><b>${num(pts)}</b>${goal}</span>
       </div>`;
   }).join('');
   return `<div class="modal" id="modal-houses" data-ui><div class="modal-box">
     <h2 class="modal-title"><small>HOUSES</small>派閥の評価</h2>
-    <p class="hint">お客さんは 5 つの派閥のどれかに属しています。取引がまとまると、その派閥の評価が上がります。交渉で<b>値引きして売る</b>・<b>色をつけて買う</b>と、大きく上がります。強気の値で通すと上がらず、怒らせると下がります。</p>
+    <p class="hint">お客さんは 5 つの派閥のどれかに属しています。取引がまとまると、その派閥の評価が上がります。<b>値引きして売る</b>・<b>色をつけて買う</b>と大きく上がりますが、<b>対立する派閥の評価は下がります</b>。強気の値で通したり怒らせたりすると、その派閥が下がり、対立する派閥が少し喜びます。評価が下がりきった派閥は、恩恵が裏返ります。</p>
     <div class="houses">${rows}</div>
     <div class="actions one">${btn('modal-close', '閉じる', { cls: 'primary' })}</div>
   </div></div>`;
@@ -138,22 +149,27 @@ export function hookEffects(g: GameState): void {
   }
   // a house's regard moved: say so by the customer's name, and make a show of a new rank
   if (favorKey(g) !== seen.favor) {
+    let shown = 0;
     for (const f of FACTIONS) {
       const was = favorWas[f.id] ?? 0;
       const now = g.favor[f.id];
       if (now === was) continue;
       const plate = root.querySelector('.plate') ?? '#hud-rep';
-      window.setTimeout(() => fx.text(`${f.ja} ${now > was ? '+' : '−'}${Math.abs(now - was)}`, plate, { kind: now > was ? 'gain' : 'dmg', size: 18 }), 520);
+      window.setTimeout(() => fx.text(`${f.ja} ${now > was ? '+' : '−'}${Math.abs(now - was)}`, plate, { kind: now > was ? 'gain' : 'dmg', size: 18 }), 520 + 380 * shown);
+      shown += 1;
       const rank = rankOf(now);
-      if (rank > rankOf(was)) {
-        window.setTimeout(() => {
-          audio.sfx('event');
-          haptic('heavy');
-          void fx.banner(`${f.ja}・${RANK_JA[rank]}`, { sub: `${f.boon}：${f.text(rank)}`, ms: 1500 });
-          const dots = root.querySelector('#house-dots');
-          if (dots) fx.burst('stars', dots, { count: 12 });
-        }, 1200);
-      }
+      const before = rankOf(was);
+      if (rank === before) continue;
+      const up = rank > before;
+      window.setTimeout(() => {
+        audio.sfx(up ? 'event' : 'error');
+        haptic('heavy');
+        // (a rank won or lost, a house that turns cold, a house that comes round)
+        const sub = rank === 0 ? (up ? 'わだかまりが解けた' : '恩恵がなくなった') : `${f.boon}：${f.text(rank)}`;
+        void fx.banner(`${f.ja}・${rank === 0 ? 'ふつうの仲' : rankName(rank)}`, { sub, ms: 1500 });
+        const dots = root.querySelector('#house-dots');
+        if (dots && up) fx.burst('stars', dots, { count: 12 });
+      }, 1200);
     }
     keepFavor(g);
   }

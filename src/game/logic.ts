@@ -3,7 +3,7 @@ import type { Param, Catalog, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randRange } from './rng';
 import { ROTATED, sameCells, type Shape } from './shapes';
-import { factionOfName, noFavor, rankOf, type FactionId } from './factions';
+import { factionOfName, noFavor, rankOf, rivalOf, type FactionId } from './factions';
 import { hasService, trustDaily } from './network';
 import { PERKS, type PerkId } from './perks';
 import { emptySummary, type DayEvent, type DayOrder, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
@@ -43,16 +43,24 @@ export const tierChance = (s: GameState, v: Visitor, tier: number): number =>
 
 // ---------------------------------------------------------------- the houses
 
-/** A house's rank with the shop: 0–3. */
+/** A house's rank with the shop: 0–3, or −1 and −2 once it has turned against the shop. */
 export const favorRank = (s: GameState, id: FactionId): number => rankOf(s.favor[id]);
 
-/** What a house thinks of a deal: more for a kind price, nothing for a hard bargain. */
+/** What a house thinks of a deal: more for a kind price, a grudge after a hard bargain. */
 export const saleFavor = (tier: number): number => (tier < 0 ? B.favorGenerous[-tier - 1] : tier >= 2 ? B.favorHard : B.favorDeal);
 export const buyFavor = (v: Visitor): number => (v.nego > 0 ? B.favorGenerous[v.nego - 1] : v.nego <= -2 ? B.favorHard : B.favorDeal);
 
+/** What a house's gain or loss does to its rival: a kind price sours the rival, a slight cheers it. */
+export const rivalFavor = (delta: number): number => (delta >= 2 ? -Math.round(delta * B.rivalShare) : delta < 0 ? B.rivalGlee : 0);
+
+function moveFavor(s: GameState, id: FactionId, delta: number): void {
+  s.favor[id] = clamp(s.favor[id] + delta, B.favorFloor, B.favorCap);
+}
 function addFavor(s: GameState, v: Visitor, delta: number): void {
   if (!v.faction || delta === 0) return;
-  s.favor[v.faction] = Math.max(0, s.favor[v.faction] + delta);
+  moveFavor(s, v.faction, delta);
+  const rival = rivalOf(v.faction);
+  if (rival) moveFavor(s, rival, rivalFavor(delta));
 }
 export const hasPerk = (s: GameState, id: PerkId): boolean => s.perks.includes(id);
 export const discountChance = (s: GameState, v: Visitor, tier: number): number => chance(s, B.discountChance[tier] + (hasPerk(s, 'talker') ? B.perkTalker : 0), v.temper);

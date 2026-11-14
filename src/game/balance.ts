@@ -107,15 +107,22 @@ export const B = {
   /** a house's regard for one deal: at a plain price, at each kind price, and after driving a hard bargain */
   favorDeal: 1,
   favorGenerous: [5, 10],
-  favorHard: 0,
+  favorHard: -1,
+  /** the houses are at odds two by two: a kind price costs the rival house this share of what was earned, and a house's loss cheers its rival by this much */
+  rivalShare: 0.4,
+  rivalGlee: 1,
+  /** regard at which a house turns cold, then hostile (ranks −1 and −2: its boon is turned around), and where regard stops */
+  favorLow: [-30, -80],
+  favorFloor: -120,
+  favorCap: 300,
   /** a customer who storms off costs their house this much */
   favorAngry: 2,
   /** regard needed for ranks 1–3 */
   favorRanks: [40, 100, 200],
   /** what a house grants, per rank: customers a day, buyers' budgets, sellers' asking prices, the odds of a bargain, rarity */
   boonVisitors: 1,
-  boonBudget: 0.08,
-  boonAsk: 0.04,
+  boonBudget: 0.1,
+  boonAsk: 0.05,
   boonChance: 0.04,
   boonRarity: 1,
   /** reputation for a sale: at the fair price or under, up to +30%, above that */
