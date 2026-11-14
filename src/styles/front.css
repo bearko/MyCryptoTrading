@@ -1366,28 +1366,35 @@
 .take-all {
   position: absolute;
   left: 50%;
-  top: -36px;
+  top: -27px;
   z-index: 6;
   display: grid;
   place-items: center;
-  width: 50px;
-  height: 50px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: 3px solid var(--ink);
-  border-radius: 50%;
   background: var(--cool);
-  box-shadow: 0 4px 0 var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
   color: var(--paper);
   cursor: pointer;
   transform: translateX(-50%);
   transition: transform var(--t-press) var(--ease-out), box-shadow var(--t-press) var(--ease-out);
   animation: take-in 0.3s 0.9s var(--ease-pop) both;
 }
+/* small to look at, still a full thumb to hit */
+.take-all::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
 .take-all svg {
+  width: 18px;
+  height: 18px;
   animation: take-nudge 1.2s ease-in-out infinite;
 }
 .take-all:active {
-  transform: translate(-50%, 4px);
+  transform: translate(-50%, 3px);
   box-shadow: 0 0 0 var(--ink);
 }
 @keyframes take-in {
@@ -1403,4 +1410,32 @@
 }
 html.calm .take-all svg {
   animation: none;
+}
+
+/* ---------- a newcomer's first line can be skipped: a tap anywhere on the scene opens the slip at once */
+.greet-skip {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  align-items: end;
+  justify-items: start;
+  padding: 0 0 8px 8px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.greet-skip span {
+  padding: 2px 8px;
+  background: var(--ink-50);
+  color: var(--paper);
+  font-size: 0.6875rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  animation: skip-hint 1.1s ease-in-out infinite alternate;
+}
+@keyframes skip-hint {
+  from {
+    opacity: 0.55;
+  }
 }

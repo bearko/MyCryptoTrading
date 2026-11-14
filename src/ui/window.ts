@@ -165,7 +165,7 @@ export function clampWindow(): void {
   const edge = near?.getBoundingClientRect().top;
   const room = base.height - ui.win.y - 12;
   // (a seller's "bring it all over" button stands on the counter's edge: the slip ends above it)
-  const lip = root.querySelector('#take-all') ? 40 : 12;
+  const lip = root.querySelector('#take-all') ? 32 : 12;
   win.style.maxHeight = ui.win.moved || edge === undefined ? `${Math.max(200, room)}px` : `${Math.max(150, edge - base.top - ui.win.y - lip)}px`;
   ui.win.x = Math.max(0, Math.min(ui.win.x, root.clientWidth - win.offsetWidth));
   ui.win.y = Math.max(0, Math.min(ui.win.y, root.clientHeight - 48));
