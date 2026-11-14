@@ -25,6 +25,10 @@ describe('economy', () => {
   console.log('kind   ', JSON.stringify(measure('kind')));
   console.log('crafty ', JSON.stringify(measure('crafty')));
   console.log('partisan', JSON.stringify(measure('partisan')));
+  const keeper = measure('keeper');
+  const master = measure('master');
+  console.log('keeper ', JSON.stringify(keeper));
+  console.log('master ', JSON.stringify(master));
 
   it('a careful shopkeeper usually buys the shop in 4–9 weeks', () => {
     expect(careful.won).toBeGreaterThan(0.85);
@@ -39,6 +43,13 @@ describe('economy', () => {
     const crafty = measure('crafty');
     expect(crafty.median).toBeLessThan(careful.median * 0.9);
     expect(crafty.median).toBeGreaterThan(careful.median * 0.55);
+  });
+
+  it('the things of the shop pay: the showcase, the guild and orders finish sooner, without breaking the game open', () => {
+    expect(keeper.median).toBeLessThan(careful.median * 0.95);
+    expect(keeper.median).toBeGreaterThan(careful.median * 0.75);
+    // everything at once still takes four weeks or so
+    expect(master.median).toBeGreaterThanOrEqual(28);
   });
 
   it('playing without haggling is still survivable most of the time', () => {

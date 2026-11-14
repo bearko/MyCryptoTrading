@@ -3,17 +3,21 @@ import type { Catalog } from '../src/game/catalog';
 import * as C from '../src/game/craft';
 import * as G from '../src/game/logic';
 import * as N from '../src/game/night';
+import { buyService, serviceBlock, serviceById, type ServiceId } from '../src/game/network';
 import type { GameState } from '../src/game/state';
 
 /** crafty: careful, and puts goods through the pot whenever that makes something worth more than what goes in. */
 /** plain: fair prices. careful: haggles and marks up. kind: pays a little more and sells a little under, for the houses' regard. */
-export type Style = 'plain' | 'careful' | 'kind' | 'crafty' | 'partisan';
+/** keeper: careful, and uses the things of the shop — the showcase, the guild's favours, goods by telephone. master: keeper with the pot. */
+export type Style = 'plain' | 'careful' | 'kind' | 'crafty' | 'partisan' | 'keeper' | 'master';
 
 /** partisan: sides with two houses (kind to them), and drives hard bargains with their rivals. */
 const FRIENDS = ['suzaku', 'seiryu'];
 const FOES = ['genbu', 'byakko'];
 /** The way a customer is treated: a style, seen through the customer's house. */
 function stance(style: Style, v: { faction: string | null }): Style {
+  if (style === 'keeper') return 'careful';
+  if (style === 'master') return 'crafty';
   if (style !== 'partisan') return style;
   return v.faction && FRIENDS.includes(v.faction) ? 'kind' : v.faction && FOES.includes(v.faction) ? 'careful' : 'plain';
 }
@@ -23,7 +27,8 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
   const s = G.newGame(seed, cat);
   while (s.phase !== 'lost' && !s.owned && s.day <= maxDays) {
     if (s.perkOffer) G.choosePerk(s, s.perkOffer[0]);
-    if (style === 'crafty') craftAll(s, cat);
+    if (style === 'keeper' || style === 'master') keepShop(s, cat, style === 'master');
+    if (style === 'crafty' || style === 'master') craftAll(s, cat);
     G.openShop(s, cat);
     while (s.phase === 'open') {
       const v = G.currentVisitor(s)!;
@@ -55,6 +60,28 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
     G.endDay(s);
   }
   return s;
+}
+
+/** The favours a shopkeeper asks of the guild, in the order they are wanted. */
+const WANTED: ServiceId[] = ['case1', 'guest1', 'vip', 'eye', 'guest2', 'case2'];
+
+/** The morning round of the shop's things: the parcel, the guild, the showcase, and an order when the shelf is thin. */
+function keepShop(s: GameState, cat: Catalog, pot: boolean): void {
+  G.unpackAll(s, cat);
+  const reserve = G.daysToRent(s) <= 2 && !s.owned ? s.rent : 0;
+  // the guild: with trust when there is enough of it, with GUM only when money is plentiful
+  for (const id of pot ? [...WANTED.slice(0, 2), 'pot' as const, ...WANTED.slice(2)] : WANTED) {
+    if (serviceBlock(s, id, 'trust') === '') buyService(s, id, 'trust');
+    else if (serviceBlock(s, id, 'gum') === '' && s.gum - serviceById(id).gum > reserve + serviceById(id).gum * 2) buyService(s, id, 'gum');
+  }
+  // the showcase: the rarest goods in the shop
+  for (const uid of [...s.display]) G.setShown(s, uid, false);
+  const rarest = [...s.stock].sort((a, b) => cat.itemById.get(b.itemId)!.rarity - cat.itemById.get(a.itemId)!.rarity);
+  for (const x of rarest.slice(0, G.showSlots(s))) G.setShown(s, x.uid, true);
+  // a thin shelf: a lot by telephone, of the line in demand today if there is one
+  if (!s.supply && s.stock.length < 5 && s.gum - B.supplies.lot.gum > reserve + 100) {
+    G.placeSupply(s, cat, 'lot', s.event.id === 'demand' && s.event.param ? s.event.param : 'phy', 'gum');
+  }
 }
 
 /** The pot, greedily: the base and the cheapest partners that are enough, as long as the result is worth more. */
