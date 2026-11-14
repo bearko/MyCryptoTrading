@@ -80,15 +80,20 @@ function serveBuyer(s: GameState, cat: Catalog, style: Style): void {
       .filter((x) => G.matches(cat, v.want, x.itemId) && G.salePrice(cat, x, 0) <= v.budget)
       .sort((a, b) => G.salePrice(cat, b, 0) - G.salePrice(cat, a, 0));
     if (fits.length === 0) break;
-    const item = fits[0];
+    let item = fits[0];
     let tier = 0;
     if (style === 'careful') {
-      // the highest markup that fits the budget and still has decent odds, while patience lasts
-      for (let t = B.markupTiers.length - 1; t > 0; t--) {
-        const quote = G.quoteSale(s, cat, v, [item.uid], t);
-        if (quote.over === 0 && quote.chance >= 0.45) {
-          tier = t;
-          break;
+      // a dear price shrinks what the customer can spend, so the good and the markup are chosen together:
+      // whatever brings in the most, fits the budget and still has decent odds
+      let best = G.quoteSale(s, cat, v, [item.uid], 0).paid;
+      for (const x of fits) {
+        for (let t = B.markupTiers.length - 1; t > 0; t--) {
+          const quote = G.quoteSale(s, cat, v, [x.uid], t);
+          if (quote.over === 0 && quote.chance >= 0.45 && quote.paid > best) {
+            best = quote.paid;
+            item = x;
+            tier = t;
+          }
         }
       }
     }

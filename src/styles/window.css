@@ -827,3 +827,46 @@ html.calm .beat-bar b {
   font-size: 0.6875rem;
   color: var(--sub);
 }
+
+/* ---------- the budget follows the price: more to spend at a kind price, less at a dear one */
+.bud {
+  margin-left: 5px;
+  padding: 0 4px;
+  font-family: var(--f-num);
+  font-style: normal;
+  font-weight: 400;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  color: var(--paper);
+}
+.bud.up {
+  background: var(--leaf-deep);
+}
+.bud.down {
+  background: var(--hot-deep);
+}
+.nego-bud {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 0.6875rem;
+  font-weight: 900;
+}
+.nego-bud s {
+  margin-left: auto;
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 0.8125rem;
+  color: var(--sub);
+}
+.nego-bud b {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 1.0625rem;
+}
+.nego-bud s + b {
+  margin-left: 0;
+}
+.nego-bud span + b {
+  margin-left: auto;
+}
