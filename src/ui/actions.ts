@@ -1,5 +1,6 @@
 import { perkById } from '../game/perks';
 import { catalog as cat } from '../game/catalog';
+import { craft, CRAFT_MAX } from '../game/craft';
 import * as G from '../game/logic';
 import * as N from '../game/night';
 import * as Q from '../game/quest';
@@ -72,6 +73,7 @@ function enterGame(g: GameState | null): void {
     ui.printDay = 0;
     ui.win.moved = false;
     ui.win.size = defaultWinSize();
+    ui.craft = [];
     closeModal();
     resetHud(g);
     resetScene();
@@ -247,6 +249,33 @@ function haggle(g: GameState, v: Visitor, tier: number): void {
       for (const el of ctx.root.querySelectorAll('.offer .ptag')) settle(el);
     } else refusal(v);
   });
+}
+
+/** The pot: the goods go in, the result comes out with a show. */
+function doCraft(g: GameState): void {
+  const pot = ctx.root.querySelector<HTMLElement>('#pot');
+  const result = craft(g, cat, ui.craft);
+  if (!result.ok) {
+    nope(pot);
+    audio.sfx('error');
+    if (result.reason === 'room') note('できた品を置く場所がありません');
+    return;
+  }
+  ui.craft = [];
+  store.save(g);
+  audio.sfx('equip');
+  haptic('heavy');
+  if (pot) {
+    fx.burst('ring', pot, { color: tok('--gum') });
+    fx.burst('stars', pot, { count: 16, color: tok('--gum') });
+    anim(pot, [{ transform: 'scale(1)' }, { transform: 'scale(1.25) rotate(-6deg)', offset: 0.3 }, { transform: 'scale(.92) rotate(4deg)', offset: 0.6 }, { transform: 'scale(1)' }], { duration: 420, easing: 'ease-out' });
+  }
+  render();
+  window.setTimeout(() => {
+    audio.sfx(result.first ? 'event' : 'haggleOk');
+    fx.stamp(result.item.limited ? 'LIMITED!' : '配合成功', { x: ctx.root.clientWidth / 2, y: ctx.root.clientHeight * 0.32 }, { size: 42 });
+    if (result.first) void fx.banner(result.item.ja, { sub: result.item.limited ? 'リミテッドレジェンダリーを作った！' : 'はじめて作った品（配合表に載りました）', ms: 1500 });
+  }, 260);
 }
 
 /** A kind word on the price: the seller is paid more than asked. Never refused. */
@@ -515,7 +544,7 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       ui.win.size = ui.win.size === 'm' ? 's' : ui.win.size === 's' ? 'l' : 'm';
       break;
     case 'grid':
-      ui.gridView = arg === 'wallet' ? 'wallet' : arg === 'gear' ? 'gear' : 'shelf';
+      ui.gridView = arg === 'wallet' ? 'wallet' : arg === 'gear' ? 'gear' : arg === 'craft' ? 'craft' : 'shelf';
       break;
     case 'take-all':
       if (v && v.kind === 'sell') {
@@ -594,6 +623,33 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       return;
 
     // ---- a good's detail and menu windows
+    case 'craft-add': {
+      // into the pot: the first good is the base, the next ones are its partners
+      if (ui.craft.length >= CRAFT_MAX || ui.craft.includes(n)) {
+        nope(document.getElementById(`pgood-${n}`));
+        if (ui.craft.length >= CRAFT_MAX) note('壺に入るのは 3 つまで');
+        return;
+      }
+      ui.craft.push(n);
+      audio.sfx('drop');
+      haptic('light');
+      break;
+    }
+    case 'craft-del':
+      ui.craft.splice(n, 1);
+      break;
+    case 'craft-go':
+      doCraft(g);
+      return;
+    case 'recipes':
+      ui.modal = 'recipes';
+      break;
+    case 'to-pot':
+      // from a good's menu: it goes into the pot, and the pot's tab opens
+      if (ui.sel && ui.craft.length < CRAFT_MAX && !ui.craft.includes(ui.sel.uid)) ui.craft.push(ui.sel.uid);
+      ui.gridView = 'craft';
+      closeModal();
+      break;
     case 'dispose-no':
       ui.confirmDispose = false;
       break;

@@ -39,6 +39,8 @@ export interface Item {
   skillText: string;
   fx: Fx[];
   img: string;
+  /** a limited legendary: the top of a line, above its legendary. Nobody brings one in — it can only be made in the pot */
+  limited: boolean;
 }
 
 /** A customer (a hero). */
@@ -74,17 +76,24 @@ interface CatalogData {
 export interface Catalog extends CatalogData {
   itemById: Map<number, Item>;
   heroById: Map<number, Hero>;
-  /** items grouped by rarity (index 1–5) */
+  /** items that turn up in trade, grouped by rarity (index 1–5): no wallets, no limited legendaries */
   itemsByRarity: Item[][];
+  /** customers grouped by rarity (index 1–5) */
+  heroesByRarity: Hero[][];
   wallets: Item[];
 }
 
 export function buildCatalog(data: CatalogData): Catalog {
   const itemsByRarity: Item[][] = [[], [], [], [], [], []];
   // wallets are not ordinary goods: customers do not bring them, the night shop sells them
-  for (const item of data.items) if (!item.wallet) itemsByRarity[item.rarity].push(item);
+  // (ids run in lines: 1001 → 2001 → … → 5001, and a line's limited legendary is 5501)
+  for (const item of data.items) item.limited = item.rarity === 5 && item.id % 1000 >= 500;
+  for (const item of data.items) if (!item.wallet && !item.limited) itemsByRarity[item.rarity].push(item);
+  const heroesByRarity: Hero[][] = [[], [], [], [], [], []];
+  for (const hero of data.heroes) heroesByRarity[hero.rarity].push(hero);
   return {
     ...data,
+    heroesByRarity,
     itemById: new Map(data.items.map((i) => [i.id, i])),
     heroById: new Map(data.heroes.map((h) => [h.id, h])),
     itemsByRarity,

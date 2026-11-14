@@ -1,0 +1,480 @@
+/* ---------- a good's footprint, drawn small (the slip, when buying) */
+.shape {
+  display: inline-grid;
+  grid-template-columns: repeat(var(--w), 7px);
+  grid-template-rows: repeat(var(--h), 7px);
+  gap: 1px;
+  flex: 0 0 auto;
+}
+.shape i {
+  background: var(--ink);
+}
+.line-shape {
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 30px;
+}
+.line-shape small {
+  font-size: 0.5625rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--sub);
+  white-space: nowrap;
+}
+
+/* ---------- the pot (the 合成 tab) */
+.craft {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  width: 100%;
+  max-width: 420px;
+  min-height: 0;
+  color: var(--paper);
+}
+.craft.hot {
+  outline: 3px dashed var(--gum);
+  outline-offset: 2px;
+}
+.pot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding-top: 8px;
+}
+.pslots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.pplus {
+  font-style: normal;
+  font-weight: 900;
+  color: var(--mute);
+}
+.pslot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 56px;
+  padding: 0;
+  border: 2.5px solid var(--paper);
+  background: linear-gradient(135deg, var(--ta, var(--ink-3)) 50%, var(--tb, var(--ink-3)) 50%);
+  color: var(--ink);
+  cursor: pointer;
+}
+.pslot.base {
+  width: 56px;
+  border-color: var(--gum);
+  box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--gum);
+}
+.pslot.empty {
+  border-style: dashed;
+  border-color: var(--mute);
+  background: none;
+  box-shadow: none;
+  color: var(--mute);
+  cursor: default;
+}
+.pslot img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.pslot small {
+  position: absolute;
+  left: -2px;
+  top: -9px;
+  padding: 0 4px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.5625rem;
+  font-weight: 900;
+  line-height: 1.5;
+}
+.pslot.empty small {
+  position: static;
+  background: none;
+  color: var(--mute);
+  font-size: 0.6875rem;
+}
+.pslot.base small {
+  background: var(--gum);
+  color: var(--ink);
+}
+.pslot em {
+  position: absolute;
+  right: -2px;
+  bottom: -8px;
+  padding: 0 4px;
+  background: var(--paper);
+  color: var(--ink);
+  font-style: normal;
+  font-size: 0.5625rem;
+  font-weight: 900;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.pot {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 56px;
+}
+.pot img {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  animation: pot-bob 2.4s ease-in-out infinite;
+}
+@keyframes pot-bob {
+  50% {
+    transform: translateY(-3px) rotate(-3deg);
+  }
+}
+html.calm .pot img {
+  animation: none;
+}
+.parrow {
+  font-style: normal;
+  font-size: 0.625rem;
+  color: var(--mute);
+}
+.pout {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 2.5px solid var(--paper);
+  background: linear-gradient(135deg, var(--ta, var(--ink-3)) 50%, var(--tb, var(--ink-3)) 50%);
+}
+.pout.dim {
+  opacity: 0.55;
+}
+.pout.empty {
+  border-style: dashed;
+  border-color: var(--mute);
+  background: none;
+  color: var(--mute);
+  font-family: var(--f-display);
+  font-size: 1.375rem;
+}
+.pout img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.pout-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-width: 0;
+  min-height: 18px;
+  margin: 0;
+  line-height: 1.25;
+}
+.pout-text b {
+  overflow: hidden;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pout-text small {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--mute);
+}
+.pout-text .gum {
+  color: var(--gum);
+}
+.pinfo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 5px;
+  min-height: 20px;
+}
+.pchip {
+  padding: 0 6px;
+  border: 2px solid var(--ink-3);
+  background: var(--ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.pchip b {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 0.875rem;
+}
+.pchip.ok {
+  border-color: var(--leaf);
+  color: var(--leaf);
+}
+.pchip.ng {
+  border-color: var(--hot);
+  color: var(--hot);
+}
+.pwhy {
+  font-size: 0.6875rem;
+  font-weight: 900;
+  color: var(--hot);
+}
+.pacts {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 8px;
+}
+.pacts .btn {
+  min-height: 44px;
+}
+.pgoods {
+  display: flex;
+  gap: 5px;
+  padding: 3px 1px 5px;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-x;
+  scrollbar-width: thin;
+}
+.pgood {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  background: linear-gradient(135deg, var(--ta, var(--ink-3)) 50%, var(--tb, var(--ink-3)) 50%);
+  cursor: pointer;
+}
+.pgood:active {
+  transform: translateY(2px);
+}
+.pgood img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.pgood em {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  min-width: 14px;
+  padding: 0 2px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--f-num);
+  font-style: normal;
+  font-size: 0.75rem;
+  line-height: 1.1;
+  text-align: center;
+}
+/* rarity: pips along the top edge (colour is kept for the parameter line) */
+.pgood i {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  height: 4px;
+  background: var(--ink);
+}
+.pgood i.r1 {
+  width: 5px;
+}
+.pgood i.r2 {
+  width: 12px;
+}
+.pgood i.r3 {
+  width: 19px;
+}
+.pgood i.r4 {
+  width: 26px;
+}
+.pgood i.r5 {
+  width: 33px;
+  background: var(--paper);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+.pnone {
+  color: var(--mute);
+  font-size: 0.75rem;
+}
+
+/* ---------- the recipe book */
+.rc-rules {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 10px;
+  padding-left: 1.1em;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+.rc-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+.rc-table th:nth-child(2),
+.rc-table th:nth-child(4) {
+  width: 3.6em;
+}
+.rc-table th:nth-child(1) {
+  width: 8.8em;
+}
+/* (the row of a line scrolls sideways inside the book; it must not widen the book) */
+#modal-recipes .modal-scroll {
+  display: block;
+  min-width: 0;
+}
+#modal-recipes .modal-scroll > * {
+  max-width: 100%;
+  min-width: 0;
+}
+.rc-table th,
+.rc-table td {
+  padding: 4px 5px;
+  border-bottom: 2px dashed var(--rule);
+  text-align: left;
+  vertical-align: middle;
+}
+.rc-table th {
+  font-size: 0.6875rem;
+  color: var(--sub);
+}
+.rc-sub {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 14px 0 6px;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 0.9375rem;
+}
+.rc-sub em {
+  font-family: var(--f-num);
+  font-style: normal;
+  font-size: 1rem;
+  color: var(--sub);
+}
+.lineage {
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.lin {
+  flex: 0 0 62px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 2px;
+  padding: 4px 2px;
+  border: 2px solid var(--rule);
+}
+.lin.here {
+  border-color: var(--ink);
+  background: var(--gum-wash);
+}
+.lin small {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  word-break: break-all;
+}
+.lin em {
+  font-style: normal;
+  font-size: 0.5625rem;
+  font-weight: 900;
+  color: var(--sub);
+}
+.lin.made em::after {
+  content: ' ✔';
+  color: var(--leaf-deep);
+}
+.lin-arrow {
+  align-self: center;
+  font-style: normal;
+  font-size: 0.625rem;
+  color: var(--sub);
+}
+.limbook {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  gap: 5px;
+}
+.lim {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 2px;
+  min-height: 74px;
+  padding: 5px 2px;
+  border: 2px dashed var(--rule);
+}
+.lim.made {
+  border: 2px solid var(--ink);
+  background: var(--gum-wash);
+}
+.lim b {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  background: var(--rule);
+  color: var(--paper);
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 1.125rem;
+}
+.lim small {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  word-break: break-all;
+}
+
+/* four tabs: on a narrow phone the hint beside them gives way */
+@media (max-width: 480px) {
+  .inv-head:has(#tab-craft) .inv-tip {
+    display: none;
+  }
+}
+
+/* four tabs on a narrow phone: closer together */
+@media (max-width: 480px) {
+  .tabs:has(#tab-craft) .tab {
+    gap: 4px;
+    padding: 8px 9px 0 8px;
+    font-size: 0.8125rem;
+  }
+  .tabs:has(#tab-craft) .tab em {
+    font-size: 0.6875rem;
+  }
+}
+/* the slip's line has one more piece when buying: the footprint */
+.line:has(.line-shape) {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+#modal-recipes {
+  grid-template-columns: minmax(0, 1fr);
+}
+#modal-recipes .modal-box {
+  min-width: 0;
+}

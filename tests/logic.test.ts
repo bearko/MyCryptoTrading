@@ -394,8 +394,13 @@ describe('game rules', () => {
     G.buy(s, catalog, [0]);
     expect(s.combo).toBe(1);
     expect(G.comboRate(s)).toBeCloseTo(B.comboStep);
-    until(s, 'buy'); // customers passed on the way leave empty-handed
+    // the next customer is sent away with nothing: the streak breaks
+    G.pass(s);
+    G.callNext(s, catalog);
+    G.pass(s);
     expect(s.combo).toBe(0);
+    G.callNext(s, catalog);
+    until(s, 'buy');
     s.combo = 3;
     const v = G.currentVisitor(s)!;
     v.want = { type: 'any' };

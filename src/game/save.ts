@@ -20,6 +20,10 @@ export function load(): GameState | null {
     s.totals.orders ??= 0;
     s.totals.bestCombo ??= 0;
     for (const v of s.queue) v.deals ??= 0;
+    // saves from before the pot
+    s.made ??= [];
+    s.today.crafts ??= 0;
+    s.totals.crafts ??= 0;
     // saves from before the houses
     s.favor = { ...noFavor(), ...(s.favor ?? {}) };
     for (const v of s.queue) {

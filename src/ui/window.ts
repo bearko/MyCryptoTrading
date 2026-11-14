@@ -6,7 +6,7 @@ import * as G from '../game/logic';
 import type { GameState, Visitor } from '../game/state';
 import { offerKey } from './counter';
 import { ctx, TEMPER_JA, ui, stageWidth } from './core';
-import { btn, esc, gum, itemTile, labels, num, pct } from './html';
+import { btn, esc, gum, itemTile, labels, num, pct, shapeIcon } from './html';
 import { ICON } from './icons';
 
 const SIZE_JA = { s: '小', m: '中', l: '大' } as const;
@@ -37,6 +37,7 @@ function sellerBody(g: GameState, v: Visitor): string {
       return `<button class="line ${on ? 'on' : ''}" id="line-${offerKey(v, i)}" data-act="pick-line" data-arg="${i}" data-sfx="none" aria-pressed="${on}">
           ${itemTile(item, 'sm')}
           <span class="line-main"><b class="pix">${esc(item.ja)}</b><small>${RARITY_JA[item.rarity]}・${COND_JA[o.cond]}・相場 ${num(G.itemValue(cat, o.itemId, o.cond))}</small><span class="tags">${labels(item)}</span></span>
+          <span class="line-shape">${shapeIcon(o.itemId)}<small>${G.shapeOf(cat, o.itemId, 0).cells.length}マス</small></span>
           <span class="line-price">${price}</span></button>`;
     })
     .join('');

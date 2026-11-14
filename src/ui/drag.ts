@@ -1,4 +1,5 @@
 import { catalog as cat } from '../game/catalog';
+import { CRAFT_MAX } from '../game/craft';
 import * as G from '../game/logic';
 import * as N from '../game/night';
 import * as store from '../game/save';
@@ -302,6 +303,16 @@ function onMove(event: PointerEvent): void {
     d.ok = overCounter || fits;
     return;
   }
+  if (tab === 'craft') {
+    // over the pot: any good of the shop's can go in while there is room in it
+    const pot = overCounter ? null : root.querySelector<HTMLElement>('#craft');
+    const over = !!pot && inside(pot.getBoundingClientRect(), event.clientX, event.clientY);
+    const fits = over && !d.slot && d.uid >= 0 && ui.craft.length < CRAFT_MAX && !ui.craft.includes(d.uid);
+    pot?.classList.toggle('hot', fits);
+    d.ghost!.classList.toggle('bad', over && !fits);
+    d.ok = overCounter || fits;
+    return;
+  }
   const preview = root.querySelector<HTMLElement>('#preview');
   const grid = G.gridOf(s, cat, tab);
   const same = !d.slot && tab === d.grid;
@@ -444,6 +455,16 @@ function onUp(event: PointerEvent): void {
       ui.win.open = true;
       ctx.render();
       good(document.getElementById(`put-${d.uid}`), 'drop');
+    }
+  } else if (tab === 'craft') {
+    // dropped in the pot
+    if (d.ok && !d.slot) {
+      ui.craft.push(d.uid);
+      ctx.render();
+      good(document.getElementById(`pslot-${d.uid}`), 'drop');
+    } else {
+      ctx.render();
+      bad(home(), d.slot ? '装備中の品は、外してから入れてください' : '');
     }
   } else if (tab === 'gear') {
     // dropped on a place for gear: worn, if it fits there

@@ -10,7 +10,32 @@ export const B = {
   shelfCost: [200, 400, 700, 1100],
 
   /** market value by rarity (index 1–5), before condition */
-  rarityValue: [0, 20, 50, 120, 300, 800],
+  rarityValue: [0, 20, 50, 130, 420, 1500],
+  /** a limited legendary (made in the pot only) */
+  limitedValue: 4500,
+  /** how often each rarity turns up: [base, per point of reputation, per step of the hero's rarity] for rarities 1–5 */
+  rarityOdds: [
+    [52, -0.25, 0],
+    [30, 0, 0],
+    [12, 0.08, 2],
+    [2.5, 0.035, 1.2],
+    [0.3, 0.008, 0.45],
+  ],
+  /** which heroes come: weights for rarities 1–5 (a legendary hero is always a rich buyer, and comes from the third day) */
+  heroOdds: [0, 30, 30, 22, 14, 2.5],
+  /** what a buyer brings, by the hero's rarity (index 1–4; a legendary hero is rich, see richFloor): the purse decides what can be sold to whom */
+  heroWealth: [0, 45, 85, 180, 500],
+  /** the purse varies this much, and grows with the shop's reputation (per point) */
+  wealthSpread: [0.8, 1.5],
+  wealthPerRep: 0.004,
+  /** a rich buyer (a legendary hero) brings at least this much, or this many times the dearest good on the shelf */
+  richFloor: 2500,
+  /** the pot: what a good counts for as a partner, by rarity (index 1–5). The partners must add up to the base's own count */
+  craftPoints: [0, 1, 2, 4, 8, 16],
+  /** the pot takes an offering: this share of what the result is worth at its rarity */
+  craftFee: 0.2,
+  /** and it can be used this many times a day */
+  craftPerDay: 2,
   /** condition: 傷あり / 並品 / 美品 */
   condMult: [0.7, 1, 1.25],
   condWeights: [25, 55, 20],
@@ -130,8 +155,8 @@ export const B = {
   orderRep: 1,
   /** unusual customers: from this day on, each customer has this chance to be one */
   specialFromDay: 3,
-  specialChance: 0.08,
-  richBudget: 3,
+  specialChance: 0.055,
+  richBudget: 1.5,
   collectorBudget: 2.5,
   hurryAsk: 0.6,
   /** 商才 */
@@ -146,7 +171,7 @@ export const B = {
   rentGrowth: 1.3,
   rentEvery: 7,
   grace: 1,
-  deedPrice: 26000,
+  deedPrice: 24000,
 } as const;
 
 export const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日'];

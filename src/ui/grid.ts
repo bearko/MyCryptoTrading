@@ -3,6 +3,8 @@ import * as G from '../game/logic';
 import type { GameState } from '../game/state';
 import * as N from '../game/night';
 import { SLOT_IDS, type SlotId } from '../game/state';
+import { craftsLeft } from '../game/craft';
+import { craftBoard } from './craft';
 import { atHome, ctx, hasMouse, isWide, shownGrid, shownTab, sideWidth, ui } from './core';
 import { esc, glyphs, tone } from './html';
 import { ICON } from './icons';
@@ -82,17 +84,19 @@ export function gridSection(g: GameState, side = ''): string {
   const wallet = G.findItem(cat, g.wallet.itemId);
   let head: string;
   if (atHome(g)) {
-    const tabBtn = (which: G.GridId | 'gear', label: string, count: string): string =>
+    const tabBtn = (which: G.GridId | 'gear' | 'craft', label: string, count: string): string =>
       `<button class="tab ${tab === which ? 'on' : ''}" id="tab-${which}" data-act="grid" data-arg="${which}" role="tab" aria-selected="${tab === which}"><span>${label}</span><em>${count}</em></button>`;
     const worn = SLOT_IDS.filter((slot) => g.equip[slot]).length;
-    head = `<div class="tabs" role="tablist">${tabBtn('shelf', '棚', usedOf(g, 'shelf'))}${tabBtn('wallet', 'ウォレット', g.wallet.items.length ? `${g.wallet.items.length}個` : '空')}${tabBtn('gear', '装備', `${worn}/6`)}</div>`;
+    head = `<div class="tabs" role="tablist">${tabBtn('shelf', '棚', usedOf(g, 'shelf'))}${tabBtn('wallet', 'ウォレット', g.wallet.items.length ? `${g.wallet.items.length}個` : '空')}${tabBtn('gear', '装備', `${worn}/6`)}${tabBtn('craft', '合成', `${craftsLeft(g)}回`)}</div>`;
   } else {
     head = `<div class="tabs"><span class="tab on solo"><span>ウォレット</span><em>${used}/${total}</em></span><span class="inv-count">${esc(wallet.ja)}</span></div>`;
   }
   const board =
     tab === 'gear'
       ? gearBoard(g)
-      : `<div class="grid" id="grid-${id}" data-grid="${id}" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${items}<div class="preview" id="preview" data-live></div></div>`;
+      : tab === 'craft'
+        ? craftBoard(g)
+        : `<div class="grid" id="grid-${id}" data-grid="${id}" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${items}<div class="preview" id="preview" data-live></div></div>`;
   return `<section class="inv ${tab} ${side ? 'with-side' : ''}" id="inv" data-ui>
     <div class="inv-head">${head}<span class="inv-tip">${hasMouse() ? (atHome(g) ? 'ドラッグ中に R：回転<br />右クリック：メニュー' : 'クリック：詳細<br />マウスを乗せる：ひと目') : `${atHome(g) ? 'つまんでタブへ：移動' : 'タップ：詳細'}<br />長押し：メニュー`}</span></div>
     <div class="inv-body">

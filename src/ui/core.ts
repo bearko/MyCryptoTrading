@@ -1,7 +1,7 @@
 import type * as G from '../game/logic';
 import type { GameState, SlotId } from '../game/state';
 
-export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses';
+export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes';
 
 /** Screen state that is not part of the saved game. */
 export interface Ui {
@@ -27,7 +27,9 @@ export interface Ui {
   custKey: number;
   /** at home: which grid is shown under the counter */
   /** at home: which tab is shown under the counter — the shelf, the wallet, or what is worn */
-  gridView: G.GridId | 'gear';
+  gridView: G.GridId | 'gear' | 'craft';
+  /** the goods put in the pot (uids; the first is the base) */
+  craft: number[];
   /** the gear window: the slot being filled ('wallet' for the wallet), and whether it leads to the quest */
   gearSlot: SlotId | 'wallet' | null;
   departing: boolean;
@@ -59,6 +61,7 @@ export const ui: Ui = {
   greeting: false,
   custKey: 0,
   gridView: 'shelf',
+  craft: [],
   gearSlot: null,
   departing: false,
   beat: null,
@@ -115,9 +118,9 @@ export const ctx = {
 
 /** At home the shelf or the wallet is shown; out at night, always the wallet. */
 /** The grid the cells are sized for (the gear tab keeps the shelf's room). */
-export const shownGrid = (g: GameState): G.GridId => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView === 'gear' ? 'shelf' : ui.gridView);
+export const shownGrid = (g: GameState): G.GridId => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView === 'gear' || ui.gridView === 'craft' ? 'shelf' : ui.gridView);
 /** The tab on screen: a grid, or the gear. */
-export const shownTab = (g: GameState): G.GridId | 'gear' => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView);
+export const shownTab = (g: GameState): G.GridId | 'gear' | 'craft' => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView);
 export const atHome = (g: GameState): boolean => g.phase === 'morning' || g.phase === 'open' || g.phase === 'evening';
 
 export const TEMPER_JA = ['気さく', 'ふつう', '頑固'];
