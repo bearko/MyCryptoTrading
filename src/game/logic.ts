@@ -4,7 +4,7 @@ import { lines } from './lines';
 import { pick, pickWeighted, rand, randRange } from './rng';
 import { ROTATED, sameCells, type Shape } from './shapes';
 import { factionOfName, noFavor, rankOf, rivalOf, type FactionId } from './factions';
-import { hasService, trustDaily } from './network';
+import { hasService, supplyBlock, trustDaily, type SupplyId } from './network';
 import { PERKS, type PerkId } from './perks';
 import { emptySummary, type DayEvent, type DayOrder, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
 
@@ -224,6 +224,11 @@ function rollEvent(s: GameState): DayEvent {
 function startMorning(s: GameState): void {
   // the guild's trust grows by the day
   if (s.day > 1) s.trust += trustDaily(s);
+  // … and what was ordered from it yesterday is at the door
+  if (s.supply) {
+    s.parcel.push(...s.supply.goods);
+    s.supply = null;
+  }
   s.phase = 'morning';
   s.today = emptySummary();
   s.queue = [];
@@ -338,6 +343,8 @@ export function newGame(seed: number, cat: Catalog): GameState {
     seek: '',
     trust: 0,
     services: [],
+    supply: null,
+    parcel: [],
     trash: [],
     trashGum: 0,
     wide: true,
@@ -787,6 +794,52 @@ export function toTrash(s: GameState, cat: Catalog, uid: number, id: GridId = 's
   s.trash.push(x);
   s.trashGum += disposePrice(cat, x);
   return true;
+}
+
+// ---------------------------------------------------------------- goods ordered from the guild
+
+/**
+ * Orders goods of one parameter line by telephone, for GUM or for trust. What comes is decided now
+ * and is at the door tomorrow morning.
+ */
+export function placeSupply(s: GameState, cat: Catalog, id: SupplyId, param: Param, pay: 'gum' | 'trust'): boolean {
+  if (supplyBlock(s, id, pay)) return false;
+  const kind = B.supplies[id];
+  const goods = [];
+  for (let n = 0; n < kind.count; n++) {
+    const rarity = kind.rarity[pickWeighted(s, kind.odds)];
+    const line = cat.itemsByRarity[rarity].filter((item) => item.params.includes(param));
+    const item = pick(s, line.length ? line : cat.itemsByRarity[rarity]);
+    goods.push({ itemId: item.id, cond: 1, paid: pay === 'gum' ? Math.round(kind.gum / kind.count) : 0 });
+  }
+  if (pay === 'gum') {
+    s.gum -= kind.gum;
+    s.today.spend += kind.gum;
+  } else s.trust -= kind.trust;
+  s.supply = { id, param, goods };
+  return true;
+}
+
+/** Takes one good that has come from the guild onto the shelf (or into the wallet when the shelf is full). */
+export function unpack(s: GameState, cat: Catalog, index: number): boolean {
+  const x = s.parcel[index];
+  if (!x) return false;
+  for (const id of ['shelf', 'wallet'] as const) {
+    if (addTo(s, cat, id, x.itemId, x.cond, x.paid) === null) continue;
+    s.parcel.splice(index, 1);
+    return true;
+  }
+  return false;
+}
+
+/** Takes in everything that fits; returns how many goods were taken in. */
+export function unpackAll(s: GameState, cat: Catalog): number {
+  let taken = 0;
+  for (let i = 0; i < s.parcel.length; ) {
+    if (unpack(s, cat, i)) taken += 1;
+    else i += 1;
+  }
+  return taken;
 }
 
 /** Back out of the bin, onto the shelf (or into the wallet when the shelf is full). */

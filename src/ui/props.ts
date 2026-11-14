@@ -5,8 +5,9 @@
 import { catalog as cat, PARAM_JA } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState } from '../game/state';
-import { GROUP_JA, hasService, serviceBlock, SERVICES, trustDaily } from '../game/network';
-import { atHome } from './core';
+import { B } from '../game/balance';
+import { GROUP_JA, hasService, serviceBlock, SERVICES, SUPPLIES, supplyBlock, supplyById, trustDaily } from '../game/network';
+import { atHome, ui } from './core';
 import { btn, esc, gum, itemTile, num } from './html';
 
 // drawn flat, in the shop's own ink and paper (no pictures of their own in the catalogue)
@@ -63,7 +64,43 @@ export function stageProps(g: GameState): string {
   return `<div class="sprops" id="sprops" data-ui>
     <div class="case" id="case"><b>ショーケース</b><div class="case-slots">${cells}</div>${sign}<small class="case-tip">${shown.length ? `集客 +${G.showAppeal(g, cat)}` : '品をここへドラッグ'}</small></div>
     <button class="phone" id="phone" data-act="phone" data-sfx="open" aria-label="電話（商人ギルドに頼みごとをする。信用 ${g.trust}）">${PHONE}<b>電話</b><small>信用 ${num(g.trust)}</small></button>
+    ${g.parcel.length ? `<button class="parcel" id="parcel" data-act="parcel" data-sfx="open" aria-label="ギルドから届いた荷物（${g.parcel.length} 個。クリックで受け取る）">${CRATE}<b>荷物</b><em>${g.parcel.length}</em></button>` : ''}
   </div>`;
+}
+
+const CRATE = `<svg viewBox="0 0 64 64" aria-hidden="true"><path class="p-ink" d="M6 18h52v40H6z"/><path class="p-fill" d="M10 22h44v32H10z"/><path class="p-ink" d="M10 34h44v4H10zM30 22h4v32h-4z"/><path class="p-paper" d="M24 8h16v12H24z"/><path class="p-ink" d="M22 6h20v16H22zm4 4v8h12v-8z" fill-rule="evenodd"/></svg>`;
+
+/** Ordering goods: a parameter line, then what to send, for GUM or for trust. One order at a time. */
+function supplyRows(g: GameState): string {
+  if (g.supply) {
+    return `<div class="svc owned" id="svc-supply"><span class="svc-main"><b>${PARAM_JA[g.supply.param]}の${esc(supplyById(g.supply.id).name)}</b><small>手配ずみ。明日の朝、店に届きます（注文は 1 度に 1 つ）</small></span><em class="svc-done">手配中</em></div>`;
+  }
+  const lines = (['phy', 'int', 'agi'] as const)
+    .map((p) => `<button class="seek ${ui.supplyParam === p ? 'on' : ''} s-${p}" data-act="supply-param" data-arg="${p}" aria-pressed="${ui.supplyParam === p}">${PARAM_JA[p]}</button>`)
+    .join('');
+  const rows = SUPPLIES.map((x) => {
+    const price = B.supplies[x.id];
+    const buy = (pay: 'gum' | 'trust'): string =>
+      btn('supply', pay === 'gum' ? `${num(price.gum)} GUM` : `信用 ${num(price.trust)}`, { arg: `${x.id}:${pay}`, cls: `small ${pay === 'gum' ? 'gold' : ''}`, disabled: !!supplyBlock(g, x.id, pay), sfx: 'none' });
+    return `<div class="svc" id="svc-${x.id}"><span class="svc-main"><b>${esc(x.name)}</b><small>${PARAM_JA[ui.supplyParam]}の${esc(x.text)}</small></span><span class="svc-buy">${buy('gum')}${buy('trust')}</span></div>`;
+  }).join('');
+  return `<div class="supply-line" role="group" aria-label="取り寄せる系統"><small>系統</small>${lines}</div>${rows}`;
+}
+
+/** What has come from the guild: each good is taken onto the shelf (or into the wallet). */
+export function parcelModal(g: GameState): string {
+  const rows = g.parcel
+    .map((x, i) => {
+      const item = G.findItem(cat, x.itemId);
+      return `<div class="pick-row">${itemTile(item, 'sm')}<span class="pick-main"><b class="pix">${esc(item.ja)}</b><small>相場 ${num(G.itemValue(cat, x.itemId, x.cond))}</small></span>${btn('unpack', '棚へ', { arg: i, cls: 'small', sfx: 'none' })}</div>`;
+    })
+    .join('');
+  return `<div class="modal" id="modal-parcel" data-ui><div class="modal-box tall">
+    <h2 class="modal-title"><small>PARCEL</small>ギルドからの荷物</h2>
+    <p class="hint">電話で取り寄せた品です。棚（いっぱいならウォレット）に空きがある分だけ受け取れます。残りは、ここで待っています。</p>
+    <div class="modal-scroll">${rows}</div>
+    <div class="actions">${btn('modal-close', 'あとで')}${btn('unpack', 'すべて受け取る', { arg: 'all', cls: 'primary', sfx: 'none' })}</div>
+  </div></div>`;
 }
 
 /** The telephone: the guild's favours, each for GUM or for trust. */
@@ -87,9 +124,9 @@ export function networkModal(g: GameState): string {
     .join('');
   return `<div class="modal" id="modal-network" data-ui><div class="modal-box tall">
     <h2 class="modal-title"><small>GUILD</small>商人ギルド</h2>
-    <p class="hint">頼みごとは、ずっと効きます。<b>GUM</b> で払うか、ギルドの<b>信用</b>で払うかを選べます。信用は毎朝 +${trustDaily(g)} ずつ貯まります（待てばただ、急ぐなら GUM）。</p>
+    <p class="hint">品の<b>取り寄せ</b>と、ずっと効く<b>頼みごと</b>ができます。<b>GUM</b> で払うか、ギルドの<b>信用</b>で払うかを選べます。信用は毎朝 +${trustDaily(g)} ずつ貯まります（待てばただ、急ぐなら GUM）。</p>
     <div class="svc-purse"><span>所持金 <b>${gum(g.gum)}</b></span><span>信用 <b>${num(g.trust)}</b></span></div>
-    <div class="modal-scroll">${groups}</div>
+    <div class="modal-scroll"><h3 class="rc-sub">取り寄せ<small>翌朝に届く</small></h3>${supplyRows(g)}${groups}</div>
     <div class="actions one">${btn('modal-close', '電話を切る', { cls: 'primary' })}</div>
   </div></div>`;
 }

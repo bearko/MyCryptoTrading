@@ -1,7 +1,7 @@
 import type * as G from '../game/logic';
 import type { GameState, SlotId } from '../game/state';
 
-export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'network';
+export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'network' | 'parcel';
 
 /** Screen state that is not part of the saved game. */
 export interface Ui {
@@ -30,6 +30,8 @@ export interface Ui {
   gridView: G.GridId | 'gear' | 'craft';
   /** the goods put in the pot (uids; the first is the base) */
   craft: number[];
+  /** the parameter line picked for an order to the guild */
+  supplyParam: 'phy' | 'int' | 'agi';
   /** the gear window: the slot being filled ('wallet' for the wallet), and whether it leads to the quest */
   gearSlot: SlotId | 'wallet' | null;
   departing: boolean;
@@ -62,6 +64,7 @@ export const ui: Ui = {
   custKey: 0,
   gridView: 'shelf',
   craft: [],
+  supplyParam: 'phy',
   gearSlot: null,
   departing: false,
   beat: null,

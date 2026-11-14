@@ -1,7 +1,14 @@
 import type { Param, Role } from './catalog';
 import type { FactionId } from './factions';
-import type { ServiceId } from './network';
+import type { ServiceId, SupplyId } from './network';
 import type { PerkId } from './perks';
+
+/** A good that has come from the guild and is not on a shelf yet. */
+export interface Parcel {
+  itemId: number;
+  cond: number;
+  paid: number;
+}
 
 export interface StockItem {
   uid: number;
@@ -207,6 +214,9 @@ export interface GameState {
   /** the guild's trust, and the favours had from it */
   trust: number;
   services: ServiceId[];
+  /** goods on order from the guild (they come tomorrow morning), and goods that have come and wait at the door */
+  supply: { id: SupplyId; param: Param; goods: Parcel[] } | null;
+  parcel: Parcel[];
   /** goods dropped in the bin: they can be taken back until the night, when they are carried off and paid for */
   trash: StockItem[];
   /** what the night's collection will pay for them */

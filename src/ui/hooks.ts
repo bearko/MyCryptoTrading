@@ -59,7 +59,8 @@ export function morningExtras(g: GameState): string {
   const houses = ranked.length
     ? `<p class="news-perks news-houses"><span>派閥</span>${ranked.map((f) => `<i class="fac f-${f.id}${G.favorRank(g, f.id) < 0 ? ' low' : ''}" title="${esc(f.text(G.favorRank(g, f.id)))}">${f.ja} ${mark(G.favorRank(g, f.id))}</i>`).join('')}</p>`
     : '';
-  return order + perks + houses;
+  const parcel = g.parcel.length ? `<p class="news-order news-parcel"><span>荷物</span><b>ギルドから ${g.parcel.length} 個届いています</b><em>電話の下の箱から受け取る</em></p>` : '';
+  return order + parcel + perks + houses;
 }
 
 // ---------------------------------------------------------------- the houses

@@ -46,6 +46,16 @@ export const B = {
   trustPerRep: 20,
   /** the guild's favours: asking prices, and how much likelier a hero of rarity 3 and up is */
   serviceAsk: 0.05,
+  /**
+   * Goods ordered from the guild by telephone (one order at a time; they come the next morning):
+   * how many, the odds of each rarity, and the price in GUM or in trust. Dearer than a seller at the
+   * counter, but the parameter line is the shop's choice.
+   */
+  supplies: {
+    lot: { count: 3, rarity: [1, 2], odds: [0.6, 0.4], gum: 90, trust: 15 },
+    rare: { count: 1, rarity: [3], odds: [1], gum: 115, trust: 20 },
+    epic: { count: 1, rarity: [4], odds: [1], gum: 380, trust: 64 },
+  },
   serviceVip: 1.35,
   /** the pot: what a good counts for as a partner, by rarity (index 1–5). The partners must add up to the base's own count */
   craftPoints: [0, 1, 2, 4, 8, 16],
