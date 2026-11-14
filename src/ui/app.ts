@@ -11,6 +11,7 @@ import { gearEffects, gearModal, pickModal } from './gear';
 import { gridSection, measure } from './grid';
 import { hud, hudEffects } from './hud';
 import { recipesModal } from './craft';
+import { deckProps, networkModal, trashModal } from './props';
 import { mountDesk } from './desk';
 import { hookEffects, housesModal, perkModal } from './hooks';
 import { destModal, ending, helpModal, inspectModal, leaveModal, menuModal, overModal, settingsModal } from './modals';
@@ -40,7 +41,7 @@ function screenHtml(): string {
       if (g.phase === 'shop') ({ top, side } = shopScreen(g));
       else if (g.phase === 'quest') top = questScreen(g);
       else top = front(g, v, ui.lateKey === ui.custKey);
-      html = `${hud(g)}${top}${gridSection(g, side)}${v ? customerWindow(g, v) : ''}${v && g.phase === 'open' ? bubbleHtml() : ''}`;
+      html = `${hud(g)}${top}${gridSection(g, side)}${deckProps(g)}${v ? customerWindow(g, v) : ''}${v && g.phase === 'open' ? bubbleHtml() : ''}`;
     }
     if (ui.modal === 'inspect') html += inspectModal(g);
     if (ui.modal === 'menu') html += menuModal(g);
@@ -53,6 +54,8 @@ function screenHtml(): string {
   if (ctx.s?.perkOffer && ctx.s.phase === 'morning' && ui.screen === 'game' && ui.modal === 'none') html += perkModal(ctx.s);
   if (ui.modal === 'houses' && ctx.s) html += housesModal(ctx.s);
   if (ui.modal === 'recipes' && ctx.s) html += recipesModal(ctx.s);
+  if (ui.modal === 'trash' && ctx.s) html += trashModal(ctx.s);
+  if (ui.modal === 'network' && ctx.s) html += networkModal(ctx.s);
   if (ui.modal === 'help') html += helpModal();
   if (ui.modal === 'settings') html += settingsModal();
   return html;

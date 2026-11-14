@@ -1,0 +1,95 @@
+/**
+ * The things of the shop that are used by hand rather than through a menu (a wide screen shows them
+ * beside the shelf): the bin — goods are dragged into it — and the bed — a click on it at night ends the day.
+ */
+import { catalog as cat, PARAM_JA } from '../game/catalog';
+import * as G from '../game/logic';
+import type { GameState } from '../game/state';
+import { GROUP_JA, hasService, serviceBlock, SERVICES, trustDaily } from '../game/network';
+import { atHome } from './core';
+import { btn, esc, gum, itemTile, num } from './html';
+
+// drawn flat, in the shop's own ink and paper (no pictures of their own in the catalogue)
+const BIN = `<svg viewBox="0 0 64 64" aria-hidden="true"><path class="p-ink" d="M10 16h44v6H10z"/><path class="p-ink" d="M24 9h16v8H24z"/><path class="p-fill" d="M14 22h36l-4 34H18z"/><path class="p-ink" d="M14 22h36l-4 34H18zm4 4 3 26h22l3-26z" fill-rule="evenodd"/><path class="p-ink" d="M25 29h3v20h-3zM36 29h3v20h-3z"/></svg>`;
+const BED = `<svg viewBox="0 0 96 64" aria-hidden="true"><path class="p-ink" d="M2 46h92v8H2zM6 54h8v8H6zM82 54h8v8h-8z"/><path class="p-ink" d="M6 34h84v14H6z"/><path class="p-paper" d="M9 37h78v8H9z"/><path class="p-ink" d="M30 22h60v20H30z"/><path class="p-fill" d="M33 25h54v14H33z"/><path class="p-ink" d="M44 25h3v14h-3z"/><path class="p-ink" d="M6 22h26v18H6z"/><path class="p-paper" d="M9 25h20v12H9z"/><path class="p-z" d="M58 4h12v3l-7 6h7v3H58v-3l7-6h-7zM76 12h8v2l-5 4h5v2h-8v-2l5-4h-5z"/></svg>`;
+
+export function deckProps(g: GameState): string {
+  if (!atHome(g)) return '';
+  const night = g.phase === 'evening';
+  const count = g.trash.length;
+  return `<button class="prop trash ${count ? 'full' : ''}" id="trash" data-act="trash" data-sfx="open" aria-label="ゴミ箱（品をドラッグして捨てる。中身は ${count} 個。クリックで中を見る）">
+      ${BIN}<b>ゴミ箱</b>${count ? `<em>${count}</em>` : ''}<small>ここへドラッグ</small></button>
+    <button class="prop bed ${night ? 'ready' : ''}" id="bed" data-act="bed" data-sfx="none" aria-label="寝床（店を閉めたあと、クリックで眠って翌日へ）">
+      ${BED}<b>寝床</b><small>${night ? 'クリックで眠る' : '夜になったら'}</small></button>`;
+}
+
+/** What is in the bin: anything can be taken back until the night. */
+export function trashModal(g: GameState): string {
+  const rows = g.trash
+    .map((x) => {
+      const item = G.findItem(cat, x.itemId);
+      return `<div class="pick-row">${itemTile(item, 'sm')}<span class="pick-main"><b class="pix">${esc(item.ja)}</b><small>処分の値 ${num(G.disposePrice(cat, x))}</small></span>${btn('untrash', '戻す', { arg: x.uid, cls: 'small', sfx: 'none' })}</div>`;
+    })
+    .join('');
+  return `<div class="modal" id="modal-trash" data-ui><div class="modal-box tall">
+    <h2 class="modal-title"><small>BIN</small>ゴミ箱</h2>
+    <p class="hint">品をここへドラッグすると捨てられます。夜、眠るときに回収されて、処分の値が入ります（今夜の合計 ${gum(g.trashGum)}）。それまでは戻せます。</p>
+    <div class="modal-scroll">${rows || '<p class="hint">いまは空です。</p>'}</div>
+    <div class="actions one">${btn('modal-close', '閉じる', { cls: 'primary' })}</div>
+  </div></div>`;
+}
+
+const PHONE = `<svg viewBox="0 0 64 64" aria-hidden="true"><path class="p-ink" d="M8 30h48v26H8z"/><path class="p-fill" d="M12 34h40v18H12z"/><path class="p-ink" d="M4 14h56v14H46v-6H18v6H4z"/><path class="p-paper" d="M8 18h8v6H8zM48 18h8v6h-8z"/><path class="p-ink" d="M24 38h4v4h-4zM30 38h4v4h-4zM36 38h4v4h-4zM24 44h4v4h-4zM30 44h4v4h-4zM36 44h4v4h-4z"/></svg>`;
+
+/**
+ * On the shop's wall, beside the shutter: the showcase (what is shown there draws customers after that kind
+ * of good, and richer ones the rarer it is) and the telephone (the guild's favours).
+ */
+export function stageProps(g: GameState): string {
+  if (!atHome(g)) return '';
+  const slots = G.showSlots(g);
+  const shown = G.shownGoods(g);
+  const cells = Array.from({ length: slots }, (_, i) => {
+    const x = shown[i];
+    if (!x) return '<span class="case-slot empty"></span>';
+    const item = G.findItem(cat, x.itemId);
+    return `<button class="case-slot" id="shown-${x.uid}" data-act="unshow" data-arg="${x.uid}" data-sfx="cancel" aria-label="${esc(item.ja)}（クリックでショーケースから下げる）">${itemTile(item, 'sm')}</button>`;
+  }).join('');
+  const sign = hasService(g, 'sign')
+    ? `<div class="case-seek" role="group" aria-label="買いたい系統の看板"><small>求む</small>${(['phy', 'int', 'agi'] as const)
+        .map((p) => `<button class="seek ${g.seek === p ? 'on' : ''} s-${p}" data-act="seek" data-arg="${p}" aria-pressed="${g.seek === p}">${PARAM_JA[p].replace('系', '')}</button>`)
+        .join('')}</div>`
+    : '';
+  return `<div class="sprops" id="sprops" data-ui>
+    <div class="case" id="case"><b>ショーケース</b><div class="case-slots">${cells}</div>${sign}<small class="case-tip">${shown.length ? `集客 +${G.showAppeal(g, cat)}` : '品をここへドラッグ'}</small></div>
+    <button class="phone" id="phone" data-act="phone" data-sfx="open" aria-label="電話（商人ギルドに頼みごとをする。信用 ${g.trust}）">${PHONE}<b>電話</b><small>信用 ${num(g.trust)}</small></button>
+  </div>`;
+}
+
+/** The telephone: the guild's favours, each for GUM or for trust. */
+export function networkModal(g: GameState): string {
+  const groups = (['intro', 'shop', 'craft'] as const)
+    .map((group) => {
+      const rows = SERVICES.filter((x) => x.group === group)
+        .map((x) => {
+          const owned = hasService(g, x.id);
+          const locked = !owned && serviceBlock(g, x.id, 'gum') === 'needs';
+          const buy = (pay: 'gum' | 'trust'): string =>
+            btn('service', pay === 'gum' ? `${num(x.gum)} GUM` : `信用 ${num(x.trust)}`, { arg: `${x.id}:${pay}`, cls: `small ${pay === 'gum' ? 'gold' : ''}`, disabled: !!serviceBlock(g, x.id, pay), sfx: 'none' });
+          return `<div class="svc ${owned ? 'owned' : ''} ${locked ? 'locked' : ''}" id="svc-${x.id}">
+            <span class="svc-main"><b>${esc(x.name)}</b><small>${esc(x.text)}</small></span>
+            ${owned ? '<em class="svc-done">済</em>' : locked ? '<em class="svc-lock">前の段が先</em>' : `<span class="svc-buy">${buy('gum')}${buy('trust')}</span>`}
+          </div>`;
+        })
+        .join('');
+      return `<h3 class="rc-sub">${GROUP_JA[group]}</h3>${rows}`;
+    })
+    .join('');
+  return `<div class="modal" id="modal-network" data-ui><div class="modal-box tall">
+    <h2 class="modal-title"><small>GUILD</small>商人ギルド</h2>
+    <p class="hint">頼みごとは、ずっと効きます。<b>GUM</b> で払うか、ギルドの<b>信用</b>で払うかを選べます。信用は毎朝 +${trustDaily(g)} ずつ貯まります（待てばただ、急ぐなら GUM）。</p>
+    <div class="svc-purse"><span>所持金 <b>${gum(g.gum)}</b></span><span>信用 <b>${num(g.trust)}</b></span></div>
+    <div class="modal-scroll">${groups}</div>
+    <div class="actions one">${btn('modal-close', '電話を切る', { cls: 'primary' })}</div>
+  </div></div>`;
+}

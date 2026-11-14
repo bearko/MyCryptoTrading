@@ -2,6 +2,7 @@ import { perkById } from '../game/perks';
 import { catalog as cat } from '../game/catalog';
 import { craft, CRAFT_MAX } from '../game/craft';
 import * as G from '../game/logic';
+import { buyService, serviceById, type ServiceId } from '../game/network';
 import * as N from '../game/night';
 import * as Q from '../game/quest';
 import * as store from '../game/save';
@@ -74,6 +75,11 @@ function enterGame(g: GameState | null): void {
     ui.win.moved = false;
     ui.win.size = defaultWinSize();
     ui.craft = [];
+    // a save from before the wide shelf: its goods are laid out again, once
+    if (g && !g.wide) {
+      G.repackShelf(g, cat);
+      store.save(g);
+    }
     closeModal();
     resetHud(g);
     resetScene();
@@ -649,6 +655,62 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       if (ui.sel && ui.craft.length < CRAFT_MAX && !ui.craft.includes(ui.sel.uid)) ui.craft.push(ui.sel.uid);
       ui.gridView = 'craft';
       closeModal();
+      break;
+    case 'bed':
+      // the bed: sleeping ends the day (once the shop is shut)
+      if (g.phase === 'evening') {
+        endDay(g);
+        return;
+      }
+      nope(document.getElementById('bed'));
+      note(g.phase === 'open' ? '眠るのは、店を閉めてから' : 'いまは朝です');
+      return;
+    case 'trash':
+      ui.modal = 'trash';
+      break;
+    case 'phone':
+      ui.modal = 'network';
+      break;
+    case 'service': {
+      const [id, pay] = arg.split(':') as [ServiceId, 'gum' | 'trust'];
+      if (!buyService(g, id, pay)) {
+        nope(el);
+        return;
+      }
+      store.save(g);
+      render();
+      audio.sfx('buy');
+      haptic('medium');
+      const row = document.getElementById(`svc-${id}`);
+      if (row) fx.burst('stars', row, { count: 12, color: tok('--gum') });
+      fx.stamp(serviceById(id).name, { x: ctx.root.clientWidth / 2, y: ctx.root.clientHeight * 0.3 }, { size: 30 });
+      return;
+    }
+    case 'unshow':
+      G.setShown(g, n, false);
+      break;
+    case 'show-toggle': {
+      // from a good's menu: into the showcase, or out of it
+      if (!ui.sel) break;
+      const on = !g.display.includes(ui.sel.uid);
+      if (!G.setShown(g, ui.sel.uid, on)) {
+        note('ショーケースがいっぱいです（電話でギルドに増設を頼めます）');
+        return;
+      }
+      audio.sfx(on ? 'drop' : 'cancel');
+      closeModal();
+      break;
+    }
+    case 'seek':
+      g.seek = g.seek === arg ? '' : (arg as 'phy' | 'int' | 'agi');
+      break;
+    case 'untrash':
+      if (!G.fromTrash(g, cat, n)) {
+        note('棚にもウォレットにも、戻す場所がありません');
+        return;
+      }
+      audio.sfx('drop');
+      if (g.trash.length === 0) closeModal();
       break;
     case 'dispose-no':
       ui.confirmDispose = false;

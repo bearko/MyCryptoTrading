@@ -1,4 +1,5 @@
 import { morningExtras } from './hooks';
+import { stageProps } from './props';
 import { B, WEEKDAYS } from '../game/balance';
 import { PARAM_JA } from '../game/catalog';
 import * as G from '../game/logic';
@@ -97,6 +98,7 @@ function nightCard(g: GameState): string {
     <p class="night-hint">${g.wentOut ? '今夜はもう外出しました。' : '左のドアから外出できます（一晩に一か所。翌朝は開店が遅れます）。'}</p>
     <div class="actions three night-acts">${deed}${shelfBtn}${btn('gear', '装備', { cls: 'small', sfx: 'open' })}</div>
     <div class="cta">${btn('endday', `${ICON.moon}眠って翌日へ`, { cls: 'primary big', sfx: 'none' })}</div>
+    <p class="night-bedhint">右下の寝床をクリックすると、眠って翌日になります。</p>
   </div>`;
 }
 
@@ -111,8 +113,8 @@ export function front(g: GameState, v: Visitor | null, opening: boolean): string
   if (g.phase === 'open' && v) {
     // the street outside follows the day: the light turns towards evening as the line of customers runs out
     const sky = { dusk: g.visitorsToday > 1 ? Math.min(1, g.cursor / (g.visitorsToday - 1)) * 0.75 : 0, rain: g.event.id === 'rain' };
-    return `<div class="front open" id="front" data-ui>${scene(v, opening, farTray(v), sky)}${counterBar(g, v)}${shutter('up', false)}</div>`;
+    return `<div class="front open" id="front" data-ui>${scene(v, opening, farTray(v), sky)}${counterBar(g, v)}${shutter('up', false)}${stageProps(g)}</div>`;
   }
   const night = g.phase === 'evening';
-  return `<div class="front shut ${night ? 'is-night' : 'is-morning'}" id="front" data-ui>${scene(null, false)}${counterBar(g, null)}${shutter('down', night)}${night ? nightCard(g) : morningCard(g)}</div>`;
+  return `<div class="front shut ${night ? 'is-night' : 'is-morning'}" id="front" data-ui>${scene(null, false)}${counterBar(g, null)}${shutter('down', night)}${night ? nightCard(g) : morningCard(g)}${stageProps(g)}</div>`;
 }

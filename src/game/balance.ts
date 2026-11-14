@@ -5,7 +5,9 @@ export const B = {
   startStock: 4,
 
   /** the shelf is a grid; each good takes a footprint on it. Each upgrade adds a row */
-  gridCols: 6,
+  /** the shelf is a long counter under the shop: this deep, and two columns wider with each level (`rows` in the state is that level) */
+  shelfDepth: 3,
+  shelfColsPerLevel: 2,
   startRows: 4,
   shelfCost: [200, 400, 700, 1100],
 
@@ -30,6 +32,21 @@ export const B = {
   wealthPerRep: 0.004,
   /** a rich buyer (a legendary hero) brings at least this much, or this many times the dearest good on the shelf */
   richFloor: 2500,
+  /** the showcase: how many goods can be shown (by the guild's favours: none, one, two) */
+  showSlots: [2, 4, 6],
+  /** a buyer is after what is shown this often (base, and more per good shown; at most showPullMax) */
+  showPull: [0.35, 0.1],
+  showPullMax: 0.8,
+  /** what is shown draws richer heroes: each step of rarity above common, of each good shown, adds this to the odds of a hero of rarity 3, 4, 5 */
+  showAppeal: [0, 0, 0, 0.04, 0.07, 0.05],
+  /** with a "wanted" sign up, this share of what sellers bring is of that parameter line */
+  seekPull: 0.65,
+  /** the guild: trust gained each morning, and one more per this much reputation */
+  trustDaily: 8,
+  trustPerRep: 20,
+  /** the guild's favours: asking prices, and how much likelier a hero of rarity 3 and up is */
+  serviceAsk: 0.05,
+  serviceVip: 1.35,
   /** the pot: what a good counts for as a partner, by rarity (index 1–5). The partners must add up to the base's own count */
   craftPoints: [0, 1, 2, 4, 8, 16],
   /** the pot takes an offering: this share of what the result is worth at its rarity */

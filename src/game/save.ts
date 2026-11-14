@@ -20,6 +20,15 @@ export function load(): GameState | null {
     s.totals.orders ??= 0;
     s.totals.bestCombo ??= 0;
     for (const v of s.queue) v.deals ??= 0;
+    // saves from before the showcase and the guild
+    s.display ??= [];
+    s.seek ??= '';
+    s.trust ??= 0;
+    s.services ??= [];
+    // saves from before the bin and the wide shelf (the shelf is repacked when the game is entered)
+    s.trash ??= [];
+    s.trashGum ??= 0;
+    s.wide ??= false;
     // saves from before the pot
     s.made ??= [];
     s.crosses ??= [];

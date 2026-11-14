@@ -1,9 +1,10 @@
 import { B } from './balance';
-import type { Catalog, Item } from './catalog';
+import type { Param, Catalog, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randRange } from './rng';
 import { ROTATED, sameCells, type Shape } from './shapes';
 import { factionOfName, noFavor, rankOf, type FactionId } from './factions';
+import { hasService, trustDaily } from './network';
 import { PERKS, type PerkId } from './perks';
 import { emptySummary, type DayEvent, type DayOrder, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
 
@@ -94,7 +95,7 @@ export function walletSize(s: GameState, cat: Catalog): { cols: number; rows: nu
 }
 
 export function gridOf(s: GameState, cat: Catalog, id: GridId): Grid {
-  return id === 'shelf' ? { cols: B.gridCols, rows: s.rows, items: s.stock } : { ...walletSize(s, cat), items: s.wallet.items };
+  return id === 'shelf' ? { cols: s.rows * B.shelfColsPerLevel, rows: B.shelfDepth, items: s.stock } : { ...walletSize(s, cat), items: s.wallet.items };
 }
 
 /** Cells taken, as "x,y" keys. `ignoreUid` leaves one good out (the one being moved). */
@@ -189,7 +190,7 @@ export const visitorsFor = (rep: number): number => B.visitorsBase + Math.floor(
 export function visitorsExpected(s: GameState): number {
   const event = s.event.id === 'caravan' ? B.caravanVisitors : s.event.id === 'rain' ? B.rainVisitors : 0;
   const late = s.lateOpen && !hasPerk(s, 'nightowl') ? B.lateOpenLoss : 0;
-  return Math.max(B.visitorsMin, visitorsFor(s.rep) + event + (hasPerk(s, 'regular') ? 1 : 0) + B.boonVisitors * favorRank(s, 'suzaku') - late);
+  return Math.max(B.visitorsMin, visitorsFor(s.rep) + event + (hasPerk(s, 'regular') ? 1 : 0) + B.boonVisitors * favorRank(s, 'suzaku') + (hasService(s, 'guest1') ? 1 : 0) + (hasService(s, 'guest2') ? 1 : 0) - late);
 }
 export const shelfCost = (s: GameState): number | null => B.shelfCost[s.shelfLevel] ?? null;
 
@@ -213,6 +214,8 @@ function rollEvent(s: GameState): DayEvent {
 
 /** A new day: the shutter is still down, today's event is decided, and last night's outing costs a customer. */
 function startMorning(s: GameState): void {
+  // the guild's trust grows by the day
+  if (s.day > 1) s.trust += trustDaily(s);
   s.phase = 'morning';
   s.today = emptySummary();
   s.queue = [];
@@ -323,6 +326,13 @@ export function newGame(seed: number, cat: Catalog): GameState {
     last: { bonus: 0, orderReward: 0 },
     totals: { sold: 0, bought: 0, bestSale: 0, deepest: 0, orders: 0, bestCombo: 0, crafts: 0 },
     made: [],
+    display: [],
+    seek: '',
+    trust: 0,
+    services: [],
+    trash: [],
+    trashGum: 0,
+    wide: true,
     crosses: [],
   };
   for (let i = 0; i < B.startStock; i++) {
@@ -340,7 +350,10 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
   // settled in, and the third day's second customer is always one
   const nthToday = s.queue.length;
   const forcedRich = s.day === B.specialFromDay && nthToday === 1;
-  const odds = B.heroOdds.map((w, rarity) => (rarity === 5 ? (s.day < B.specialFromDay || (s.day === B.specialFromDay && nthToday < 1) ? 0 : w * (hasPerk(s, 'patron') ? 2 : 1)) : w));
+  // (what is in the showcase, and a word from the guild, draw the rarer — and richer — heroes)
+  const appeal = showAppeal(s, cat);
+  const draw = (rarity: number): number => (rarity >= 3 ? (1 + B.showAppeal[rarity] * appeal) * (hasService(s, 'vip') ? B.serviceVip : 1) : 1);
+  const odds = B.heroOdds.map((w, rarity) => (rarity === 5 ? (s.day < B.specialFromDay || (s.day === B.specialFromDay && nthToday < 1) ? 0 : w * (hasPerk(s, 'patron') ? 2 : 1)) : w) * draw(rarity));
   const hero = pick(s, cat.heroesByRarity[forcedRich ? 5 : pickWeighted(s, odds)]);
   const heroBonus = hero.rarity - 1;
   const temper = pickWeighted(s, B.temperWeights);
@@ -399,17 +412,29 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
     const [lo, hi] = B.askRange[temper];
     const offers: Offer[] = [];
     for (let i = 0; i < count; i++) {
-      const item = pick(s, cat.itemsByRarity[rollRarity(s, heroBonus)]);
+      let pool = cat.itemsByRarity[rollRarity(s, heroBonus)];
+      // a "wanted" sign in the showcase: most of what is brought in is of that parameter line
+      if (s.seek && hasService(s, 'sign') && rand(s) < B.seekPull) {
+        const sought = pool.filter((x) => x.params.includes(s.seek as Param));
+        if (sought.length > 0) pool = sought;
+      }
+      const item = pick(s, pool);
       const cond = pickWeighted(s, B.condWeights);
       const hurry = s.event.id === 'bargain' ? B.bargainAsk : 1;
-      offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi) * hurry * (1 - B.boonAsk * favorRank(s, 'genbu')))) });
+      const guild = hasService(s, 'eye') ? 1 - B.serviceAsk : 1;
+      offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi) * hurry * guild * (1 - B.boonAsk * favorRank(s, 'genbu')))) });
     }
     const bundleRate = count >= 2 ? B.bundleRates[pickWeighted(s, B.bundleWeights)] : 0;
     return { ...base, kind: 'sell', offers, bundleRate, want: { type: 'any' }, budget: 0, line: lines.sellOpen(s, temper) };
   }
 
   let want: Want;
-  if (s.stock.length > 0 && rand(s) < B.buyerKnowsStock) {
+  const shown = shownGoods(s);
+  if (shown.length > 0 && rand(s) < Math.min(B.showPullMax, B.showPull[0] + B.showPull[1] * shown.length)) {
+    // drawn in by the showcase: after the kind of good that is shown there
+    const item = cat.itemById.get(pick(s, shown).itemId)!;
+    want = rand(s) < 0.7 || item.roles.length === 0 ? { type: 'param', param: pick(s, item.params) } : { type: 'role', role: pick(s, item.roles) };
+  } else if (s.stock.length > 0 && rand(s) < B.buyerKnowsStock) {
     const target = pick(s, s.stock);
     const item = cat.itemById.get(target.itemId)!;
     const roll = rand(s);
@@ -713,6 +738,91 @@ export function dispose(s: GameState, cat: Catalog, uid: number, id: GridId = 's
   return true;
 }
 
+// ---------------------------------------------------------------- the showcase
+
+/** How many goods the showcase holds. */
+export const showSlots = (s: GameState): number => B.showSlots[(hasService(s, 'case1') ? 1 : 0) + (hasService(s, 'case2') ? 1 : 0)];
+/** The goods shown (those that are still in the shop). */
+export function shownGoods(s: GameState): StockItem[] {
+  const out: StockItem[] = [];
+  for (const uid of s.display) {
+    const x = s.stock.find((it) => it.uid === uid) ?? s.wallet.items.find((it) => it.uid === uid);
+    if (x) out.push(x);
+  }
+  return out;
+}
+/** What the showcase does for the shop's standing: every step of rarity above common, of every good shown. */
+export function showAppeal(s: GameState, cat: Catalog): number {
+  return shownGoods(s).reduce((sum, x) => {
+    const item = cat.itemById.get(x.itemId)!;
+    return sum + (item.limited ? 5 : item.rarity - 1);
+  }, 0);
+}
+/** Puts a good in the showcase, or takes it out. False when the showcase is full. */
+export function setShown(s: GameState, uid: number, on: boolean): boolean {
+  s.display = shownGoods(s).map((x) => x.uid).filter((id) => id !== uid);
+  if (!on) return true;
+  if (s.display.length >= showSlots(s)) return false;
+  if (!s.stock.some((x) => x.uid === uid) && !s.wallet.items.some((x) => x.uid === uid)) return false;
+  s.display.push(uid);
+  return true;
+}
+
+// ---------------------------------------------------------------- the bin
+
+/** Into the bin: nothing is paid yet, and it can be taken back until the night. */
+export function toTrash(s: GameState, cat: Catalog, uid: number, id: GridId = 'shelf'): boolean {
+  const items = id === 'shelf' ? s.stock : s.wallet.items;
+  const index = items.findIndex((x) => x.uid === uid);
+  if (index < 0) return false;
+  const [x] = items.splice(index, 1);
+  s.trash.push(x);
+  s.trashGum += disposePrice(cat, x);
+  return true;
+}
+
+/** Back out of the bin, onto the shelf (or into the wallet when the shelf is full). */
+export function fromTrash(s: GameState, cat: Catalog, uid: number): boolean {
+  const index = s.trash.findIndex((x) => x.uid === uid);
+  if (index < 0) return false;
+  const x = s.trash[index];
+  for (const id of ['shelf', 'wallet'] as const) {
+    const g = gridOf(s, cat, id);
+    const slot = findSlotIn(g, cat, x.itemId);
+    if (!slot) continue;
+    s.trash.splice(index, 1);
+    s.trashGum = Math.max(0, s.trashGum - disposePrice(cat, x));
+    g.items.push({ ...x, ...slot });
+    return true;
+  }
+  return false;
+}
+
+/** The night's collection: what is in the bin is carried off and paid for. */
+function emptyTrash(s: GameState): void {
+  s.gum += s.trashGum;
+  s.today.revenue += s.trashGum;
+  s.trash = [];
+  s.trashGum = 0;
+}
+
+/** Lays an old (deep) shelf out again as a wide one. What cannot be placed goes to the wallet, or is sold off. */
+export function repackShelf(s: GameState, cat: Catalog): void {
+  const goods = [...s.stock].sort((a, b) => shapeOf(cat, b.itemId, 0).cells.length - shapeOf(cat, a.itemId, 0).cells.length);
+  s.stock = [];
+  for (const x of goods) {
+    const shelf = findSlotIn(gridOf(s, cat, 'shelf'), cat, x.itemId);
+    if (shelf) {
+      s.stock.push({ ...x, ...shelf });
+      continue;
+    }
+    const bag = findSlotIn(gridOf(s, cat, 'wallet'), cat, x.itemId);
+    if (bag) s.wallet.items.push({ ...x, ...bag });
+    else s.gum += itemValue(cat, x.itemId, x.cond);
+  }
+  s.wide = true;
+}
+
 export function upgradeShelf(s: GameState): boolean {
   const cost = shelfCost(s);
   if (cost === null || s.gum < cost) return false;
@@ -739,6 +849,8 @@ export function continueAfterWin(s: GameState): void {
 /** Closes the day: collects rent on rent days, then starts the next morning. */
 export function endDay(s: GameState): void {
   if (s.phase !== 'evening') return;
+  // (before the rent is counted: what the bin pays can help with it)
+  emptyTrash(s);
   s.nightNote = '';
   if (isRentDay(s)) {
     if (s.gum >= s.rent) {

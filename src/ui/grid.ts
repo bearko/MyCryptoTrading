@@ -5,7 +5,7 @@ import * as N from '../game/night';
 import { SLOT_IDS, type SlotId } from '../game/state';
 import { craftsLeft } from '../game/craft';
 import { craftBoard } from './craft';
-import { atHome, ctx, hasMouse, isWide, shownGrid, shownTab, sideWidth, ui } from './core';
+import { atHome, ctx, deckWidth, hasMouse, isWide, shownGrid, shownTab, ui } from './core';
 import { esc, glyphs, tone } from './html';
 import { ICON } from './icons';
 
@@ -35,6 +35,8 @@ export function gridItem(x: { uid: number; itemId: number; x: number; y: number;
     .join('');
   const size = Math.min(shape.w, shape.h) * cell;
   const first = shape.cells.reduce((a, c) => (c[1] < a[1] || (c[1] === a[1] && c[0] < a[0]) ? c : a));
+  // (a good that is also in the showcase wears a mark)
+  if (ctx.s?.display.includes(x.uid)) cls += ' shown';
   return `<div class="inv-item ${cls}" id="item-${x.uid}" data-item="${x.uid}" style="${tone(item)};left:${x.x * cell}px;top:${x.y * cell}px;width:${shape.w * cell}px;height:${shape.h * cell}px">
       ${cells}<img src="${item.img}" alt="${esc(item.ja)}" draggable="false" style="width:${size}px;height:${size}px;${imageSpot(shape.cells, size)}${x.rot ? `;transform:rotate(${x.rot * 90}deg)` : ''}" />
       <span class="inv-glyph" style="left:${first[0] * cell}px;top:${first[1] * cell}px">${glyphs(item)}</span>${cls === 'match' ? `<i class="inv-mark" style="left:${(first[0] + 1) * cell - 17}px;top:${first[1] * cell + 3}px" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
@@ -126,9 +128,10 @@ export function measure(g: GameState): void {
   const cap = Math.max(44, Math.min(58, h * 0.067));
   if (isWide()) {
     // a wide screen: the grid has a column of its own, as tall as the screen under the bar at the top
-    const col = sideWidth() - 34;
-    const tall = h - (root.querySelector<HTMLElement>('#hud')?.offsetHeight ?? 110) - 96;
-    const fit = (cols: number, rows: number): number => Math.floor(Math.max(28, Math.min(col / cols, 66, tall / rows)));
+    // a wide screen: the shelf is a long counter along the bottom, between the bin and the bed
+    const col = deckWidth() - 34;
+    const tall = h * (atHome(g) ? 0.27 : 0.36);
+    const fit = (cols: number, rows: number): number => Math.floor(Math.max(26, Math.min(col / cols, 60, tall / rows)));
     boardMin = 0;
     if (atHome(g)) {
       const shelf = G.gridOf(g, cat, 'shelf');
@@ -144,7 +147,7 @@ export function measure(g: GameState): void {
     // the shelf sets the room; the wallet tab fits itself into the same room
     const shelf = G.gridOf(g, cat, 'shelf');
     const share = h < 700 ? 0.38 : 0.44;
-    const shelfCell = Math.floor(Math.max(28, Math.min((w - 24) / shelf.cols, cap, (h * share - 40) / shelf.rows)));
+    const shelfCell = Math.floor(Math.max(36, Math.min((w - 24) / shelf.cols, cap, (h * share - 40) / shelf.rows)));
     boardMin = shelf.rows * shelfCell + 18;
     ctx.cell = grid === shelf || shownGrid(g) === 'shelf' ? shelfCell : Math.floor(Math.max(28, Math.min((w - 24) / grid.cols, cap, (shelf.rows * shelfCell) / grid.rows)));
     return;

@@ -5,7 +5,7 @@ import { factionById } from '../game/factions';
 import * as G from '../game/logic';
 import type { GameState, Visitor } from '../game/state';
 import { offerKey } from './counter';
-import { ctx, TEMPER_JA, ui, stageWidth } from './core';
+import { ctx, isWide, TEMPER_JA, ui, stageWidth } from './core';
 import { btn, esc, gum, itemTile, labels, num, pct, shapeIcon } from './html';
 import { ICON } from './icons';
 
@@ -179,6 +179,8 @@ export function clampWindow(): void {
   win.style.maxHeight = ui.win.moved || edge === undefined ? `${Math.max(200, room)}px` : `${Math.max(150, edge - base.top - ui.win.y - lip)}px`;
   // (on a wide screen the slip keeps to the shop's side)
   const areaW = stageWidth();
+  // (on a wide screen the slip opens clear of the showcase on the wall, until it is moved by hand)
+  if (isWide() && !ui.win.moved) ui.win.x = Math.max(ui.win.x, 160);
   ui.win.x = Math.max(0, Math.min(ui.win.x, areaW - win.offsetWidth));
   ui.win.y = Math.max(0, Math.min(ui.win.y, root.clientHeight - 48));
   win.style.left = `${ui.win.x}px`;
