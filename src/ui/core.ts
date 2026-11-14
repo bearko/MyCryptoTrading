@@ -80,6 +80,8 @@ export const ctx = {
   cell: 48,
   /** input is ignored while this is above zero (beats, transitions) */
   busy: 0,
+  /** a window was just opened from under the finger: the click that the same touch still sends is not for it */
+  swallowClick: false,
   render: (): void => {},
 };
 

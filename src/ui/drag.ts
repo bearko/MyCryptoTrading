@@ -220,6 +220,8 @@ function onDown(event: PointerEvent): void {
       clearRing();
       ui.sel = { grid, uid };
       ui.modal = 'menu';
+      // the finger is still down: lifting it must not press whatever the menu put under it
+      ctx.swallowClick = true;
       audio.sfx('open');
       haptic('medium');
       ctx.render();
@@ -268,7 +270,8 @@ function onMove(event: PointerEvent): void {
   }
   const d = drag;
   if (!d.active) {
-    if (Math.hypot(event.clientX - d.startX, event.clientY - d.startY) < 8) return;
+    // a finger wobbles more than a mouse: a tap must not turn into a drag
+    if (Math.hypot(event.clientX - d.startX, event.clientY - d.startY) < (event.pointerType === 'mouse' ? 8 : 14)) return;
     if (!lift(d)) return;
   }
   const rootRect = root.getBoundingClientRect();
@@ -398,6 +401,8 @@ function onUp(event: PointerEvent): void {
     ui.sel = { grid: d.grid, uid: d.uid };
     ui.confirmDispose = false;
     ui.modal = 'inspect';
+    // the window opens under the finger: the click of this same tap must not close it or press its buttons
+    ctx.swallowClick = true;
     audio.sfx('open');
     haptic('light');
     ctx.render();

@@ -18,15 +18,23 @@ export function inspectModal(g: GameState): string {
   const price = G.disposePrice(cat, x);
   let action: string;
   if (g.phase === 'shop') action = btn('unstow', 'ウォレットから出す');
-  else if (g.phase === 'quest') action = btn('drop', ui.confirmDispose ? '本当に捨てる' : '捨てる', { cls: ui.confirmDispose ? 'danger' : '', sfx: ui.confirmDispose ? 'none' : 'tap' });
+  else if (g.phase === 'quest') action = btn('drop', '捨てる');
   else if (ui.sel.grid === 'wallet') action = btn('unload', '棚へ移す');
-  else action = btn('dispose', ui.confirmDispose ? '本当に処分' : '処分する', { cls: ui.confirmDispose ? 'danger' : '', sub: gum(price), sfx: ui.confirmDispose ? 'none' : 'tap' });
+  else action = btn('dispose', '処分する', { sub: gum(price) });
+  // throwing a good away is asked twice, and the second button is not where the first one was:
+  // tapping the same spot again backs out instead
+  const throwable = g.phase === 'quest' || (g.phase !== 'shop' && ui.sel.grid !== 'wallet');
+  const foot =
+    ui.confirmDispose && throwable
+      ? `<p class="warn-text dispose-ask">${g.phase === 'quest' ? 'この品を捨てます。' : `この品を ${num(price)} GUM で処分します。`}元には戻せません。</p>
+      <div class="actions two">${btn('dispose-no', 'やめる', { cls: 'ghost' })}${btn(g.phase === 'quest' ? 'drop' : 'dispose', g.phase === 'quest' ? '本当に捨てる' : '本当に処分', { cls: 'danger', sfx: 'none' })}</div>`
+      : `<div class="actions two">${action}${btn('modal-close', '閉じる', { cls: 'ghost' })}</div>`;
   return `<div class="modal" id="modal-inspect" data-ui><div class="modal-box tall">
     <div class="modal-scroll">
     ${itemCard(x.itemId, x.cond, `<div class="item-note">仕入れ値 ${num(x.paid)}　定価 ${num(G.salePrice(cat, x, 0))}</div>`)}
     ${itemDetail(item)}
     </div>
-    <div class="actions two">${action}${btn('modal-close', '閉じる', { cls: 'ghost' })}</div>
+    ${foot}
   </div></div>`;
 }
 

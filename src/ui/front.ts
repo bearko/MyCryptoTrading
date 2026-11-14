@@ -48,11 +48,13 @@ function morningCard(g: GameState): string {
   return `<div class="morning" id="morning-${g.day}">
     <article class="news paper ${head.cls}">
       <header class="news-mast"><span class="news-extra">号外</span><b>GUM TIMES</b><i>第${g.day}号（${weekday}）</i></header>
-      <div class="news-main"><span class="news-icon">${head.icon}</span><div><small>本日のイベント</small><h2>${head.title}</h2></div></div>
-      <p class="news-lead">${eventText(g)}</p>
-      ${g.nightNote ? `<p class="news-note">${esc(g.nightNote)}</p>` : ''}
-      ${g.lateOpen ? `<p class="news-late">夜に出歩いたため開店が遅れ、お客さんを ${B.lateOpenLoss} 人取り逃しました。</p><span class="stamp late" aria-hidden="true">開店遅れ<small>−${B.lateOpenLoss}人</small></span>` : ''}
-      ${morningExtras(g)}
+      <div class="news-body" id="news-body-${g.day}">
+        <div class="news-main"><span class="news-icon">${head.icon}</span><div><small>本日のイベント</small><h2>${head.title}</h2></div></div>
+        <p class="news-lead">${eventText(g)}</p>
+        ${g.nightNote ? `<p class="news-note">${esc(g.nightNote)}</p>` : ''}
+        ${g.lateOpen ? `<div class="news-late-row"><p class="news-late">夜に出歩いたため開店が遅れ、お客さんを ${B.lateOpenLoss} 人取り逃しました。</p><span class="stamp late" aria-hidden="true">開店遅れ<small>−${B.lateOpenLoss}人</small></span></div>` : ''}
+        ${morningExtras(g)}
+      </div>
       <footer class="news-foot"><span>今日のお客さんは</span><b>${G.visitorsExpected(g)}</b><span>人の見込み。</span></footer>
     </article>
     <div class="cta">${btn('open', '店を開ける', { cls: 'primary big', sfx: 'none' })}</div>
