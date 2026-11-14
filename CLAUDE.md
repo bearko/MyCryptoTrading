@@ -10,7 +10,8 @@
 - 品の色はパラメーター系統（PHY＝赤・INT＝青・AGI＝緑）で分ける。レアリティで色分けしない。系統ラベル・装備する場所・戦闘用の効果は `scripts/sync-assets.mjs` がスキルの文面とシリーズ名から作る。
 - 素材は `vendor/mycryptoheroes`（サブモジュール）から `scripts/sync-assets.mjs` が使うものだけを `public/mch/` に写し、`src/generated/catalog.json` を作る（どちらも Git には入れない）。
 - チェック：`npm test`・`npm run typecheck`・`npm run build`。数字を変えたら `npm run sim`（ボットに 300 回遊ばせて、クリアまでの日数と破産の割合を見る）で確かめ、`docs/GAME_DESIGN.md` の計測結果を直す。
-- 画面は縦持ちのスマホが基準（幅 360〜480px）。ボタンは 44px 以上、ドット絵は `image-rendering: pixelated`。
+- 画面は縦持ちのスマホが基準（幅 360〜480px）。幅 900px・高さ 520px 以上では横長の 2 列になる（左に店、右に棚。`src/styles/wide.css`、条件は `core.ts` の `WIDE_QUERY`・`isWide`）。幅に頼る計算は `stageWidth()`（店の側の幅）と `sideWidth()`（棚の列の幅）を使い、`#app` の幅をじかに読まない。
+- マウスとキーボード向けの操作は `src/ui/desk.ts`（ホバーの札、キーの近道）と `drag.ts`（右クリックのメニュー、つまんだまま R・右クリックで回転）。スマホの操作は変えない。ボタンは 44px 以上、ドット絵は `image-rendering: pixelated`。
 - プレイヤー自身（店番）の姿は描かない。客はカウンターの奥に大きく立ち、左から入って右へ出る。
 - 客のせりふは場面の左上に出て、言い終えたら消える。来店のときは、せりふが消えてから伝票（客のウィンドウ）が開く（`ui.greeting`、`src/ui/scene.ts` の `sceneEffects`）。来店のせりふは、場面のどこをタップしても飛ばせる（`#greet-skip`）。吹き出しは `#app` の直下にあり、伝票より手前。
 - 伝票の中は「品と値・合計・買う／売る」だけ。値を動かす操作は、帯の「交渉」ボタンで開く窓（`window.ts` の `negoPanel`、`ui.haggleOpen`）に置く。買い客の予算は値付けで動く（安くした分だけ増え、高くした分だけ減る。`logic.ts` の `budgetAt`）。売り客の品をまとめて手前に移すのは、カウンターの縁の、青くて小さな四角いボタン（`counter.ts`）。伝票のはじめの大きさは、スマホ＝小・PC＝大（`core.ts` の `defaultWinSize`）。

@@ -27,6 +27,10 @@ type ItemDrag = {
   slot: SlotId | null;
   itemId: number;
   rot: number;
+  /** turned while held (R, or the right button): the turn it had when picked up, and where the pointer is */
+  rot0?: number;
+  px?: number;
+  py?: number;
   /** the tab the good is being held over, and the timer that opens it */
   overTab: string;
   dwell: number;
@@ -281,6 +285,8 @@ function onMove(event: PointerEvent): void {
     for (const zone of root.querySelectorAll('#near.take, #far.take')) zone.classList.toggle('hot', inside(zone.getBoundingClientRect(), event.clientX, event.clientY));
     return;
   }
+  d.px = event.clientX;
+  d.py = event.clientY;
   watchTabs(d, event.clientX, event.clientY);
   const tab = shownTab(s);
   const counter = d.grid === 'shelf' && !d.slot ? root.querySelector('#near.drop') : null;
@@ -459,8 +465,15 @@ function onUp(event: PointerEvent): void {
       // a worn good comes off onto the grid
       ok = N.unequip(g, cat, d.slot, tab, spot.x, spot.y);
       if (ok) uid = G.gridOf(g, cat, tab).items[G.gridOf(g, cat, tab).items.length - 1].uid;
-    } else if (spot && tab !== d.grid) ok = N.transfer(g, cat, d.grid, d.uid, tab, spot.x, spot.y);
-    else if (spot) ok = G.moveStock(g, cat, d.uid, spot.x, spot.y, d.grid);
+    } else {
+      // turned while it was held: it is set down that way, or goes back as it was
+      const held = (d.grid === 'shelf' ? g.stock : g.wallet.items).find((x) => x.uid === d.uid);
+      const turned = !!held && d.rot0 !== undefined && held.rot !== d.rot;
+      if (held && turned) held.rot = d.rot;
+      if (spot && tab !== d.grid) ok = N.transfer(g, cat, d.grid, d.uid, tab, spot.x, spot.y);
+      else if (spot) ok = G.moveStock(g, cat, d.uid, spot.x, spot.y, d.grid);
+      if (!ok && held && turned) held.rot = d.rot0!;
+    }
     ctx.render();
     if (ok) good(document.getElementById(`item-${uid}`), 'drop');
     else bad(home());
@@ -483,10 +496,48 @@ function onCancel(): void {
 /** True while something is being dragged (the screen must not be redrawn under it). */
 export const dragging = (): boolean => !!drag && drag.kind !== 'win' && drag.active;
 
+/** Turns the good being dragged a quarter (R, or the right button). True when something was turned. */
+export function rotateDragged(): boolean {
+  if (!drag || drag.kind !== 'item' || !drag.active || drag.slot || drag.uid < 0) return false;
+  const d = drag;
+  d.rot0 ??= d.rot;
+  d.rot = (d.rot + 1) % 4;
+  const x = d.px ?? d.startX;
+  const y = d.py ?? d.startY;
+  reGhost(d, x, y);
+  audio.sfx('rotate');
+  // the outline on the grid follows at once
+  onMove(new PointerEvent('pointermove', { clientX: x, clientY: y }));
+  return true;
+}
+
+/** The right button on a good: its menu (what a long press opens on a phone). */
+function openMenuAt(target: HTMLElement): boolean {
+  const s = ctx.s;
+  if (!s || !atHome(s) || ui.modal !== 'none' || ctx.busy > 0 || ui.screen !== 'game') return false;
+  const cell = target.closest<HTMLElement>('.inv-cell[data-uid]');
+  if (!cell) return false;
+  const uid = Number(cell.dataset.uid);
+  const grid = (cell.closest<HTMLElement>('.grid')?.dataset.grid ?? 'shelf') as G.GridId;
+  if (ui.counter.includes(uid) || !G.gridOf(s, cat, grid).items.some((it) => it.uid === uid)) return false;
+  ui.sel = { grid, uid };
+  ui.modal = 'menu';
+  audio.sfx('open');
+  ctx.render();
+  return true;
+}
+
 export function mountDrag(root: HTMLElement): void {
   root.addEventListener('pointerdown', onDown);
   root.addEventListener('contextmenu', (event) => {
-    if ((event.target as HTMLElement).closest('.inv-cell, .offer')) event.preventDefault();
+    const target = event.target as HTMLElement;
+    if (dragging()) {
+      event.preventDefault();
+      rotateDragged();
+    } else if (target.closest('.inv-cell, .offer')) {
+      event.preventDefault();
+      if (event.button === 2 || (event as PointerEvent).pointerType === 'mouse') openMenuAt(target);
+    }
   });
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp);

@@ -1,0 +1,148 @@
+/*
+ * A wide screen (a PC, a tablet on its side): the shop on the left, the shelf on the right.
+ * The same condition is in src/ui/core.ts (WIDE_QUERY). A phone never matches it.
+ */
+@media (min-width: 900px) and (min-height: 520px) {
+  #app:not([data-phase='title']) {
+    max-width: 1180px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(380px, 40%, 500px);
+    grid-template-rows: auto minmax(0, 1fr);
+    border-inline: 3px solid var(--ink-3);
+  }
+  #app > .hud,
+  #app > .ending {
+    grid-column: 1 / -1;
+  }
+  #app > .front,
+  #app > .shop,
+  #app > .quest {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+  }
+  #app > .inv {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 14px 12px 12px;
+    border-top: 0;
+    border-left: 3px solid var(--ink-3);
+    overflow-y: auto;
+  }
+  #app > .inv .board {
+    flex: 0 0 auto;
+  }
+
+  /* the bar at the top: the same pieces, gathered in the middle instead of stretched across */
+  .hud {
+    display: grid;
+    grid-template-columns: minmax(0, 440px) minmax(0, 520px);
+    justify-content: center;
+    align-items: center;
+    column-gap: 28px;
+  }
+  .hud > .hud-row {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+  .hud > :not(.hud-row) {
+    grid-column: 2;
+  }
+
+  /* the customer stands larger, and further from the slip */
+  .walker {
+    left: 70%;
+    height: min(62cqw, 500px, 108cqh);
+  }
+  .bubble {
+    max-width: min(46%, 340px);
+    font-size: 1rem;
+  }
+  .win {
+    width: 300px;
+  }
+  .win.mini {
+    width: 226px;
+  }
+  .win.big {
+    width: 400px;
+  }
+  .news {
+    max-width: 480px;
+  }
+  .morning .cta,
+  .night .cta {
+    max-width: 360px;
+  }
+
+  /* a mouse points finer than a thumb: what can be picked up says so */
+  .inv-item,
+  .offer {
+    cursor: grab;
+  }
+}
+
+/* ---------- the card that shows when the pointer rests on a good (a mouse only; see src/ui/desk.ts) */
+.hover-tip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9500;
+  width: 300px;
+  padding: 10px 12px;
+  box-shadow: 5px 5px 0 var(--ink-50);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s var(--ease-out);
+}
+.hover-tip.show {
+  opacity: 1;
+}
+.tip-skill {
+  margin: 8px 0 0;
+  padding-top: 7px;
+  border-top: 2px dashed var(--rule);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.tip-skill b {
+  display: block;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 0.8125rem;
+}
+
+/* ---------- the keys, listed under the shelf (a wide screen with a mouse has the room, and a keyboard) */
+@media (min-width: 900px) and (min-height: 520px) and (hover: hover) and (pointer: fine) {
+  .keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin: 14px 2px 0;
+    color: var(--mute);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.6;
+  }
+  .keys span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .keys kbd {
+    min-width: 22px;
+    padding: 0 6px;
+    border: 2px solid var(--ink-3);
+    border-bottom-width: 4px;
+    background: var(--ink-2);
+    color: var(--paper);
+    font-family: var(--f-num);
+    font-size: 0.8125rem;
+    text-align: center;
+  }
+}

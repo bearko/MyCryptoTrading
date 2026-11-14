@@ -69,8 +69,36 @@ export const ui: Ui = {
   lateKey: -1,
 };
 
-/** The slip starts small on a phone (the customer stays in view) and large where there is a mouse and room. */
-export const defaultWinSize = (): 's' | 'l' => (typeof window !== 'undefined' && window.innerWidth >= 700 && window.matchMedia('(hover: hover) and (pointer: fine)').matches ? 'l' : 's');
+/**
+ * A wide screen (a PC, a tablet on its side): the shop stands on the left and the shelf on the right
+ * (src/styles/wide.css holds the same condition).
+ */
+export const WIDE_QUERY = '(min-width: 900px) and (min-height: 520px)';
+export const isWide = (): boolean => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(WIDE_QUERY).matches;
+
+/** True where there is a mouse (hover cards, the right button and the keys are worth mentioning). */
+export const hasMouse = (): boolean => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+/** The width of the shop's side of the screen: the whole screen on a phone, the left column on a wide screen. */
+export function stageWidth(): number {
+  const root = ctx.root;
+  if (!isWide()) return root.clientWidth;
+  return root.querySelector<HTMLElement>('#front, #shop, #quest')?.clientWidth || root.clientWidth - sideWidth();
+}
+/** The width of the shelf's column on a wide screen (the same sum as the CSS: clamp(380px, 40%, 500px)). */
+export const sideWidth = (): number => Math.max(380, Math.min(500, appWidth() * 0.4));
+/** How wide the game is on a wide screen (it is narrower on the title screen, so this is not read off the page). */
+const appWidth = (): number => Math.min(document.documentElement.clientWidth, 1180) - 6;
+
+/**
+ * The slip starts small on a phone (the customer stays in view). With a mouse and room it starts large;
+ * on a wide screen that is narrow for it, it starts at the middle size so that it does not cover the customer.
+ */
+export function defaultWinSize(): 's' | 'm' | 'l' {
+  if (typeof window === 'undefined') return 's';
+  if (isWide()) return appWidth() - sideWidth() >= 640 ? 'l' : 'm';
+  return window.innerWidth >= 700 && window.matchMedia('(hover: hover) and (pointer: fine)').matches ? 'l' : 's';
+}
 
 /** What every module shares: the game, the root element, the cell size, and the way to redraw. */
 export const ctx = {

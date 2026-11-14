@@ -10,6 +10,7 @@ import { fx } from './fx';
 import { gearEffects, gearModal, pickModal } from './gear';
 import { gridSection, measure } from './grid';
 import { hud, hudEffects } from './hud';
+import { mountDesk } from './desk';
 import { hookEffects, housesModal, perkModal } from './hooks';
 import { destModal, ending, helpModal, inspectModal, leaveModal, menuModal, overModal, settingsModal } from './modals';
 import { nope } from './motion';
@@ -185,6 +186,7 @@ export function mount(el: HTMLElement): void {
     if (kind) audio.sfx(kind === 'se' ? 'coin' : 'tap');
   });
   mountDrag(el);
+  mountDesk(el);
   window.addEventListener('resize', () => {
     if (!dragging()) render();
   });
