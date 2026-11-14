@@ -31,7 +31,8 @@ describe('economy', () => {
   });
 
   it('haggling pays: careful play finishes clearly sooner than plain play', () => {
-    expect(careful.median).toBeLessThan(plain.median * 0.9);
+    // (a dear price now shrinks the budget, so a markup trades volume for unit price: the edge comes mostly from haggling when buying)
+    expect(careful.median).toBeLessThan(plain.median * 0.95);
   });
 
   it('playing without haggling is still survivable most of the time', () => {

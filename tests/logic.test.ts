@@ -536,4 +536,39 @@ describe('game rules', () => {
     expect(v.done).toBe(true);
     expect(s.favor.genbu).toBe(5 - B.favorAngry);
   });
+  it('the budget follows the price: more to spend at a kind price, less at a dear one', () => {
+    const s = G.newGame(31, catalog);
+    s.day = 2;
+    s.order = null;
+    G.openShop(s, catalog);
+    for (let n = 0; n < 200; n++) {
+      until(s, 'buy');
+      const v = G.currentVisitor(s)!;
+      const item = s.stock.find((x) => G.matches(catalog, v.want, x.itemId));
+      if (item) {
+        v.budget = 1000;
+        expect(G.budgetAt(v, 0)).toBe(1000);
+        expect(G.budgetAt(v, -2)).toBe(Math.round(1000 * (1 + B.generousTiers[1])));
+        expect(G.budgetAt(v, 2)).toBe(Math.round(1000 * (1 - B.markupTiers[2])));
+        // a dear price can push the same good over the budget
+        const fair = G.salePrice(catalog, item, 0);
+        v.budget = fair;
+        expect(G.quoteSale(s, catalog, v, [item.uid], 0).over).toBe(0);
+        expect(G.quoteSale(s, catalog, v, [item.uid], 1).over).toBeGreaterThan(0);
+        // spending half of what the kind price allows leaves half of the purse
+        v.budget = G.salePrice(catalog, item, -2) * 2;
+        const before = v.budget;
+        const quote = G.quoteSale(s, catalog, v, [item.uid], -2);
+        expect(quote.budget).toBeGreaterThan(before);
+        expect(G.sell(s, catalog, [item.uid], -2)).toBe('sold');
+        const spent = quote.paid / quote.budget;
+        expect(v.budget).toBeGreaterThan(before * (1 - spent) - 2);
+        expect(v.budget).toBeLessThan(before * (1 - spent) + 2);
+        return;
+      }
+      G.pass(s);
+      G.callNext(s, catalog);
+    }
+    throw new Error('no buyer found a good');
+  });
 });

@@ -12,6 +12,8 @@ import { ICON } from './icons';
 const SIZE_JA = { s: '小', m: '中', l: '大' } as const;
 
 const rateText = (rate: number): string => `${rate < 0 ? '−' : '+'}${Math.round(Math.abs(rate) * 100)}%`;
+/** beside the budget: how the chosen price has moved it */
+const budgetTag = (): string => (ui.tier === 0 ? '' : `<em class="bud ${ui.tier < 0 ? 'up' : 'down'}">${rateText(-G.markupOf(ui.tier))}</em>`);
 const oddsTone = (p: number): string => (p >= 0.75 ? 'safe' : p >= 0.45 ? 'even' : 'risky');
 
 /** how long the customer thinks an offer over (the suspense beat) */
@@ -57,7 +59,7 @@ function buyerBody(g: GameState, v: Visitor): string {
   const want = `<div class="want"><span>欲しいもの</span><b>${esc(wantText(v.want))}</b></div>`;
   if (ui.counter.length === 0) {
     return `<div class="win-scroll">${want}
-      <div class="sum"><span>予算（残り）</span><b class="total">${gum(v.budget)}</b></div>
+      <div class="sum"><span>予算（残り）${budgetTag()}</span><b class="total">${gum(G.budgetAt(v, ui.tier))}</b></div>
       <p class="hint">棚の品をカウンターへドラッグすると、売上を試算します。帰ってもらうときはベルを鳴らします。</p></div>`;
   }
   const q = G.quoteSale(g, cat, v, ui.counter, ui.tier);
@@ -77,7 +79,7 @@ function buyerBody(g: GameState, v: Visitor): string {
   return `<div class="win-scroll">${want}<div class="lines">${goods}</div></div>
     <div class="win-foot">
       <div class="sum ${over ? 'bad' : ''}"><span>売上金額</span><b class="total">${gum(q.asked)}</b></div>
-      ${over ? `<div class="sum minor bad"><span>予算オーバー</span><b>${num(q.over)} GUM（受け取りは ${num(q.paid)}）</b></div>` : `<div class="sum minor"><span>予算（残り）</span><b>${gum(v.budget)}</b></div>`}
+      ${over ? `<div class="sum minor bad"><span>予算オーバー</span><b>${num(q.over)} GUM（受け取りは ${num(q.paid)}）</b></div>` : `<div class="sum minor"><span>予算（残り）${budgetTag()}</span><b>${gum(q.budget)}</b></div>`}
       ${ui.tier !== 0 ? `<div class="sum tierline ${ui.tier < 0 ? 'kind' : ''}"><span>${ui.tier < 0 ? '値引き' : '上乗せ'}</span><b>${rateText(G.markupOf(ui.tier))}</b></div>` : ''}
       ${!q.matches ? '<p class="note bad">希望と違う品は受け取ってもらえません。</p>' : q.chance < 1 ? chanceBar(q.chance) : ''}
       ${foot}
@@ -124,7 +126,9 @@ function negoPanel(g: GameState, v: Visitor): string {
       const sub = tier < 0 ? `評価 +${G.saleFavor(tier)}` : tier === 0 ? '必ず売れる' : `成功 ${pct(p)}`;
       return `<button class="nopt ${tier < 0 ? 'kind' : tier === 0 ? 'fair' : oddsTone(p)} ${tier === ui.tier ? 'on' : ''}" data-act="tier" data-arg="${tier}" aria-pressed="${tier === ui.tier}"><b>${tier === 0 ? '定価' : rateText(G.markupOf(tier))}</b><small>${sub}</small></button>`;
     }).join('');
-    body = `<p class="nego-h">値付け<small>値引きすると、${house}</small></p><div class="nopts two">${opts}</div>`;
+    const now = G.budgetAt(v, ui.tier);
+    body = `<p class="nego-h">値付け<small>安くすると予算が増え、高くすると減る</small></p><div class="nopts two">${opts}</div>
+      <div class="nego-bud"><span>予算</span>${ui.tier !== 0 ? `<s>${num(v.budget)}</s>` : ''}<b>${num(now)}</b>${budgetTag()}</div>`;
   }
   return `<div class="nego paper kind-${v.kind}" id="nego" data-ui>
     <div class="nego-bar"><b>交渉</b>${v.kind === 'sell' ? '<small>1 人 1 回</small>' : ''}<button class="win-btn" data-act="haggle-close" data-sfx="close" aria-label="交渉を閉じる">${ICON.close}</button></div>

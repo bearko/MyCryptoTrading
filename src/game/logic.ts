@@ -609,22 +609,34 @@ export interface SaleQuote {
   over: number;
   /** how often the customer agrees */
   chance: number;
+  /** what the customer has to spend at this price (a kind price loosens the purse, a dear one tightens it) */
+  budget: number;
   /** false when a good on the counter is not what the customer wants */
   matches: boolean;
 }
 
 /** Works out a sale of the goods on the counter at a markup tier, without doing it. */
+/**
+ * How far a customer's money goes at a price tier. A price under the fair one loosens the purse by as much
+ * (−20% → 20% more to spend), a price over it tightens it (+30% → 30% less): cheap moves a lot of stock,
+ * dear makes the most of each piece.
+ */
+export const budgetFactor = (tier: number): number => 1 - markupOf(tier);
+export const budgetAt = (v: Visitor, tier: number): number => Math.round(v.budget * budgetFactor(tier));
+
 export function quoteSale(s: GameState, cat: Catalog, v: Visitor, uids: readonly number[], tier: number): SaleQuote {
   const goods = uids.map((uid) => s.stock.find((x) => x.uid === uid)).filter((x): x is StockItem => !!x);
   const fair = goods.reduce((sum, x) => sum + salePrice(cat, x, 0), 0);
   const asked = goods.reduce((sum, x) => sum + salePrice(cat, x, tier), 0);
-  const paid = Math.min(asked, v.budget);
+  const budget = budgetAt(v, tier);
+  const paid = Math.min(asked, budget);
   const markup = fair > 0 ? paid / fair - 1 : 0;
   return {
     fair,
     asked,
     paid,
-    over: Math.max(0, asked - v.budget),
+    budget,
+    over: Math.max(0, asked - budget),
     chance: chance(s, markupBase(markup) + (markup > 1e-9 && hasPerk(s, 'tagger') ? B.perkTagger : 0), v.temper),
     matches: goods.length > 0 && goods.every((x) => matches(cat, v.want, x.itemId)),
   };
@@ -662,7 +674,8 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
     s.totals.bestSale = Math.max(s.totals.bestSale, quote.paid);
     const markup = quote.paid / quote.fair - 1;
     addRep(s, markup <= 1e-9 ? B.saleRep[0] : markup <= 0.3 ? B.saleRep[1] : B.saleRep[2]);
-    v.budget -= quote.paid;
+    // the purse empties by the share that was spent, whatever the price tier
+    v.budget = quote.paid >= quote.budget ? 0 : Math.max(0, v.budget - Math.round(quote.paid / budgetFactor(tier)));
     v.mood = 'happy';
     if (v.budget < B.budgetFloor) {
       v.done = true;
