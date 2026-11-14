@@ -1,5 +1,6 @@
 import type { Param, Role } from './catalog';
 import type { FactionId } from './factions';
+import type { ServiceId } from './network';
 import type { PerkId } from './perks';
 
 export interface StockItem {
@@ -199,6 +200,13 @@ export interface GameState {
   totals: { sold: number; bought: number; bestSale: number; deepest: number; orders: number; bestCombo: number; crafts: number };
   /** every good that has come out of the pot (item ids): the recipe book marks them */
   made: number[];
+  /** the goods shown in the showcase (uids of goods on the shelf or in the wallet) */
+  display: number[];
+  /** the parameter line on the "wanted" sign ('' when none) */
+  seek: Param | '';
+  /** the guild's trust, and the favours had from it */
+  trust: number;
+  services: ServiceId[];
   /** goods dropped in the bin: they can be taken back until the night, when they are carried off and paid for */
   trash: StockItem[];
   /** what the night's collection will pay for them */

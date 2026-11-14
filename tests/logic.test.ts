@@ -207,7 +207,8 @@ describe('game rules', () => {
     s.rows = 2;
     s.gum = 1_000_000;
     const long = catalog.items.find((i) => i.shape === 'v3')!;
-    const slot = G.findSlot(s, catalog, long.id);
+    // (a grid only two deep: the good has to lie on its side)
+    const slot = G.findSlotIn({ cols: 6, rows: 2, items: [] }, catalog, long.id);
     expect(slot).toEqual({ x: 0, y: 0, rot: 1 });
     s.rows = 4;
     s.stock.push({ uid: 99, itemId: long.id, cond: 1, paid: 0, x: 0, y: 0, rot: 0 });

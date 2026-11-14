@@ -139,7 +139,7 @@ export interface CraftPlan {
 
 /** The offering for a result: a share of what it is worth at its rarity (the same for every good of that rarity). */
 export const feeOf = (item: Item): number => Math.round((item.limited ? B.limitedValue : B.rarityValue[item.rarity]) * B.craftFee);
-export const craftsLeft = (s: GameState): number => Math.max(0, B.craftPerDay - s.today.crafts);
+export const craftsLeft = (s: GameState): number => Math.max(0, B.craftPerDay + (s.services.includes('pot') ? 1 : 0) - s.today.crafts);
 
 function find(s: GameState, uid: number): { grid: GridId; stock: StockItem } | null {
   const shelf = s.stock.find((x) => x.uid === uid);

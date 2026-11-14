@@ -32,6 +32,8 @@ type ItemDrag = {
   rot0?: number;
   /** over the bin */
   bin?: boolean;
+  /** over the showcase */
+  show?: boolean;
   px?: number;
   py?: number;
   /** the tab the good is being held over, and the timer that opens it */
@@ -300,6 +302,17 @@ function onMove(event: PointerEvent): void {
   const overBin = !!bin && bin.offsetParent !== null && inside(bin.getBoundingClientRect(), event.clientX, event.clientY);
   bin?.classList.toggle('hot', overBin);
   d.bin = overBin;
+  // the showcase on the wall: a good dropped on it is shown there (it stays on the shelf)
+  const caseEl = root.querySelector<HTMLElement>('#case');
+  const overCase = !overBin && !!caseEl && caseEl.offsetParent !== null && inside(caseEl.getBoundingClientRect(), event.clientX, event.clientY);
+  caseEl?.classList.toggle('hot', overCase);
+  d.show = overCase;
+  if (overCase) {
+    d.ok = !d.slot && d.uid >= 0;
+    d.ghost!.classList.toggle('bad', !d.ok);
+    root.querySelector<HTMLElement>('#preview')?.classList.remove('show');
+    return;
+  }
   if (overBin) {
     d.ok = !d.slot && d.uid >= 0 && !ui.counter.includes(d.uid);
     d.ghost!.classList.toggle('bad', !d.ok);
@@ -455,7 +468,14 @@ function onUp(event: PointerEvent): void {
   };
   const home = (): HTMLElement | null => document.getElementById(d.slot ? `gslot-${d.slot}` : `item-${d.uid}`);
   root.querySelector('#trash')?.classList.remove('hot');
-  if (d.bin) {
+  root.querySelector('#case')?.classList.remove('hot');
+  if (d.show) {
+    // dropped on the showcase: shown there, and back in its place on the shelf
+    const shown = d.ok && G.setShown(g, d.uid, true);
+    ctx.render();
+    if (shown) good(document.getElementById(`shown-${d.uid}`), 'drop');
+    else bad(home(), d.ok ? 'ショーケースがいっぱいです' : '');
+  } else if (d.bin) {
     // dropped in the bin: it waits there until the night
     if (d.ok && G.toTrash(g, cat, d.uid, d.grid)) {
       ui.craft = ui.craft.filter((uid) => uid !== d.uid);
