@@ -367,3 +367,8 @@
 .gearboard .hint {
   color: var(--mute);
 }
+
+/* the list of keys: only where there is a keyboard and room (src/styles/wide.css) */
+.keys {
+  display: none;
+}

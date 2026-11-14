@@ -3,7 +3,7 @@ import * as G from '../game/logic';
 import type { GameState } from '../game/state';
 import * as N from '../game/night';
 import { SLOT_IDS, type SlotId } from '../game/state';
-import { atHome, ctx, shownGrid, shownTab, ui } from './core';
+import { atHome, ctx, hasMouse, isWide, shownGrid, shownTab, sideWidth, ui } from './core';
 import { esc, glyphs, tone } from './html';
 import { ICON } from './icons';
 
@@ -94,11 +94,12 @@ export function gridSection(g: GameState, side = ''): string {
       ? gearBoard(g)
       : `<div class="grid" id="grid-${id}" data-grid="${id}" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${items}<div class="preview" id="preview" data-live></div></div>`;
   return `<section class="inv ${tab} ${side ? 'with-side' : ''}" id="inv" data-ui>
-    <div class="inv-head">${head}<span class="inv-tip">${atHome(g) ? 'つまんでタブへ：移動' : 'タップ：詳細'}<br />長押し：メニュー</span></div>
+    <div class="inv-head">${head}<span class="inv-tip">${hasMouse() ? (atHome(g) ? 'ドラッグ中に R：回転<br />右クリック：メニュー' : 'クリック：詳細<br />マウスを乗せる：ひと目') : `${atHome(g) ? 'つまんでタブへ：移動' : 'タップ：詳細'}<br />長押し：メニュー`}</span></div>
     <div class="inv-body">
       <div class="board" ${atHome(g) && boardMin ? `style="min-height:${boardMin}px"` : ''}>${board}</div>
       ${side}
     </div>
+    ${atHome(g) ? '<p class="keys" aria-label="キーボードの近道"><span><kbd>Space</kbd>ベル・せりふを飛ばす</span><span><kbd>Enter</kbd>決定（買う・売る・開店）</span><span><kbd>Esc</kbd>閉じる</span><span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>棚・ウォレット・装備</span><span><kbd>R</kbd>つまんだ品を回す</span></p>' : ''}
   </section>`;
 }
 
@@ -119,6 +120,22 @@ export function measure(g: GameState): void {
   const grid = G.gridOf(g, cat, shownGrid(g));
   // on shorter screens the cells give way to the scene (never under a finger's width while the grid is small)
   const cap = Math.max(44, Math.min(58, h * 0.067));
+  if (isWide()) {
+    // a wide screen: the grid has a column of its own, as tall as the screen under the bar at the top
+    const col = sideWidth() - 34;
+    const tall = h - (root.querySelector<HTMLElement>('#hud')?.offsetHeight ?? 110) - 96;
+    const fit = (cols: number, rows: number): number => Math.floor(Math.max(28, Math.min(col / cols, 66, tall / rows)));
+    boardMin = 0;
+    if (atHome(g)) {
+      const shelf = G.gridOf(g, cat, 'shelf');
+      const shelfCell = fit(shelf.cols, shelf.rows);
+      boardMin = shelf.rows * shelfCell + 18;
+      ctx.cell = grid === shelf || shownGrid(g) === 'shelf' ? shelfCell : fit(grid.cols, grid.rows);
+      return;
+    }
+    ctx.cell = g.phase === 'shop' && sideFits(g) ? Math.min(52, fit(grid.cols + 3, grid.rows)) : fit(grid.cols, grid.rows);
+    return;
+  }
   if (atHome(g)) {
     // the shelf sets the room; the wallet tab fits itself into the same room
     const shelf = G.gridOf(g, cat, 'shelf');

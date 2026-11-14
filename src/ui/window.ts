@@ -5,7 +5,7 @@ import { factionById } from '../game/factions';
 import * as G from '../game/logic';
 import type { GameState, Visitor } from '../game/state';
 import { offerKey } from './counter';
-import { ctx, TEMPER_JA, ui } from './core';
+import { ctx, TEMPER_JA, ui, stageWidth } from './core';
 import { btn, esc, gum, itemTile, labels, num, pct } from './html';
 import { ICON } from './icons';
 
@@ -171,7 +171,9 @@ export function clampWindow(): void {
   // (a seller's "bring it all over" button stands on the counter's edge: the slip ends above it)
   const lip = root.querySelector('#take-all') ? 32 : 12;
   win.style.maxHeight = ui.win.moved || edge === undefined ? `${Math.max(200, room)}px` : `${Math.max(150, edge - base.top - ui.win.y - lip)}px`;
-  ui.win.x = Math.max(0, Math.min(ui.win.x, root.clientWidth - win.offsetWidth));
+  // (on a wide screen the slip keeps to the shop's side)
+  const areaW = stageWidth();
+  ui.win.x = Math.max(0, Math.min(ui.win.x, areaW - win.offsetWidth));
   ui.win.y = Math.max(0, Math.min(ui.win.y, root.clientHeight - 48));
   win.style.left = `${ui.win.x}px`;
   win.style.top = `${ui.win.y}px`;
@@ -179,9 +181,9 @@ export function clampWindow(): void {
   const nego = root.querySelector<HTMLElement>('#nego');
   if (nego) {
     const right = ui.win.x + win.offsetWidth + 6;
-    const beside = root.clientWidth - right - 6;
-    const width = beside >= 140 ? Math.min(beside, 230) : Math.min(230, root.clientWidth - 12);
-    const left = beside >= 140 ? right : Math.max(6, Math.min(ui.win.x + win.offsetWidth - width - 6, root.clientWidth - width - 6));
+    const beside = areaW - right - 6;
+    const width = beside >= 140 ? Math.min(beside, 230) : Math.min(230, areaW - 12);
+    const left = beside >= 140 ? right : Math.max(6, Math.min(ui.win.x + win.offsetWidth - width - 6, areaW - width - 6));
     const top = beside >= 140 ? ui.win.y : ui.win.y + 46;
     nego.style.width = `${width}px`;
     nego.style.left = `${left}px`;
