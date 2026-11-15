@@ -19,7 +19,7 @@ import { questAct } from './quest';
 import { bubbleShake, custHop, custShake, custThink, hushBubble, OPEN_MS, pipBreak, resetScene, sayAgain } from './scene';
 import { display } from './settings';
 import { note } from './toast';
-import { BEAT_MS } from './window';
+import { BEAT_MS, restoreWindow } from './window';
 
 /** the pending walk-out before the next customer comes in (after the bell) */
 let nextTimer = 0;
@@ -73,7 +73,7 @@ function enterGame(g: GameState | null): void {
     ui.screen = g ? 'game' : 'title';
     ui.gridView = 'shelf';
     ui.printDay = 0;
-    ui.win.moved = false;
+    restoreWindow();
     ui.win.size = defaultWinSize();
     ui.craft = [];
     // a save from before the wide shelf: its goods are laid out again, once
