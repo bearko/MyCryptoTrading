@@ -751,3 +751,40 @@ html.calm .loupe {
 .patrol-body small.bad {
   color: var(--hot);
 }
+
+/* the wall, laid out so that it never reaches the counter: the showcase grows sideways (one row of slots),
+   and the small things hang in a column under it */
+@media (min-width: 900px) and (min-height: 520px) {
+  .sprops {
+    width: auto;
+    gap: 10px;
+  }
+}
+.case {
+  width: max-content;
+  min-width: 138px;
+}
+.case-slots {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: 46px;
+  justify-content: start;
+}
+.case-slot {
+  height: 46px;
+}
+/* a short screen: the small things hang side by side under the showcase */
+@media (min-width: 900px) and (min-height: 520px) and (max-height: 699px) {
+  .sprops {
+    grid-template-columns: repeat(3, max-content);
+    align-items: start;
+    gap: 8px;
+  }
+  .sprops .case {
+    grid-column: 1 / -1;
+    padding: 4px 6px 5px;
+  }
+  .sprops .case-tip {
+    display: none;
+  }
+}
