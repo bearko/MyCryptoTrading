@@ -7,7 +7,7 @@ import type { GameState } from './state';
  * Each can be paid for in GUM, or with the guild's trust — which grows a little every day.
  * Waiting costs nothing but days; paying is quicker and costs GUM.
  */
-export type ServiceId = 'guest1' | 'guest2' | 'vip' | 'case1' | 'case2' | 'sign' | 'pot' | 'eye' | 'tip';
+export type ServiceId = 'guest1' | 'guest2' | 'vip' | 'case1' | 'case2' | 'sign' | 'pot' | 'eye' | 'tip' | 'waiver';
 
 export interface Service {
   id: ServiceId;
@@ -30,6 +30,7 @@ export const SERVICES: Service[] = [
   { id: 'case2', group: 'shop', name: 'ショーケースの増設 II', text: 'ショーケースが 2 列広がる（3 → 5 列）', gum: 1200, trust: 140, needs: 'case1' },
   { id: 'sign', group: 'shop', name: '「求む」の看板', text: 'ショーケースに、買いたい系統を出せる', gum: 250, trust: 40 },
   { id: 'tip', group: 'shop', name: '見回りの知らせ', text: '見回りの来る日が、朝の紙面に出る', gum: 400, trust: 55 },
+  { id: 'waiver', group: 'shop', name: '大家への口添え', text: '家賃を 1 回だけ待ってもらえる（払わなかった分は次回に上乗せ）', gum: 600, trust: 80 },
   { id: 'pot', group: 'craft', name: '壺の薪', text: '壺を 1 日にもう 1 回使える', gum: 800, trust: 100 },
   { id: 'eye', group: 'craft', name: '相場の手ほどき', text: `売り客の言い値 −${Math.round(B.serviceAsk * 100)}%`, gum: 700, trust: 90 },
 ];
@@ -53,6 +54,7 @@ export function buyService(s: GameState, id: ServiceId, pay: 'gum' | 'trust'): b
     s.today.spend += service.gum;
   } else s.trust -= service.trust;
   s.services.push(id);
+  if (id === 'waiver') s.graceLeft += 1;
   return true;
 }
 

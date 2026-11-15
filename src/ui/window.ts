@@ -163,12 +163,29 @@ export function customerWindow(g: GameState, v: Visitor): string {
     <i class="teeth" aria-hidden="true"></i>
   </div>`;
   }
+  if (v.special === 'landlord') {
+    // the landlord's slip: pay, do not pay, or buy the shop outright
+    const can = G.rentChoices(g);
+    const refuse = can.waive ? '家賃を払わない<em>口添えで 1 回だけ待ってもらう</em>' : '家賃を払わない<em>店を失います</em>';
+    const foot = ui.rentAsk
+      ? `<p class="note bad">${can.waive ? `払わなかった ${num(g.rent)} GUM は、次回の家賃に上乗せされます。` : '口添えがないので、店を明けわたすことになります（ゲームオーバー）。'}</p>
+        <div class="actions two">${btn('rent-skip', '本当に払わない', { cls: 'danger', sfx: 'none' })}${btn('rent-back', 'やめる', { cls: 'ghost' })}</div>`
+      : `<div class="actions one">${btn('rent-pay', `家賃を支払う<em>${num(g.rent)} GUM</em>`, { cls: 'primary', disabled: !can.pay, sfx: 'none' })}</div>
+        ${g.gum >= B.deedPrice ? `<div class="actions one">${btn('deed', `店を買い取る<em>${num(B.deedPrice)} GUM ※ゲームクリア</em>`, { cls: 'gold', disabled: !can.buy, sfx: 'none' })}</div>${g.loan ? '<p class="note bad">ギルドへの返済が残っているあいだは、買い取れません。</p>' : ''}` : ''}
+        <div class="actions one">${btn('rent-ask', refuse, { cls: 'ghost', sfx: 'none' })}</div>`;
+    return `<div class="win paper small kind-buy rent-win" id="win" data-ui style="left:${ui.win.x}px;top:${ui.win.y}px">
+    <div class="win-bar"><span class="win-kind"><span>家賃</span><span class="wide">の日</span></span><i class="win-grip" aria-hidden="true"></i></div>
+    <div class="win-who"><b>${esc(hero.ja)}</b><em class="temper t0">大家</em></div>
+    <div class="win-body"><div class="sum"><span>今回の家賃</span><b class="total">${gum(g.rent)}</b></div><div class="sum minor"><span>所持金</span><b>${gum(g.gum)}</b></div>${foot}</div>
+    <i class="teeth" aria-hidden="true"></i>
+  </div>`;
+  }
   const pips = Array.from({ length: B.temperPatience[v.temper] }, (_, i) => `<i class="${i < v.patience ? 'on' : ''}"></i>`).join('');
   const spent = v.kind === 'sell' && v.haggled;
   return `<div class="win paper ${ui.win.size === 'l' ? 'big' : ui.win.size === 's' ? 'small mini' : 'small'} kind-${v.kind} ${ui.beat ? 'beating' : ''}" id="win" data-ui style="left:${ui.win.x}px;top:${ui.win.y}px">
-    <div class="win-bar"><span class="win-kind"><span>${v.kind === 'sell' ? '買取' : '販売'}</span><span class="wide">伝票</span></span><i class="win-grip" aria-hidden="true"></i>
+    <div class="win-bar"><span class="win-kind"><span>${v.special === 'dealer' ? '引取' : v.kind === 'sell' ? '買取' : '販売'}</span><span class="wide">伝票</span></span><i class="win-grip" aria-hidden="true"></i>
       <button class="win-btn win-size" data-act="win-size" aria-label="サイズ変更（いまは${SIZE_JA[ui.win.size]}）">${ICON.size}<b>${SIZE_JA[ui.win.size]}</b></button>
-      <button class="win-btn win-nego ${ui.haggleOpen ? 'on' : ''} ${spent ? 'spent' : ''}" data-act="haggle-open" data-sfx="none" aria-pressed="${ui.haggleOpen}" aria-label="交渉する${spent ? '（済み）' : ''}">${ICON.nego}<b>${spent ? '交渉済' : '交渉'}</b></button>
+      <button class="win-btn win-nego ${v.special === 'dealer' ? 'gone' : ''} ${ui.haggleOpen ? 'on' : ''} ${spent ? 'spent' : ''}" data-act="haggle-open" data-sfx="none" aria-pressed="${ui.haggleOpen}" aria-label="交渉する${spent ? '（済み）' : ''}">${ICON.nego}<b>${spent ? '交渉済' : '交渉'}</b></button>
       <button class="win-btn" data-act="win-close" data-sfx="close" aria-label="閉じる">${ICON.close}</button>
     </div>
     <div class="win-who"><b>${esc(hero.ja)}</b>${v.faction ? `<span class="fac f-${v.faction}">${factionById(v.faction).ja}</span>` : ''}<em class="temper t${v.temper}">${TEMPER_JA[v.temper]}</em><span class="pips ink" aria-label="我慢 ${v.patience}">${pips}</span></div>

@@ -284,7 +284,18 @@ export const B = {
   rentFirst: 760,
   rentGrowth: 1.3,
   rentEvery: 7,
-  grace: 1,
+  /** (no grace of its own: the guild's word buys one, once) */
+  grace: 0,
+  /** the landlord who comes for the rent, last of all on a rent day */
+  landlordHero: 1005,
+  /**
+   * The dealer who calls just before the landlord: takes anything, at this much off the list price, as far as
+   * his purse goes (a share of the rent that is due, and never less than the floor).
+   */
+  dealerHero: 4008,
+  dealerCut: 0.15,
+  dealerPurse: 1,
+  dealerFloor: 500,
   deedPrice: 24000,
 } as const;
 

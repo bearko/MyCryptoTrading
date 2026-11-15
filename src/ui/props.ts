@@ -22,7 +22,10 @@ export function deckProps(g: GameState): string {
   const night = g.phase === 'evening';
   const count = g.trash.length;
   const worn = SLOT_IDS.filter((slot) => g.equip[slot]).length;
-  return `<button class="prop trash ${count ? 'full' : ''}" id="trash" data-act="trash" data-sfx="open" aria-label="ゴミ箱（品をドラッグして捨てる。中身は ${count} 個。クリックで中を見る）">
+  const out = night && !g.wentOut;
+  return `<button class="prop exit ${out ? 'ready' : ''} ${night && g.wentOut ? 'used' : ''}" id="door" data-act="door" data-sfx="none" title="${night ? (g.wentOut ? '今夜はもう外出しました' : '外へ出る（ショップ／クエスト）') : '閉店後にならないと、外出はできません'}" aria-label="ドア（閉店後に、ここから外出する）">
+      <span class="exit-leaf"><i class="exit-win"></i><i class="exit-knob"></i></span><b>ドア</b></button>
+    <button class="prop trash ${count ? 'full' : ''}" id="trash" data-act="trash" data-sfx="open" aria-label="ゴミ箱（品をドラッグして捨てる。中身は ${count} 個。クリックで中を見る）">
       ${BIN}<b>ゴミ箱</b>${count ? `<em>${count}</em>` : ''}<small>ここへドラッグ</small></button>
     <button class="prop rack ${ui.pops.gear.open ? 'open' : ''}" id="rack" data-act="gear" aria-label="装備棚（クリックで装備の窓を開く・閉じる。身につけている品 ${worn} 個）">
       ${RACK}<b>装備棚</b><small>${worn}/6</small></button>
@@ -35,12 +38,12 @@ export function trashModal(g: GameState): string {
   const rows = g.trash
     .map((x) => {
       const item = G.findItem(cat, x.itemId);
-      return `<div class="pick-row">${itemTile(item, 'sm')}<span class="pick-main"><b class="pix">${esc(item.ja)}</b><small>処分の値 ${num(G.disposePrice(cat, x))}</small></span>${btn('untrash', '戻す', { arg: x.uid, cls: 'small', sfx: 'none' })}</div>`;
+      return `<div class="pick-row">${itemTile(item, 'sm')}<span class="pick-main"><b class="pix">${esc(item.ja)}</b><small>夜に回収される</small></span>${btn('untrash', '戻す', { arg: x.uid, cls: 'small', sfx: 'none' })}</div>`;
     })
     .join('');
   return `<div class="modal" id="modal-trash" data-ui><div class="modal-box tall">
     <h2 class="modal-title"><small>BIN</small>ゴミ箱</h2>
-    <p class="hint">品をここへドラッグすると捨てられます。夜、眠るときに回収されて、処分の値が入ります（今夜の合計 ${gum(g.trashGum)}）。それまでは戻せます。</p>
+    <p class="hint">捨てた品は、夜、眠るときに回収されます（お金にはなりません）。それまでは戻せます。</p>
     <div class="modal-scroll">${rows || '<p class="hint">いまは空です。</p>'}</div>
     <div class="actions one">${btn('modal-close', '閉じる', { cls: 'primary' })}</div>
   </div></div>`;
@@ -166,6 +169,15 @@ export function parcelModal(g: GameState): string {
   </div></div>`;
 }
 
+/** The shelf is enlarged through the guild (two more columns each time). */
+function shelfRow(g: GameState): string {
+  const cost = G.shelfCost(g);
+  return `<div class="svc ${cost === null ? 'owned' : ''}" id="svc-shelf">
+    <span class="svc-main"><b>棚の拡張</b><small>棚が 2 列広がる（いま ${G.gridOf(g, cat, 'shelf').cols} 列）</small></span>
+    ${cost === null ? '<em class="svc-done">済</em>' : `<span class="svc-buy">${btn('shelf', `${num(cost)} GUM`, { cls: 'small gold', disabled: g.gum < cost, sfx: 'none' })}</span>`}
+  </div>`;
+}
+
 /** The telephone: the guild's favours, each for GUM or for trust. */
 export function networkModal(g: GameState): string {
   const groups = (['intro', 'shop', 'craft'] as const)
@@ -182,7 +194,7 @@ export function networkModal(g: GameState): string {
           </div>`;
         })
         .join('');
-      return `<h3 class="rc-sub">${GROUP_JA[group]}</h3>${rows}`;
+      return `<h3 class="rc-sub">${GROUP_JA[group]}</h3>${group === 'shop' ? shelfRow(g) : ''}${rows}`;
     })
     .join('');
   return `<div class="modal" id="modal-network" data-ui><div class="modal-box tall">

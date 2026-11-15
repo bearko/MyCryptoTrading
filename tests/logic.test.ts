@@ -3,6 +3,7 @@ import { B } from '../src/game/balance';
 import { catalog } from '../src/game/catalog';
 import { FACTIONS, rankName } from '../src/game/factions';
 import * as G from '../src/game/logic';
+import { seeOff, untilLandlord } from './util';
 import * as N from '../src/game/night';
 import type { GameState } from '../src/game/state';
 
@@ -14,8 +15,9 @@ function until(s: GameState, kind: 'sell' | 'buy'): void {
       G.endDay(s);
       G.openShop(s, catalog);
     }
-    if (G.currentVisitor(s)?.kind === kind) return;
-    G.pass(s);
+    const v = G.currentVisitor(s);
+    if (v?.kind === kind && v.special !== 'dealer' && v.special !== 'landlord') return;
+    seeOff(s);
     G.callNext(s, catalog);
   }
   throw new Error('no such customer');
@@ -235,39 +237,52 @@ describe('game rules', () => {
     expect(s.stock[0].rot).toBe(0);
   });
 
-  it('collects rent every seventh night, then raises it', () => {
+  it('the landlord comes for the rent last of all on every seventh day, then raises it', () => {
     const s = G.newGame(7, catalog);
     s.gum = 100000;
-    while (s.day < B.rentEvery) {
-      s.phase = 'evening';
-      G.endDay(s);
-    }
-    s.phase = 'evening';
+    const v = untilLandlord(s);
+    expect(s.queue[s.cursor - 1].special).toBe('dealer');
+    // he is not sent away, and the day does not end around him
+    G.pass(s);
+    G.callNext(s, catalog);
+    expect(G.currentVisitor(s)).toBe(v);
     const gum = s.gum;
-    G.endDay(s);
+    expect(G.payRent(s)).toBe(true);
     expect(s.gum).toBe(gum - B.rentFirst);
     expect(s.rent).toBe(Math.round(B.rentFirst * B.rentGrowth));
+    G.callNext(s, catalog);
+    expect(s.phase).toBe('evening');
+    // the night itself takes no rent
+    const after = s.gum;
+    G.endDay(s);
+    expect(s.gum).toBe(after);
     expect(s.day).toBe(B.rentEvery + 1);
   });
 
-  it('a missed rent uses the grace once, then ends the game', () => {
+  it('rent refused: the guild\'s word buys one wait, and without it the shop is lost', () => {
     const s = G.newGame(8, catalog);
     s.gum = 0;
-    s.day = B.rentEvery;
-    s.phase = 'evening';
-    G.endDay(s);
+    s.graceLeft = 1; // (the guild's favour "waiver")
+    untilLandlord(s);
+    expect(G.payRent(s)).toBe(false);
+    expect(G.refuseRent(s)).toBe('waived');
     expect(s.graceLeft).toBe(0);
     expect(s.rent).toBe(Math.round(B.rentFirst * B.rentGrowth) + B.rentFirst);
-    s.gum = 0;
-    s.day = B.rentEvery * 2;
-    s.phase = 'evening';
-    G.endDay(s);
-    expect(s.phase).toBe('lost');
+    const t = G.newGame(8, catalog);
+    t.gum = 0;
+    untilLandlord(t);
+    expect(G.refuseRent(t)).toBe('lost');
+    expect(t.phase).toBe('lost');
   });
 
-  it('buying the deed ends the rent', () => {
+  it('the shop is bought from the landlord, and that ends the rent', () => {
     const s = G.newGame(9, catalog);
     s.gum = B.deedPrice;
+    // (not from anyone else, nor at night)
+    s.phase = 'evening';
+    expect(G.buyDeed(s)).toBe(false);
+    untilLandlord(s);
+    expect(G.rentChoices(s).buy).toBe(true);
     expect(G.buyDeed(s)).toBe(true);
     expect(s.phase).toBe('won');
     G.continueAfterWin(s);
@@ -459,12 +474,13 @@ describe('game rules', () => {
   it('paying the rent offers three knacks; the chosen one changes the rules', () => {
     const s = G.newGame(34, catalog);
     s.gum = 100000;
-    s.day = B.rentEvery;
-    s.phase = 'evening';
-    G.endDay(s);
+    untilLandlord(s);
+    G.payRent(s);
     expect(s.perkOffer).toHaveLength(3);
     expect(new Set(s.perkOffer).size).toBe(3);
-    expect(G.choosePerk(s, 'regular')).toBe(s.perkOffer!.includes('regular'));
+    const offered = s.perkOffer!.includes('regular');
+    expect(G.choosePerk(s, 'regular')).toBe(offered);
+    s.perks = s.perks.filter((p) => p !== 'regular');
     s.perkOffer = ['regular', 'shelf', 'talker'];
     const usual = G.visitorsExpected(s);
     expect(G.choosePerk(s, 'regular')).toBe(true);
@@ -644,7 +660,7 @@ describe('game rules', () => {
     }
     throw new Error('no buyer found a good');
   });
-  it('the bin holds goods until the night: they can be taken back, or are carried off and paid for', () => {
+  it('the bin holds goods until the night: they can be taken back, or are carried off for nothing', () => {
     const s = G.newGame(41, catalog);
     const x = s.stock[0];
     const count = s.stock.length;
@@ -656,13 +672,13 @@ describe('game rules', () => {
     expect(G.fromTrash(s, catalog, x.uid)).toBe(true);
     expect(s.stock.length).toBe(count);
     expect(s.trashGum).toBe(0);
-    // left in: the night's collection pays for it
+    // left in: the night's collection carries it off, and pays nothing
     G.toTrash(s, catalog, x.uid);
     const gum = s.gum;
     s.phase = 'evening';
     G.endDay(s);
     expect(s.trash).toEqual([]);
-    expect(s.gum).toBe(gum + price);
+    expect(s.gum).toBe(gum);
   });
 
   it('the shelf is a wide counter, and an old deep one is laid out again without losing goods', () => {

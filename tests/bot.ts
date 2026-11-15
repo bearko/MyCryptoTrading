@@ -32,7 +32,21 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
     G.openShop(s, cat);
     while (s.phase === 'open') {
       const v = G.currentVisitor(s)!;
-      if (v.kind === 'sell') serveSeller(s, cat, style);
+      if (v.special === 'landlord') {
+        // the shop when it can be had, the rent otherwise (and when there is no rent to give, the guild's word or the street)
+        if (G.buyDeed(s)) break;
+        if (!G.payRent(s)) G.refuseRent(s);
+      } else if (v.special === 'dealer') {
+        // short of the rent: goods go to the dealer, the cheapest first (never the pot)
+        const goods = G.forSale(s)
+          .filter((x) => !cat.itemById.get(x.itemId)!.effect)
+          .sort((x, y) => G.salePrice(cat, x, 0) - G.salePrice(cat, y, 0));
+        for (const x of goods) {
+          if (s.gum >= s.rent || v.done) break;
+          G.sell(s, cat, [x.uid], 0);
+        }
+        G.pass(s);
+      } else if (v.kind === 'sell') serveSeller(s, cat, style);
       else serveBuyer(s, cat, style);
       G.callNext(s, cat);
     }
@@ -40,14 +54,6 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
     const reserve = G.daysToRent(s) <= 2 && !s.owned ? s.rent : 0;
     const cost = G.shelfCost(s);
     if (cost !== null && G.freeCells(s, cat) < 6 && s.gum - cost > reserve + 150) G.upgradeShelf(s);
-    if (G.isRentDay(s) && s.gum < s.rent) {
-      // sell stock back to cover the rent
-      for (const item of [...s.stock].sort((x, y) => Number(!!cat.itemById.get(x.itemId)!.effect) - Number(!!cat.itemById.get(y.itemId)!.effect))) {
-        if (s.gum >= s.rent) break;
-        G.dispose(s, cat, item.uid);
-      }
-    }
-    if (G.buyDeed(s)) break;
     // a thin shelf and some money: a night at the shop (tomorrow opens late)
     const spare = s.gum - reserve;
     if (s.stock.filter((x) => !x.bag && !cat.itemById.get(x.itemId)!.effect).length < 3 && spare > 120 && N.goShop(s, cat)) {

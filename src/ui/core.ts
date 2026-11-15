@@ -11,6 +11,8 @@ export interface Ui {
   /** the good a detail or menu window is about */
   sel: { grid: G.GridId; uid: number } | null;
   confirmDispose: boolean;
+  /** the landlord's slip asks once more before the rent is refused */
+  rentAsk: boolean;
   confirmReset: boolean;
   haggleOpen: boolean;
   /** goods put on the counter for the customer at the counter (uids of stock) */
@@ -60,6 +62,7 @@ export const ui: Ui = {
   modal: 'none',
   sel: null,
   confirmDispose: false,
+  rentAsk: false,
   confirmReset: false,
   haggleOpen: false,
   counter: [],

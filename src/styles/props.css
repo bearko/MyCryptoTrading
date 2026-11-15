@@ -1134,3 +1134,64 @@ html.calm .inv-fx {
 .help-dot.on::before {
   background: var(--gum);
 }
+
+/* the shop's door, on the shop's side beside the bin: shut by day, lit once the shop is closed */
+.prop.exit {
+  align-self: start;
+  justify-self: start;
+  margin: 14px 0 0 14px;
+  padding: 0;
+  gap: 4px;
+}
+.exit-leaf {
+  position: relative;
+  display: block;
+  width: 46px;
+  height: 78px;
+  border: 3px solid var(--ink-3);
+  background: var(--violet);
+  box-shadow: 3px 3px 0 var(--ink);
+  filter: brightness(0.55);
+  transition: filter 0.3s;
+}
+.exit-win {
+  position: absolute;
+  left: 9px;
+  top: 9px;
+  width: 22px;
+  height: 26px;
+  border: 3px solid var(--ink);
+  background: var(--ink-2);
+}
+.exit-knob {
+  position: absolute;
+  right: 5px;
+  top: 46px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gum);
+}
+.prop.exit.ready .exit-leaf {
+  filter: none;
+  animation: bed-call 1.3s ease-in-out infinite;
+}
+.prop.exit.ready .exit-win {
+  background: var(--gum);
+}
+.prop.exit.ready b {
+  background: var(--gum);
+  color: var(--ink);
+}
+.prop.exit:not(.ready) {
+  cursor: default;
+}
+.win-btn.gone {
+  display: none;
+}
+.rent-win .btn em {
+  display: block;
+  font-size: 0.75rem;
+  font-style: normal;
+  opacity: 0.8;
+}

@@ -346,6 +346,7 @@ export function newGame(seed: number, cat: Catalog): GameState {
     equip: { head: null, body: null, arm: null, leg: null, special1: null, special2: null },
     rent: B.rentFirst,
     graceLeft: B.grace,
+    callers: 0,
     owned: false,
     ownedDay: 0,
     phase: 'morning',
@@ -600,6 +601,8 @@ export function openShop(s: GameState, cat: Catalog): void {
   growClientele(s, cat);
   s.phase = 'open';
   s.visitorsToday = visitorsExpected(s);
+  s.nightNote = '';
+  s.callers = 0;
   s.cursor = -1;
   if (s.patrolDay) s.patrolSlot = randInt(s, s.visitorsToday);
   if (!s.wanted && s.day >= B.wantedFromDay && rand(s) < B.wantedChance) postWanted(s, cat);
@@ -681,12 +684,87 @@ export function report(s: GameState): '' | 'caught' | 'wrong' {
 /** Brings the next customer to the counter, or closes the shop when the day's line is done. */
 export function callNext(s: GameState, cat: Catalog): void {
   if (s.phase !== 'open') return;
-  if (s.cursor + 1 >= s.visitorsToday) {
+  // (the landlord is not sent away: the rent is settled first)
+  const now = s.queue[s.cursor];
+  if (now?.special === 'landlord' && !now.done) return;
+  if (s.cursor + 1 >= s.visitorsToday + s.callers) {
+    // a rent day: after the day's line, the dealer calls, and last of all the landlord (neither counts as a customer)
+    if (isRentDay(s) && s.callers < 2) {
+      s.callers += 1;
+      s.queue.push(s.callers === 1 ? dealer(s, cat) : landlord(s, cat));
+      s.cursor += 1;
+      return;
+    }
     s.phase = 'evening';
     return;
   }
   s.queue.push(makeVisitor(s, cat));
   s.cursor += 1;
+}
+
+/** A caller who is not one of the day's customers: a plain visitor to dress up. */
+function caller(s: GameState, cat: Catalog, heroId: number): Visitor {
+  const hero = cat.heroById.get(heroId)!;
+  return { ...rollVisitor(s, cat), heroId: hero.id, faction: null, kind: 'buy', offers: [], bundleRate: 0, temper: 0, patience: 9, haggled: true, wanted: false, mood: 'neutral' };
+}
+
+/** The dealer: buys whatever is put before him, under the list price, until his purse is empty. */
+function dealer(s: GameState, cat: Catalog): Visitor {
+  return { ...caller(s, cat, B.dealerHero), special: 'dealer', want: { type: 'any' }, budget: Math.max(B.dealerFloor, Math.round(s.rent * B.dealerPurse)), line: `引き取りに来たよ。何でも買うが、値は定価の ${Math.round(B.dealerCut * 100)}% 引きだ。` };
+}
+
+/** The landlord: comes for the rent, and sells the shop to a keeper who can pay for it. */
+function landlord(s: GameState, cat: Catalog): Visitor {
+  return { ...caller(s, cat, B.landlordHero), special: 'landlord', want: { type: 'rarity', min: 9 }, budget: 0, line: `家賃をいただきに参りました。${s.rent} GUM です。` };
+}
+
+/** What the landlord can be told now. */
+export const rentChoices = (s: GameState): { pay: boolean; waive: boolean; buy: boolean } => ({
+  pay: s.gum >= s.rent,
+  waive: s.graceLeft > 0,
+  buy: !s.loan && s.gum >= B.deedPrice,
+});
+
+const facingLandlord = (s: GameState): Visitor | null => {
+  const v = currentVisitor(s);
+  return v && v.special === 'landlord' && !v.done ? v : null;
+};
+
+/** Pays the rent to the landlord at the counter. */
+export function payRent(s: GameState): boolean {
+  const v = facingLandlord(s);
+  if (!v || s.gum < s.rent) return false;
+  s.gum -= s.rent;
+  s.today.spend += s.rent;
+  s.nightNote = `家賃 ${s.rent} GUM を支払いました。`;
+  s.rent = Math.round(s.rent * B.rentGrowth);
+  offerPerks(s);
+  v.done = true;
+  v.mood = 'happy';
+  v.line = 'たしかに。では、また 7 日後に。';
+  return true;
+}
+
+/**
+ * Does not pay. With the guild's word put in beforehand the landlord looks away once (the rent unpaid is added
+ * to the next); without it the shop is lost.
+ */
+export function refuseRent(s: GameState): 'waived' | 'lost' | '' {
+  const v = facingLandlord(s);
+  if (!v) return '';
+  if (s.graceLeft <= 0) {
+    v.done = true;
+    s.phase = 'lost';
+    return 'lost';
+  }
+  s.graceLeft -= 1;
+  const unpaid = s.rent;
+  s.rent = Math.round(s.rent * B.rentGrowth) + unpaid;
+  s.nightNote = `家賃を待ってもらいました。未払いの ${unpaid} GUM は次回の家賃に上乗せされます。`;
+  v.done = true;
+  v.mood = 'annoyed';
+  v.line = 'ギルドの口添えがあるなら、今回だけは待ちましょう。次はありませんよ。';
+  return 'waived';
 }
 
 export const currentVisitor = (s: GameState): Visitor | null => (s.phase === 'open' ? (s.queue[s.cursor] ?? null) : null);
@@ -860,6 +938,11 @@ export function quoteSale(s: GameState, cat: Catalog, v: Visitor, uids: readonly
   const goods = uids.map((uid) => forSale(s).find((x) => x.uid === uid)).filter((x): x is StockItem => !!x);
   const fair = goods.reduce((sum, x) => sum + salePrice(cat, x, 0), 0);
   const asked = goods.reduce((sum, x) => sum + salePrice(cat, x, tier), 0);
+  if (v.special === 'dealer') {
+    // (the dealer's price is his own: so much off the list, whatever is asked, and no refusing)
+    const offer = Math.round(fair * (1 - B.dealerCut));
+    return { fair, asked: offer, paid: Math.min(offer, v.budget), budget: v.budget, over: Math.max(0, offer - v.budget), chance: 1, matches: goods.length > 0 };
+  }
   const budget = budgetAt(v, tier);
   const paid = Math.min(asked, budget);
   const markup = fair > 0 ? paid / fair - 1 : 0;
@@ -887,6 +970,23 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
   if (!quote.matches) {
     v.line = lines.noMatch();
     return 'nomatch';
+  }
+  if (v.special === 'dealer') {
+    // a plain handing over: no streak, no regard, no order — goods out, money in
+    const soldIds = uids.map((uid) => forSale(s).find((x) => x.uid === uid)!.itemId);
+    s.last = { bonus: 0, orderReward: 0 };
+    s.gum += quote.paid;
+    s.stock = s.stock.filter((x) => !uids.includes(x.uid));
+    s.showcase = s.showcase.filter((x) => !uids.includes(x.uid));
+    s.today.revenue += quote.paid;
+    s.today.sold += uids.length;
+    s.totals.sold += uids.length;
+    handle(s, cat, soldIds);
+    v.budget = Math.max(0, v.budget - quote.paid);
+    v.mood = 'happy';
+    v.done = v.budget < B.budgetFloor;
+    v.line = v.done ? '今日はここまでだ。また家賃の日に。' : 'ほかにもあれば、引き取るよ。';
+    return 'sold';
   }
   if (rand(s) < quote.chance) {
     // the streak adds a little on top (the customer's goodwill; it does not come out of their budget)
@@ -942,8 +1042,12 @@ export function refuseGood(s: GameState): void {
 /** Sends the customer away (the bell). No penalty. */
 export function pass(s: GameState): void {
   const v = currentVisitor(s);
-  if (!v || v.done) return;
+  if (!v || v.done || v.special === 'landlord') return;
   v.done = true;
+  if (v.special === 'dealer') {
+    v.line = 'では、また家賃の日に。';
+    return;
+  }
   if (v.special === 'patrol') {
     // (a patrol is not a customer lost)
     v.line = 'では、失礼する。';
@@ -1113,10 +1217,8 @@ export function fromTrash(s: GameState, cat: Catalog, uid: number): boolean {
   return false;
 }
 
-/** The night's collection: what is in the bin is carried off and paid for. */
+/** The night's collection: what is in the bin is carried off (thrown away, not sold). */
 function emptyTrash(s: GameState): void {
-  s.gum += s.trashGum;
-  s.today.revenue += s.trashGum;
   s.trash = [];
   s.trashGum = 0;
 }
@@ -1188,7 +1290,8 @@ export function upgradeShelf(s: GameState): boolean {
 
 export function buyDeed(s: GameState): boolean {
   // (not while money is owed to the guild)
-  if (s.owned || s.loan || s.gum < B.deedPrice || (s.phase !== 'evening' && s.phase !== 'morning')) return false;
+  // (the shop is bought from the landlord, when he comes for the rent)
+  if (s.owned || s.loan || s.gum < B.deedPrice || !facingLandlord(s)) return false;
   s.gum -= B.deedPrice;
   s.owned = true;
   s.ownedDay = s.day;
@@ -1204,27 +1307,9 @@ export function continueAfterWin(s: GameState): void {
 /** Closes the day: collects rent on rent days, then starts the next morning. */
 export function endDay(s: GameState): void {
   if (s.phase !== 'evening') return;
-  // (before the rent is counted: what the bin pays can help with it)
   emptyTrash(s);
-  s.nightNote = '';
   // the guild's instalment comes before the rent
   const loanNote = repayNightly(s);
-  if (isRentDay(s)) {
-    if (s.gum >= s.rent) {
-      s.gum -= s.rent;
-      s.nightNote = `家賃 ${s.rent} GUM を支払いました。`;
-      s.rent = Math.round(s.rent * B.rentGrowth);
-      offerPerks(s);
-    } else if (s.graceLeft > 0) {
-      s.graceLeft -= 1;
-      const unpaid = s.rent;
-      s.rent = Math.round(s.rent * B.rentGrowth) + unpaid;
-      s.nightNote = `家賃を払えず、猶予を使いました。未払いの ${unpaid} GUM は次回の家賃に上乗せされます。`;
-    } else {
-      s.phase = 'lost';
-      return;
-    }
-  }
   if (loanNote) s.nightNote = s.nightNote ? `${s.nightNote} ${loanNote}` : loanNote;
   // the notice comes down once the hero has been and gone
   if (s.wanted?.came) s.wanted = null;

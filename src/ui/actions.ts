@@ -192,6 +192,12 @@ function ringBell(g: GameState, v: Visitor | null): void {
     fx.burst('ring', pointOn(bell, 0.5, 0.45), { color: tok('--gum') });
     anim(bell.firstElementChild, [{ transform: 'rotate(0)' }, { transform: 'rotate(-22deg)' }, { transform: 'rotate(18deg)' }, { transform: 'rotate(-12deg)' }, { transform: 'rotate(7deg)' }, { transform: 'rotate(0)' }], { duration: 520, easing: 'ease-out' });
   }
+  if (v && !v.done && v.special === 'landlord') {
+    // (the landlord waits for the rent: the slip comes back up)
+    ui.win.open = true;
+    render();
+    return;
+  }
   if (v && !v.done) {
     // send this customer away, let them walk out, then bring the next one in
     G.pass(g);
@@ -804,6 +810,40 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
     case 'calendar':
       ui.modal = 'calendar';
       break;
+    case 'rent-ask':
+    case 'rent-back':
+      ui.rentAsk = name === 'rent-ask';
+      audio.sfx(ui.rentAsk ? 'open' : 'close');
+      render();
+      return;
+    case 'rent-pay':
+    case 'rent-skip': {
+      const paid = name === 'rent-pay';
+      const outcome = paid ? (G.payRent(g) ? 'paid' : '') : G.refuseRent(g);
+      if (!outcome) {
+        nope(el);
+        return;
+      }
+      ui.rentAsk = false;
+      ui.win.open = false;
+      store.save(g);
+      render();
+      if (outcome === 'lost') {
+        audio.sfx('error');
+        haptic('heavy');
+        return;
+      }
+      audio.sfx(paid ? 'buy' : 'cancel');
+      haptic('medium');
+      void fx.banner(paid ? '家賃を支払いました' : '今回は待ってもらいました', { sub: `次回の家賃 ${g.rent} GUM`, color: tok(paid ? '--gum' : '--hot'), ms: 1300 });
+      const key = ui.custKey;
+      window.clearTimeout(nextTimer);
+      nextTimer = window.setTimeout(() => {
+        if (ctx.s !== g || key !== ui.custKey || !G.currentVisitor(g)?.done || ctx.busy > 0) return;
+        callNext(g);
+      }, 1500);
+      return;
+    }
     case 'report': {
       const bounty = g.wanted?.bounty ?? 0;
       const result = G.report(g);
@@ -956,6 +996,12 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
 
     // ---- the night
     case 'door':
+      if (g.phase !== 'evening') {
+        // (the door is there all day, and opens once the shop is shut)
+        nope(el);
+        note('閉店後にならないと、外出はできません');
+        return;
+      }
       if (N.canGoOut(g)) {
         ui.modal = 'dest';
         audio.sfx('door');
