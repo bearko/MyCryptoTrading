@@ -145,3 +145,42 @@
   font-weight: 400;
   font-size: 0.8125rem;
 }
+
+/* The customer's goods lie on the customer's side of the counter: a mat along the far edge, in front of the
+   customer, across the counter from where they are brought over to the shop's side. */
+@media (min-width: 900px) and (min-height: 520px) {
+  .far {
+    /* in front of the customer, who stands right of the middle (and clear of the slip, which opens on the left) */
+    left: 66%;
+    right: auto;
+    bottom: 0;
+    translate: -50% 0;
+    width: max-content;
+    max-width: 60%;
+    min-width: 200px;
+    /* (room below the goods for the button that brings them all over) */
+    padding: 10px 18px 20px;
+    border-bottom-width: 0;
+    background:
+      linear-gradient(var(--wood-hi) 0 3px, transparent 3px),
+      color-mix(in srgb, var(--wood) 88%, var(--ink));
+    box-shadow: 0 -3px 0 var(--ink-20);
+  }
+  .far .zone-goods {
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 14px;
+  }
+  .far .zone-label {
+    left: 8px;
+    right: auto;
+  }
+  .far .counter-note {
+    width: 100%;
+    text-align: center;
+  }
+  .far .counter-note br {
+    display: none;
+  }
+}
