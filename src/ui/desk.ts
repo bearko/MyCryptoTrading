@@ -10,6 +10,7 @@ import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
 import { ctx, ui } from './core';
 import { dragging, rotateDragged } from './drag';
+import { closeOverlay, overlayOpen, toggleOverlay } from './overlay';
 import { esc, itemCard } from './html';
 
 let tip: HTMLElement | null = null;
@@ -100,10 +101,20 @@ function press(...selectors: string[]): boolean {
   return false;
 }
 
+/** Whether a window was open when the key went down (another listener may close it before this one runs). */
+let hadModal = false;
+window.addEventListener('keydown', () => (hadModal = ui.modal !== 'none' || !!ctx.root?.querySelector('.modal')), true);
+
 function onKey(event: KeyboardEvent): void {
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || ui.screen !== 'game') return;
   const target = event.target as HTMLElement | null;
   if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+  // the guide lies over everything: any key puts it away (O is its own key)
+  if (overlayOpen()) {
+    closeOverlay();
+    event.preventDefault();
+    return;
+  }
   const modal = ui.modal !== 'none' || !!ctx.root.querySelector('.modal');
   let done = false;
   switch (event.key) {
@@ -111,8 +122,26 @@ function onKey(event: KeyboardEvent): void {
     case 'R':
       done = rotateDragged();
       break;
+    case 'q':
+    case 'Q':
+      done = rotateDragged(-1);
+      break;
+    case 'e':
+    case 'E':
+      done = rotateDragged(1);
+      break;
+    case 'o':
+    case 'O':
+      if (!modal) done = toggleOverlay();
+      break;
     case 'Escape':
+      // closes what is open; with nothing open, it opens the settings (the game's menu)
       done = press('.modal [data-act="dispose-no"]', '.modal [data-act="modal-close"]', '#nego [data-act="haggle-close"]', '#win [data-act="win-close"]');
+      if (!done && !modal && !hadModal && !dragging()) {
+        // (a moment later: the same key press must not close the window it has just opened)
+        window.setTimeout(() => press('[data-act="settings"]'), 0);
+        done = true;
+      }
       break;
     case 'Enter':
       // the one button the moment is about: a window's main button, the sale, the purchase, opening and closing the shop
