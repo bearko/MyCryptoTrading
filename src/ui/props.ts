@@ -6,6 +6,7 @@ import { catalog as cat, PARAM_JA } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState } from '../game/state';
 import { B } from '../game/balance';
+import { factionById, rivalOf } from '../game/factions';
 import { GROUP_JA, hasService, serviceBlock, SERVICES, SUPPLIES, supplyBlock, supplyById, trustDaily } from '../game/network';
 import { atHome, ui } from './core';
 import { btn, esc, gum, itemTile, num } from './html';
@@ -64,8 +65,44 @@ export function stageProps(g: GameState): string {
   return `<div class="sprops" id="sprops" data-ui>
     <div class="case" id="case"><b>ショーケース</b><div class="case-slots">${cells}</div>${sign}<small class="case-tip">${shown.length ? `集客 +${G.showAppeal(g, cat)}` : '品をここへドラッグ'}</small></div>
     <button class="phone" id="phone" data-act="phone" data-sfx="open" aria-label="電話（商人ギルドに頼みごとをする。信用 ${g.trust}）">${PHONE}<b>電話</b><small>信用 ${num(g.trust)}</small></button>
+    ${wantedNotice(g)}
     ${g.parcel.length ? `<button class="parcel" id="parcel" data-act="parcel" data-sfx="open" aria-label="ギルドから届いた荷物（${g.parcel.length} 個。クリックで受け取る）">${CRATE}<b>荷物</b><em>${g.parcel.length}</em></button>` : ''}
   </div>`;
+}
+
+/** The notice on the wall: a face, and what the house that posted it will pay. */
+function wantedNotice(g: GameState): string {
+  const w = g.wanted;
+  if (!w) return '';
+  const hero = cat.heroById.get(w.heroId)!;
+  return `<button class="wanted" id="wanted" data-act="wanted" data-sfx="open" aria-label="手配書（${esc(hero.ja)}。賞金 ${w.bounty} GUM。クリックでくわしく）">
+    <span class="wanted-face"><img src="${hero.img}" alt="" draggable="false" /></span><span class="wanted-txt"><b>手配</b><small>${num(w.bounty)} GUM</small></span></button>`;
+}
+
+/** The notice, read closely: who, who asks, what each choice does — and the button that turns in the customer at the counter. */
+export function wantedModal(g: GameState): string {
+  const w = g.wanted;
+  if (!w) return '';
+  const hero = cat.heroById.get(w.heroId)!;
+  const by = factionById(w.by);
+  const prey = factionById(rivalOf(w.by)!);
+  const v = G.currentVisitor(g);
+  const here = g.phase === 'open' && !!v && !v.done;
+  return `<div class="modal" id="modal-wanted" data-ui><div class="modal-box">
+    <h2 class="modal-title"><small>WANTED</small>手配書</h2>
+    <div class="wanted-sheet">
+      <span class="wanted-face big"><img src="${hero.img}" alt="" draggable="false" /></span>
+      <div class="wanted-who"><b class="pix">${esc(hero.ja)}</b><span><i class="fac f-${prey.id}">${prey.ja}</i> の者</span>
+        <span>依頼主 <i class="fac f-${by.id}">${by.ja}</i></span><em><small>賞金</small>${gum(w.bounty)}</em></div>
+    </div>
+    <p class="hint">この客は、近いうちに店へ来ます。来たら、どちらかを選べます。</p>
+    <div class="wanted-ways">
+      <p><b>通報する</b>賞金 ${num(w.bounty)} GUM。${by.ja}の評価 +${B.wantedFavor}、${prey.ja}の評価 −${B.wantedGrudge}。客は取引せずに去ります。</p>
+      <p><b>取引する</b>追われる身は金払いがよく（予算 ${B.wantedBudget} 倍）、品は安く手放します（言い値の ${Math.round(B.wantedAsk * 100)}%）。${prey.ja}の評価 +${B.harbourFavor}、${by.ja}の評価 −${B.harbourGrudge}。</p>
+    </div>
+    <p class="hint">人違いで通報すると、罰金 ${B.wantedFine} GUM。その客の派閥の評価も下がります。</p>
+    <div class="actions">${btn('modal-close', '閉じる')}${btn('report', here ? 'いまの客を通報する' : '客が来たら通報できる', { cls: 'danger', disabled: !here, sfx: 'none' })}</div>
+  </div></div>`;
 }
 
 const CRATE = `<svg viewBox="0 0 64 64" aria-hidden="true"><path class="p-ink" d="M6 18h52v40H6z"/><path class="p-fill" d="M10 22h44v32H10z"/><path class="p-ink" d="M10 34h44v4H10zM30 22h4v32h-4z"/><path class="p-paper" d="M24 8h16v12H24z"/><path class="p-ink" d="M22 6h20v16H22zm4 4v8h12v-8z" fill-rule="evenodd"/></svg>`;

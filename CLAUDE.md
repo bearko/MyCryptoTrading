@@ -21,6 +21,7 @@
 - 伝票の中は「品と値・合計・買う／売る」だけ。値を動かす操作は、帯の「交渉」ボタンで開く窓（`window.ts` の `negoPanel`、`ui.haggleOpen`）に置く。買い客の予算は値付けで動く（安くした分だけ増え、高くした分だけ減る。`logic.ts` の `budgetAt`）。売り客の品をまとめて手前に移すのは、カウンターの縁の、青くて小さな四角いボタン（`counter.ts`）。伝票のはじめの大きさは、スマホ＝小・PC＝大（`core.ts` の `defaultWinSize`）。
 - 派閥（朱雀・青龍・玄武・白虎・黄竜）の評価と恩恵は `src/game/factions.ts` と `logic.ts`（`favorRank`・`saleFavor`・`buyFavor`・`sweeten`）、画面は `hooks.ts`（一覧・演出）。数字は `balance.ts`。派閥は 2 つずつ対立する（`factions.ts` の `rival`、`logic.ts` の `rivalFavor`）。評価は負にもなり、段は −2〜3（負の段は恩恵が裏返る）。くわしくは `docs/GAME_DESIGN.md` の 4.13。
 - 合成（壺）は `src/game/craft.ts`（`nextOf`・`planCraft`・`craft`）と `src/ui/craft.ts`・`src/styles/craft.css`。品の系列は id で決まる（+1000 で 1 つ上、レジェンダリー +500 がリミテッド）。リミテッド（`item.limited`）は持ちこまれない。変わり配合（2 系列 → 別の系列）の表は `craft.ts` の `CROSSES`（系列は id の下 3 桁）。足すときは、材料と結果の系列が実在するかをテストが確かめる。くわしくは `docs/GAME_DESIGN.md` の 4.14。壺や相場の数字を変えたら `npm run sim` で遊びかた（`tests/bot.ts` の `Style`：定価・値切り・気前よく・派閥につく・配合・店の物を使う・全部）を比べる。
+- 手配書（`logic.ts` の `postWanted`・`report`、状態の `wanted`）：ある派閥が、対立する派閥のヒーローを追う。その客が来たら、通報する（賞金と依頼主の評価）か、取引する（追われる側の評価）かを選ぶ。画面は `props.ts` の `wantedModal`。くわしくは `docs/GAME_DESIGN.md` の 4.16。
 - 客の予算は、在庫ではなくヒーローのレアリティで決まる（`balance.ts` の `heroWealth`・`heroOdds`）。レジェンダリーのヒーローは大富豪。
 - 客は取引が成立してもすぐには帰らない（ベル・品をすべて買い取った・予算を使い切った・我慢が尽きた、のどれかで帰る）。
 - 指を離した瞬間（`pointerup`）や長押しで窓を開くときは、`ctx.swallowClick = true` を立てる。同じタッチがあとから送る `click` が、開いたばかりの窓のボタンや外側に当たるのを防ぐ（`drag.ts`・`app.ts`）。タッチでの確認は、Playwright の `has_touch` と `touchscreen.tap` で行う（マウスでは再現しない）。

@@ -4,6 +4,7 @@ import { catalog } from '../src/game/catalog';
 import * as C from '../src/game/craft';
 import * as G from '../src/game/logic';
 import * as N from '../src/game/network';
+import { FACTIONS } from '../src/game/factions';
 import type { GameState, Visitor } from '../src/game/state';
 
 /** Many customers of one day, without playing the day. */
@@ -143,5 +144,87 @@ describe('the guild', () => {
     for (let y = 0; y < room.rows; y++) for (let x = 0; x < room.cols; x++) s.wallet.items.push({ uid: 9000 + y * 20 + x, itemId: catalog.itemsByRarity[1].find((i) => i.shape === 's1')!.id, cond: 1, paid: 0, x, y, rot: 0 });
     expect(G.unpack(s, catalog, 0)).toBe(false);
     expect(s.parcel).toHaveLength(1);
+  });
+});
+
+describe('the wanted notice', () => {
+  /** Plays mornings (without serving anyone) until a notice is up and its hero is at the counter. */
+  function untilWanted(seed: number): GameState {
+    const s = G.newGame(seed, catalog);
+    for (let day = 0; day < 60; day++) {
+      G.openShop(s, catalog);
+      while (s.phase === 'open') {
+        if (G.currentVisitor(s)?.wanted) return s;
+        G.pass(s);
+        G.callNext(s, catalog);
+      }
+      s.gum = 99999;
+      G.endDay(s);
+      if (s.perkOffer) G.choosePerk(s, s.perkOffer[0]);
+    }
+    throw new Error('no wanted hero came');
+  }
+
+  it('a house posts it for a hero of its rival, and the hero comes by', () => {
+    const s = untilWanted(61);
+    const w = s.wanted!;
+    const v = G.currentVisitor(s)!;
+    expect(s.day).toBeGreaterThanOrEqual(B.wantedFromDay);
+    expect(v.heroId).toBe(w.heroId);
+    expect(v.faction).toBe(FACTIONS.find((f) => f.id === w.by)!.rival);
+    expect(w.bounty).toBe(B.wantedBounty[catalog.heroById.get(w.heroId)!.rarity]);
+  });
+
+  it('turning the hero in pays the bounty and takes a side', () => {
+    const s = untilWanted(62);
+    const w = { ...s.wanted! };
+    const v = G.currentVisitor(s)!;
+    const gum = s.gum;
+    const favor = { ...s.favor };
+    expect(G.report(s)).toBe('caught');
+    expect(s.gum).toBe(gum + w.bounty);
+    expect(s.favor[w.by]).toBe(favor[w.by] + B.wantedFavor);
+    expect(s.favor[v.faction!]).toBe(favor[v.faction!] - B.wantedGrudge);
+    expect(v.done).toBe(true);
+    expect(s.wanted).toBeNull();
+    // nobody to turn in any more
+    expect(G.report(s)).toBe('');
+  });
+
+  it('turning in the wrong customer costs a fine; dealing with the hero takes the other side', () => {
+    const s = untilWanted(63);
+    const w = { ...s.wanted! };
+    const v = G.currentVisitor(s)!;
+    const favor = { ...s.favor };
+    // deal with them: once is enough to be seen taking their side
+    s.gum = 99999;
+    if (v.kind === 'sell') expect(G.buy(s, catalog, [0])).toBe(true);
+    else {
+      const uid = G.addTo(s, catalog, 'shelf', catalog.itemsByRarity[1][0].id, 1, 0)!;
+      v.want = { type: 'any' };
+      v.budget = 99999;
+      expect(G.sell(s, catalog, [uid], 0)).toBe('sold');
+    }
+    expect(s.favor[v.faction!]).toBe(favor[v.faction!] + B.harbourFavor + B.favorDeal);
+    expect(s.favor[w.by]).toBe(favor[w.by] - B.harbourGrudge);
+    // the notice comes down that night
+    while (s.phase === 'open') {
+      G.pass(s);
+      G.callNext(s, catalog);
+      const next = G.currentVisitor(s);
+      if (s.phase === 'open' && next && !next.wanted && s.wanted) {
+        // (still up today: somebody else is turned in by mistake)
+        const gum = s.gum;
+        expect(G.report(s)).toBe('wrong');
+        expect(s.gum).toBe(gum - B.wantedFine);
+        break;
+      }
+    }
+    while (s.phase === 'open') {
+      G.pass(s);
+      G.callNext(s, catalog);
+    }
+    G.endDay(s);
+    expect(s.wanted).toBeNull();
   });
 });
