@@ -68,7 +68,12 @@ describe('the showcase', () => {
     s.wallet.items = [{ uid: 700, itemId: ids[1], cond: 1, paid: 0, x: 0, y: 0, rot: 0 }];
     G.enlarge(s, catalog);
     expect(s.big).toBe(true);
-    expect(G.gridOf(s, catalog, 'shelf')).toMatchObject({ cols: 24, rows: 16 });
+    expect(G.gridOf(s, catalog, 'shelf')).toMatchObject({ cols: 24, rows: 10 });
+    // a good left below the foot of the shelf (a save from when it was deeper) is seen, and laid out again
+    s.stock[0].y = 14;
+    expect(G.shelfSpills(s, catalog)).toBe(true);
+    G.repackShelf(s, catalog);
+    expect(G.shelfSpills(s, catalog)).toBe(false);
     expect(s.stock.length + s.showcase.length + s.wallet.items.length).toBe(8);
     for (const id of ['shelf', 'case', 'wallet'] as const) {
       const grid = G.gridOf(s, catalog, id);

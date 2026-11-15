@@ -80,7 +80,7 @@ function enterGame(g: GameState | null): void {
     if (g && !g.big) {
       G.enlarge(g, cat);
       store.save(g);
-    } else if (g && !g.wide) {
+    } else if (g && (!g.wide || G.shelfSpills(g, cat))) {
       G.repackShelf(g, cat);
       store.save(g);
     }
