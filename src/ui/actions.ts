@@ -10,7 +10,7 @@ import * as store from '../game/save';
 import type { GameState, SlotId, Visitor } from '../game/state';
 import { audio, haptic, hapticSettings } from './audio';
 import { offerKey } from './counter';
-import { ctx, defaultWinSize, ui } from './core';
+import { ctx, defaultWinSize, ui, popsOn, type PopId } from './core';
 import { fx } from './fx';
 import { itemTile } from './html';
 import { holdGum, resetHud } from './hud';
@@ -81,6 +81,8 @@ function enterGame(g: GameState | null): void {
       G.repackShelf(g, cat);
       store.save(g);
     }
+    // the wallet in use stands on the shelf (a save from before that is given it)
+    if (g && !g.stock.some((x) => x.bag) && G.giveBag(g, cat)) store.save(g);
     // a save from before the pot was a good: the shop is handed its pot, once
     if (g && !g.potGiven) {
       G.givePot(g, cat);
@@ -672,26 +674,38 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       ui.modal = 'recipes';
       break;
     case 'use-item': {
-      // a good with an effect of its own is used (a double click on it, or the button in its window): the pot opens
+      // a good with an effect of its own is used (a double click on it, or the button in its window):
+      // the pot's window opens — or shuts, if it was open; the wallet in use opens its inside the same way
       const used = ui.sel ? G.gridOf(g, cat, ui.sel.grid).items.find((x) => x.uid === ui.sel!.uid) : undefined;
       const effect = used ? G.findItem(cat, used.itemId).effect : undefined;
-      if (effect !== 'pot' || ui.sel?.grid !== 'shelf') {
-        note('棚に置くと、使えます');
+      const which: PopId | '' = used?.bag ? 'wallet' : effect === 'pot' ? 'craft' : '';
+      if (!which || ui.sel?.grid !== 'shelf') {
+        note(used && G.findItem(cat, used.itemId).wallet ? 'いま使っているウォレットではありません（品の窓の「装備する」で持ちかえられます）' : '棚に置くと、使えます');
         return;
       }
-      ui.gridView = 'craft';
       closeModal();
+      if (popsOn(g)) {
+        togglePop(which);
+        return;
+      }
+      ui.gridView = which === 'craft' ? 'craft' : 'wallet';
       audio.sfx('open');
       haptic('medium');
       render();
-      const pot = document.getElementById('pot');
-      if (pot) fx.burst('stars', pot, { count: 10, color: tok('--gum') });
       return;
     }
+    case 'pop':
+      // a thing of the shop that opens a window (the gear rack): a click opens it, another shuts it
+      togglePop(arg as PopId);
+      return;
+    case 'pop-close':
+      togglePop(arg as PopId, false);
+      return;
     case 'to-pot':
       // from a good's menu: it goes into the pot, and the pot's tab opens
       if (ui.sel && ui.craft.length < CRAFT_MAX && !ui.craft.includes(ui.sel.uid)) ui.craft.push(ui.sel.uid);
       ui.gridView = 'craft';
+      if (popsOn(g) && !ui.pops.craft.open) openPop('craft');
       closeModal();
       break;
     case 'bed':
@@ -1021,6 +1035,32 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
 }
 
 /** Every button on the screen ends up here. `el` is the element that was pressed. */
+/** Where a window opens the first time: the pot in the middle, the wallet at the right, the gear beside it. */
+function openPop(id: PopId): void {
+  const p = ui.pops[id];
+  if (!p.placed) {
+    const w = ctx.root.clientWidth;
+    // (side by side, clear of the things on the wall, as far as the screen allows)
+    const wall = Math.round((document.getElementById('sprops')?.getBoundingClientRect().right ?? 150) - ctx.root.getBoundingClientRect().left) + 14;
+    const at: Record<PopId, [number, number]> = { craft: [wall, 96], gear: [wall + 440, 96], wallet: [w - 270, 96] };
+    [p.x, p.y] = at[id];
+    p.placed = true;
+  }
+  p.open = true;
+  ui.popOrder = [...ui.popOrder.filter((x) => x !== id), id];
+}
+
+/** Opens a window, or shuts it (`open` says which; left out, it is the other of what it is now). */
+function togglePop(id: PopId, open = !ui.pops[id].open): void {
+  if (open) openPop(id);
+  else ui.pops[id].open = false;
+  audio.sfx(open ? 'open' : 'close');
+  haptic('light');
+  render();
+  const el = document.getElementById(`pop-${id}`);
+  if (open && el) fx.burst('stars', pointOn(el, 0.5, 0.1), { count: 8, color: tok('--gum') });
+}
+
 export function act(name: string, arg: string | undefined, el: HTMLElement | null = null): void {
   const n = arg === undefined ? 0 : Number(arg);
   const g = ctx.s;

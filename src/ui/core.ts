@@ -29,6 +29,9 @@ export interface Ui {
   /** at home: which grid is shown under the counter */
   /** at home: which tab is shown under the counter — the shelf, the wallet, or what is worn */
   gridView: G.GridId | 'gear' | 'craft';
+  /** the windows that float over the shop on a wide screen (the pot, the wallet, the gear): open or not, where, and which is on top */
+  pops: Record<PopId, { open: boolean; x: number; y: number; placed: boolean }>;
+  popOrder: PopId[];
   /** the goods put in the pot (uids; the first is the base) */
   craft: number[];
   /** the parameter line picked for an order to the guild */
@@ -64,6 +67,8 @@ export const ui: Ui = {
   greeting: false,
   custKey: 0,
   gridView: 'shelf',
+  pops: { craft: { open: false, x: 0, y: 0, placed: false }, wallet: { open: false, x: 0, y: 0, placed: false }, gear: { open: false, x: 0, y: 0, placed: false } },
+  popOrder: ['craft', 'wallet', 'gear'],
   craft: [],
   supplyParam: 'phy',
   gearSlot: null,
@@ -92,7 +97,9 @@ export const stageWidth = (): number => ctx.root.clientWidth;
 const appWidth = (): number => Math.min(document.documentElement.clientWidth, 1280) - 6;
 /** The width of the things beside the shelf on a wide screen (the bin, the bed), and of the shelf between them. */
 export const PROP_W = 128;
-export const deckWidth = (): number => appWidth() - PROP_W * 2;
+/** The gear rack stands between the shelf and the bed. */
+export const RACK_W = 104;
+export const deckWidth = (): number => appWidth() - PROP_W * 2 - RACK_W;
 
 /**
  * The slip starts small on a phone (the customer stays in view). With a mouse and room it starts large;
@@ -123,10 +130,14 @@ export const ctx = {
 /** The size of a cell of the showcase on the wall (smaller than the shelf's). */
 export const CASE_CELL = 40;
 
-export const shownGrid = (g: GameState): G.GridId => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView === 'gear' || ui.gridView === 'craft' ? 'shelf' : ui.gridView);
-/** The tab on screen: a grid, or the gear. */
+/** The windows that float over the shop. */
+export type PopId = 'craft' | 'wallet' | 'gear';
+/** At home on a wide screen there are no tabs: the deck always shows the shelf, and the rest opens in windows. */
+export const popsOn = (g: GameState): boolean => isWide() && atHome(g);
+
+export const shownGrid = (g: GameState): G.GridId => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : popsOn(g) || ui.gridView === 'gear' || ui.gridView === 'craft' ? 'shelf' : ui.gridView);
 export const shownTab = (g: GameState): G.GridId | 'gear' | 'craft' =>
-  g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView === 'craft' && !G.hasEffect(g, cat, 'pot') ? 'shelf' : ui.gridView;
+  g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : popsOn(g) ? 'shelf' : ui.gridView === 'craft' && !G.hasEffect(g, cat, 'pot') ? 'shelf' : ui.gridView;
 export const atHome = (g: GameState): boolean => g.phase === 'morning' || g.phase === 'open' || g.phase === 'evening';
 
 export const TEMPER_JA = ['気さく', 'ふつう', '頑固'];

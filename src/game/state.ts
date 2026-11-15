@@ -22,6 +22,8 @@ export interface StockItem {
   seen?: boolean;
   /** a hot good (see Offer) */
   hot?: boolean;
+  /** the wallet in use: it stands on the shelf, and what it holds is `wallet.items` (it is not sold, binned or carried off) */
+  bag?: boolean;
   /** top-left cell of its footprint on the grid it lies on */
   x: number;
   y: number;

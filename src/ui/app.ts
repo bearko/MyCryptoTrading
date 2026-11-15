@@ -4,11 +4,11 @@ import type { GameState } from '../game/state';
 import { act } from './actions';
 import { audio, haptic, type BgmName, type SfxName } from './audio';
 import { ctx, ui } from './core';
-import { dragging, mountDrag } from './drag';
+import { dragging, mountDrag, placePops } from './drag';
 import { front } from './front';
 import { fx } from './fx';
 import { gearEffects, gearModal, pickModal } from './gear';
-import { gridSection, measure } from './grid';
+import { gridSection, measure, popups } from './grid';
 import { hud, hudEffects } from './hud';
 import { recipesModal } from './craft';
 import { deckProps, networkModal, parcelModal, trashModal, wantedModal } from './props';
@@ -41,7 +41,7 @@ function screenHtml(): string {
       if (g.phase === 'shop') ({ top, side } = shopScreen(g));
       else if (g.phase === 'quest') top = questScreen(g);
       else top = front(g, v, ui.lateKey === ui.custKey);
-      html = `${hud(g)}${top}${gridSection(g, side)}${deckProps(g)}${v ? customerWindow(g, v) : ''}${v && g.phase === 'open' ? bubbleHtml() : ''}`;
+      html = `${hud(g)}${top}${gridSection(g, side)}${deckProps(g)}${popups(g)}${v ? customerWindow(g, v) : ''}${v && g.phase === 'open' ? bubbleHtml() : ''}`;
     }
     if (ui.modal === 'inspect') html += inspectModal(g);
     if (ui.modal === 'menu') html += menuModal(g);
@@ -111,6 +111,7 @@ function render(): void {
   if (g && ui.screen === 'game') {
     if (g.phase === 'quest') questEffects(g, root);
     clampWindow();
+    placePops();
     hudEffects(g);
     if (g.phase === 'open') hookEffects(g);
     sceneEffects(g, ui.lateKey === ui.custKey);

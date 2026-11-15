@@ -50,7 +50,7 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
     if (G.buyDeed(s)) break;
     // a thin shelf and some money: a night at the shop (tomorrow opens late)
     const spare = s.gum - reserve;
-    if (s.stock.filter((x) => !cat.itemById.get(x.itemId)!.effect).length < 3 && spare > 120 && N.goShop(s, cat)) {
+    if (s.stock.filter((x) => !x.bag && !cat.itemById.get(x.itemId)!.effect).length < 3 && spare > 120 && N.goShop(s, cat)) {
       s.shop!.goods.forEach((g, i) => {
         if (s.gum - g.price < reserve + 40 || cat.itemById.get(g.itemId)!.wallet) return;
         if (N.shopBuy(s, i) && !N.stow(s, cat, s.shop!.tray.length - 1)) s.shop!.tray.pop(); // does not fit: left behind
@@ -76,13 +76,13 @@ function keepShop(s: GameState, cat: Catalog, pot: boolean): void {
   }
   // the showcase: the rarest goods of the shop, as many as fit (they are sold from there like any other)
   // (the pot stays on the shelf: that is where it works from)
-  const rarest = s.stock.filter((x) => !cat.itemById.get(x.itemId)!.effect).sort((a, b) => cat.itemById.get(b.itemId)!.rarity - cat.itemById.get(a.itemId)!.rarity);
+  const rarest = s.stock.filter((x) => !x.bag && !cat.itemById.get(x.itemId)!.effect).sort((a, b) => cat.itemById.get(b.itemId)!.rarity - cat.itemById.get(a.itemId)!.rarity);
   for (const x of rarest) {
     if (G.freeCells(s, cat, 'case') === 0) break;
     N.transfer(s, cat, 'shelf', x.uid, 'case');
   }
   // a thin shelf: a lot by telephone, of the line in demand today if there is one
-  if (!s.supply && s.stock.filter((x) => !cat.itemById.get(x.itemId)!.effect).length < 5 && s.gum - B.supplies.lot.gum > reserve + 100) {
+  if (!s.supply && s.stock.filter((x) => !x.bag && !cat.itemById.get(x.itemId)!.effect).length < 5 && s.gum - B.supplies.lot.gum > reserve + 100) {
     G.placeSupply(s, cat, 'lot', s.event.id === 'demand' && s.event.param ? s.event.param : 'phy', 'gum');
   }
 }
@@ -94,11 +94,11 @@ function craftAll(s: GameState, cat: Catalog): void {
     let best: { uids: number[]; gain: number } | null = null;
     for (const base of s.stock) {
       const item = cat.itemById.get(base.itemId)!;
-      if (item.effect) continue;
+      if (item.effect || base.bag) continue;
       const next = C.nextOf(cat, item);
       if (!next) continue;
       const need = C.pointsOf(item);
-      const others = s.stock.filter((x) => x !== base && !cat.itemById.get(x.itemId)!.effect).sort((a, b) => worth(a) - worth(b));
+      const others = s.stock.filter((x) => x !== base && !x.bag && !cat.itemById.get(x.itemId)!.effect).sort((a, b) => worth(a) - worth(b));
       const sets: (typeof others)[] = [];
       const single = others.find((x) => C.pointsOf(cat.itemById.get(x.itemId)!) >= need);
       if (single) sets.push([single]);

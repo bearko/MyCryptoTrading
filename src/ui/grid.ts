@@ -5,7 +5,7 @@ import * as N from '../game/night';
 import { SLOT_IDS, type SlotId } from '../game/state';
 import { craftsLeft } from '../game/craft';
 import { craftBoard } from './craft';
-import { atHome, ctx, deckWidth, hasMouse, isWide, shownGrid, shownTab, ui } from './core';
+import { atHome, ctx, deckWidth, hasMouse, isWide, popsOn, shownGrid, shownTab, ui, type PopId } from './core';
 import { esc, glyphs, tone } from './html';
 import { ICON } from './icons';
 
@@ -22,11 +22,11 @@ function imageSpot(cells: readonly (readonly [number, number])[], size: number):
 }
 
 /** One good on a grid: a tile for each cell of its footprint (outlined along the outer edge), and its picture. */
-export function gridItem(x: { uid: number; itemId: number; x: number; y: number; rot: number; fake?: boolean; seen?: boolean; hot?: boolean }, cls = ''): string {
+export function gridItem(x: { uid: number; itemId: number; x: number; y: number; rot: number; fake?: boolean; seen?: boolean; hot?: boolean; bag?: boolean }, cls = ''): string {
   const cell = ctx.cell;
   const item = G.findItem(cat, x.itemId);
   // (a good with an effect of its own wears a mark: it does something when it is double-clicked)
-  if (item.effect) cls += ' special';
+  if (item.effect || x.bag) cls += ' special';
   const shape = G.shapeOf(cat, x.itemId, x.rot);
   const has = new Set(shape.cells.map(([cx, cy]) => `${cx},${cy}`));
   const cells = shape.cells
@@ -39,7 +39,7 @@ export function gridItem(x: { uid: number; itemId: number; x: number; y: number;
   const first = shape.cells.reduce((a, c) => (c[1] < a[1] || (c[1] === a[1] && c[0] < a[0]) ? c : a));
   return `<div class="inv-item ${cls}" id="item-${x.uid}" data-item="${x.uid}" style="${tone(item)};left:${x.x * cell}px;top:${x.y * cell}px;width:${shape.w * cell}px;height:${shape.h * cell}px">
       ${cells}<img src="${item.img}" alt="${esc(item.ja)}" draggable="false" style="width:${size}px;height:${size}px;${imageSpot(shape.cells, size)}${x.rot ? `;transform:rotate(${x.rot * 90}deg)` : ''}" />
-      <span class="inv-glyph" style="left:${first[0] * cell}px;top:${first[1] * cell}px">${glyphs(item)}</span>${item.effect ? `<b class="inv-fx" style="left:${(first[0] + 1) * cell - 19}px;top:${(first[1] + 1) * cell - 19}px" aria-label="特別な効果のある品（ダブルクリックで使う）">✦</b>` : ''}${x.hot ? `<b class="inv-seen hot" style="left:${first[0] * cell + (x.seen ? 16 : 0)}px;top:${(first[1] + 1) * cell - 15}px">訳</b>` : ''}${x.seen ? `<b class="inv-seen ${x.fake ? 'fake' : 'real'}" style="left:${first[0] * cell}px;top:${(first[1] + 1) * cell - 15}px">${x.fake ? '写' : '真'}</b>` : ''}${cls.split(' ').includes('match') ? `<i class="inv-mark" style="left:${(first[0] + 1) * cell - 17}px;top:${first[1] * cell + 3}px" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
+      <span class="inv-glyph" style="left:${first[0] * cell}px;top:${first[1] * cell}px">${glyphs(item)}</span>${item.effect || x.bag ? `<b class="inv-fx" style="left:${(first[0] + 1) * cell - 19}px;top:${(first[1] + 1) * cell - 19}px" aria-label="特別な効果のある品（ダブルクリックで使う）">✦</b>` : ''}${x.hot ? `<b class="inv-seen hot" style="left:${first[0] * cell + (x.seen ? 16 : 0)}px;top:${(first[1] + 1) * cell - 15}px">訳</b>` : ''}${x.seen ? `<b class="inv-seen ${x.fake ? 'fake' : 'real'}" style="left:${first[0] * cell}px;top:${(first[1] + 1) * cell - 15}px">${x.fake ? '写' : '真'}</b>` : ''}${cls.split(' ').includes('match') ? `<i class="inv-mark" style="left:${(first[0] + 1) * cell - 17}px;top:${first[1] * cell + 3}px" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
 }
 
 const SLOT_LABEL: Record<SlotId | 'wallet', string> = { head: '頭', body: '胴体', arm: '腕', leg: '足', special1: '特殊1', special2: '特殊2', wallet: 'ウォレット' };
@@ -59,7 +59,7 @@ function gearBoard(g: GameState): string {
   return `<div class="gearboard" id="gearboard">
       <div class="gslots">${SLOT_IDS.map(place).join('')}${place('wallet')}</div>
       <div class="gear-line"><img src="${cat.player.img}" alt="" draggable="false" /><b>HP ${hp}</b><b class="s-phy">PHY ${phy}</b><b class="s-int">INT ${int}</b><b class="s-agi">AGI ${agi}</b></div>
-      <p class="hint">品をつまんで、ここへ置くと装備。装備中の品は、つまんでタブへ運ぶと外せます。</p>
+      <p class="hint">${popsOn(g) ? '棚の品をつまんで、ここへ置くと装備。装備中の品は、つまんで棚へ運ぶと外せます。' : '品をつまんで、ここへ置くと装備。装備中の品は、つまんでタブへ運ぶと外せます。'}</p>
     </div>`;
 }
 
@@ -85,7 +85,10 @@ export function gridSection(g: GameState, side = ''): string {
   const used = total - G.freeCells(g, cat, id);
   const wallet = G.findItem(cat, g.wallet.itemId);
   let head: string;
-  if (atHome(g)) {
+  if (popsOn(g)) {
+    // no tabs: the shelf is always here, and the wallet, the gear and the pot open in windows of their own
+    head = `<div class="tabs"><span class="tab on solo"><span>棚</span><em>${usedOf(g, 'shelf')}</em></span></div>`;
+  } else if (atHome(g)) {
     const tabBtn = (which: G.GridId | 'gear' | 'craft', label: string, count: string): string =>
       `<button class="tab ${tab === which ? 'on' : ''}" id="tab-${which}" data-act="grid" data-arg="${which}" role="tab" aria-selected="${tab === which}"><span>${label}</span><em>${count}</em></button>`;
     const worn = SLOT_IDS.filter((slot) => g.equip[slot]).length;
@@ -100,13 +103,45 @@ export function gridSection(g: GameState, side = ''): string {
         ? craftBoard(g)
         : `<div class="grid" id="grid-${id}" data-grid="${id}" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${items}<div class="preview" id="preview" data-live></div></div>`;
   return `<section class="inv ${tab} ${side ? 'with-side' : ''}" id="inv" data-ui>
-    <div class="inv-head">${head}<span class="inv-tip">${hasMouse() ? (atHome(g) ? 'Q・E：回転（ドラッグ中）　右クリック：メニュー<br />Space：せりふ送り　B：ベル　<b>O：操作の案内</b>' : 'クリック：詳細<br />マウスを乗せる：ひと目') : `${atHome(g) ? 'つまんでタブへ：移動' : 'タップ：詳細'}<br />長押し：メニュー`}</span></div>
+    <div class="inv-head">${head}<span class="inv-tip">${hasMouse() ? (atHome(g) ? '✦ の品はダブルクリックで開く（壺・ウォレット）　装備は右の装備棚<br />Q・E：回転（ドラッグ中）　Space：せりふ送り　B：ベル　<b>O：操作の案内</b>' : 'クリック：詳細<br />マウスを乗せる：ひと目') : `${atHome(g) ? 'つまんでタブへ：移動' : 'タップ：詳細'}<br />長押し：メニュー`}</span></div>
     <div class="inv-body">
       <div class="board" ${atHome(g) && boardMin ? `style="min-height:${boardMin}px"` : ''}>${board}</div>
       ${side}
     </div>
     ${atHome(g) ? '<p class="keys" aria-label="キーボードの近道"><span><kbd>Space</kbd>ベル・せりふを飛ばす</span><span><kbd>Enter</kbd>決定（買う・売る・開店）</span><span><kbd>Esc</kbd>閉じる</span><span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>棚・ウォレット・装備</span><span><kbd>R</kbd>つまんだ品を回す</span></p>' : ''}
   </section>`;
+}
+
+const POP_JA: Record<PopId, string> = { craft: '合成の壺', wallet: 'ウォレット', gear: '装備' };
+
+/**
+ * The windows that float over the shop (a wide screen, at home): the pot, the wallet's inside, the gear.
+ * Each is opened from a thing in the shop, dragged by its bar, left open or shut, and goods are dragged
+ * between them and the shelf.
+ */
+export function popups(g: GameState): string {
+  if (!popsOn(g)) return '';
+  const cell = ctx.cell;
+  const body = (id: PopId): string => {
+    if (id === 'craft') return G.hasEffect(g, cat, 'pot') ? craftBoard(g) : '';
+    if (id === 'gear') return gearBoard(g);
+    const grid = G.gridOf(g, cat, 'wallet');
+    return `<div class="grid" id="grid-wallet" data-grid="wallet" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${grid.items.map((x) => gridItem(x)).join('')}<div class="preview" id="preview-wallet" data-live></div></div>`;
+  };
+  const note = (id: PopId): string => (id === 'wallet' ? usedOf(g, 'wallet') : id === 'gear' ? `${SLOT_IDS.filter((slot) => g.equip[slot]).length}/6` : `あと ${craftsLeft(g)} 回`);
+  return ui.popOrder
+    .filter((id) => ui.pops[id].open)
+    .map((id, z) => {
+      const inner = body(id);
+      if (!inner) return '';
+      const p = ui.pops[id];
+      return `<section class="pop pop-${id}" id="pop-${id}" data-ui style="left:${p.x}px;top:${p.y}px;z-index:${24 + z}">
+        <div class="pop-bar" data-pop="${id}"><b>${POP_JA[id]}</b><em>${note(id)}</em><i class="win-grip" aria-hidden="true"></i>
+          <button class="win-btn" data-act="pop-close" data-arg="${id}" data-sfx="close" aria-label="${POP_JA[id]}の窓を閉じる">${ICON.close}</button></div>
+        <div class="pop-body">${inner}</div>
+      </section>`;
+    })
+    .join('');
 }
 
 function usedOf(g: GameState, id: G.GridId): string {

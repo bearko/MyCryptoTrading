@@ -25,8 +25,8 @@ describe('game rules', () => {
   it('starts with stock, money, a common wallet and nothing worn', () => {
     const s = G.newGame(1, catalog);
     expect(s.gum).toBe(B.startGum);
-    // (the starting goods, and the pot)
-    expect(s.stock).toHaveLength(B.startStock + 1);
+    // (the starting goods, the pot, and the wallet in use)
+    expect(s.stock).toHaveLength(B.startStock + 2);
     expect(G.walletSize(s, catalog)).toEqual({ cols: 4, rows: 5 });
     expect(Object.values(s.equip).every((x) => x === null)).toBe(true);
     expect(s.phase).toBe('morning');
@@ -128,7 +128,7 @@ describe('game rules', () => {
     for (let n = 0; n < 40; n++) {
       until(s, 'buy');
       const v = G.currentVisitor(s)!;
-      for (const item of [...s.stock]) {
+      for (const item of G.forSale(s)) {
         const gum = s.gum;
         const fair = G.salePrice(catalog, item, 0);
         const budget = v.budget;
@@ -351,13 +351,31 @@ describe('game rules', () => {
     expect(s.stock).toHaveLength(1);
   });
 
-  it('a bigger wallet replaces the wallet and grows the bag', () => {
+  it('the wallet in use stands on the shelf; a bigger one takes its place there, and the old one is a good again', () => {
     const s = G.newGame(24, catalog);
-    s.stock = [];
+    const old = s.stock.find((x) => x.bag)!;
+    expect(old.itemId).toBe(catalog.wallets[0].id);
+    // it is not sold, binned, carried off or put in the pot
+    expect(G.forSale(s)).not.toContain(old);
+    expect(G.toTrash(s, catalog, old.uid)).toBe(false);
+    expect(G.dispose(s, catalog, old.uid)).toBe(false);
+    expect(N.transfer(s, catalog, 'shelf', old.uid, 'case')).toBe(false);
+    expect(N.transfer(s, catalog, 'shelf', old.uid, 'wallet')).toBe(false);
+    // … but it can be moved about on the shelf
+    const free = G.findSlot(s, catalog, old.itemId)!;
+    expect(G.moveStock(s, catalog, old.uid, free.x, free.y, 'shelf')).toBe(true);
     const uid = G.addTo(s, catalog, 'shelf', catalog.wallets[1].id, 1, 0)!;
     expect(N.equip(s, catalog, uid)).toBe('ok');
     expect(G.walletSize(s, catalog)).toEqual({ cols: 5, rows: 5 });
-    expect(s.stock.map((x) => x.itemId)).toEqual([catalog.wallets[0].id]);
+    expect(s.stock.filter((x) => x.bag).map((x) => x.uid)).toEqual([uid]);
+    expect(old.bag).toBe(false);
+    expect(G.forSale(s)).toContain(old);
+    // a shop without its wallet on the shelf (an old save) is given it, once
+    s.stock = s.stock.filter((x) => !x.bag);
+    expect(G.giveBag(s, catalog)).toBe(true);
+    expect(G.giveBag(s, catalog)).toBe(true);
+    expect(s.stock.filter((x) => x.bag)).toHaveLength(1);
+    expect(s.stock.find((x) => x.bag)!.itemId).toBe(catalog.wallets[1].id);
   });
 
   it('labels: a good can sit on several parameter and skill lines', () => {
