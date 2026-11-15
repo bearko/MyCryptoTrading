@@ -2,7 +2,7 @@
  * The things of the shop that are used by hand rather than through a menu (a wide screen shows them
  * beside the shelf): the bin — goods are dragged into it — and the bed — a click on it at night ends the day.
  */
-import { catalog as cat, PARAM_JA } from '../game/catalog';
+import { catalog as cat, HERO_CLASS_JA, PARAM_JA, RARITY_JA } from '../game/catalog';
 import * as G from '../game/logic';
 import { SLOT_IDS, type GameState } from '../game/state';
 import { B, WEEKDAYS } from '../game/balance';
@@ -211,10 +211,17 @@ export function calendarModal(g: GameState): string {
     }
     rows.push(`<div class="cal-day ${day === g.day ? 'now' : ''} ${marks.length ? '' : 'plain'}"><b>${day}</b><small>${WEEKDAYS[(day - 1) % 7]}</small><span>${marks.join('<br />') || '—'}</span></div>`);
   }
+  // who comes to the shop, and how far it is to the next class of hero
+  const next = g.clientele + 1;
+  const crowd =
+    next > 5
+      ? `<p class="cal-crowd"><b>客層</b>${HERO_CLASS_JA[5]}まで、すべてのヒーローが来る</p>`
+      : `<p class="cal-crowd"><b>客層</b>${HERO_CLASS_JA[g.clientele]}まで<span>次：${HERO_CLASS_JA[next]}のヒーロー　${RARITY_JA[next]}以上の品を扱う ${Math.min(G.clienteleScore(g, cat, next), B.clienteleNeed[next])}/${B.clienteleNeed[next]}（ショーケースに飾ると +${B.clienteleShow}）</span></p>`;
   return `<div class="modal" id="modal-calendar" data-ui><div class="modal-box tall">
     <h2 class="modal-title"><small>CALENDAR</small>暦</h2>
     <p class="hint">これから 2 週間の、いま分かっている予定です。</p>
     <div class="modal-scroll cal">${rows.join('')}</div>
+    ${crowd}
     <div class="actions one">${btn('modal-close', '閉じる', { cls: 'primary' })}</div>
   </div></div>`;
 }

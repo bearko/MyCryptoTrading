@@ -267,6 +267,10 @@ export interface GameState {
   /** what the night's collection will pay for them */
   trashGum: number;
   /** the shelf is laid out wide (saves from before are repacked once) */
+  /** how many goods of each rarity (index 1–5) the shop has bought, sold or made */
+  handled: number[];
+  /** the rarest class of hero that comes to the shop (1 = novices only … 5 = everyone) */
+  clientele: number;
   wide: boolean;
   /** the shelf is the large one, with goods at their larger sizes (saves from before are laid out again once) */
   big: boolean;

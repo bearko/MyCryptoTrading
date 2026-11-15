@@ -23,6 +23,13 @@ export const B = {
     [2.5, 0.035, 1.2],
     [0.3, 0.008, 0.45],
   ],
+  /**
+   * The clientele: at first only novice heroes come. Each rarer class of hero (2–5) starts to come once the shop
+   * has handled (bought, sold or made) this many goods of that rarity or better — and a good of that rarity in
+   * the showcase counts for `clienteleShow` of them.
+   */
+  clienteleNeed: [0, 0, 3, 4, 3, 2],
+  clienteleShow: 2,
   /** which heroes come: weights for rarities 1–5 (a legendary hero is always a rich buyer, and comes from the third day) */
   heroOdds: [0, 30, 30, 22, 14, 2.5],
   /** what a buyer brings, by the hero's rarity (index 1–4; a legendary hero is rich, see richFloor): the purse decides what can be sold to whom */

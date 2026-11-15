@@ -36,6 +36,9 @@ export function load(): GameState | null {
     // saves from before the bin and the wide shelf (the shelf is repacked when the game is entered)
     s.trash ??= [];
     s.trashGum ??= 0;
+    // saves from before the clientele: everyone already comes
+    s.handled ??= [0, 0, 0, 0, 0, 0];
+    s.clientele ??= 5;
     s.wide ??= false;
     s.big ??= false;
     s.potGiven ??= false;

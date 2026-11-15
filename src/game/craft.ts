@@ -199,6 +199,7 @@ export function craft(
   const first = !s.made.includes(plan.result.id);
   if (first) s.made.push(plan.result.id);
   s.totals.crafts += 1;
+  s.handled[plan.result.rarity] += 1;
   // a special pairing found for the first time
   const fresh = !!plan.cross && !s.crosses.includes(plan.cross);
   if (fresh) {
