@@ -64,7 +64,7 @@ export function morningExtras(g: GameState): string {
   const wanted = g.wanted ? `<p class="news-order news-wanted"><span>手配</span><b>${esc(cat.heroById.get(g.wanted.heroId)!.ja)}</b><em>賞金 ${num(g.wanted.bounty)} GUM</em></p>` : '';
   // a word of advice on the mornings when something new is in the shop (the things on the wall are on a wide screen only)
   const tips: Record<number, [string, string] | undefined> = {
-    2: isWide() ? ['手引き', '棚の品を、壁の<b>ショーケース</b>へドラッグすると、その系統を欲しがる客が来やすくなります'] : undefined,
+    2: isWide() ? ['手引き', '棚の品を、壁の<b>ショーケース</b>のマス目にはめこむと、その系統を欲しがる客が来やすくなります（すきまなく埋めると、さらに）'] : undefined,
     3: isWide() ? ['手引き', '壁の<b>電話</b>で、商人ギルドに頼みごとや取り寄せができます（信用は毎朝貯まります）'] : undefined,
     [B.wantedFromDay]: isWide() ? ['手引き', '壁に<b>手配書</b>が貼られることがあります。その客が来たら、通報するか取引するかを選べます'] : undefined,
     [B.hotFromDay]: ['うわさ', '<b>訳あり</b>の品が、安く出回っています。<b>見回り</b>に棚で見つかると没収されます（ウォレットの中は見られません）'],

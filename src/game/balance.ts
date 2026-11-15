@@ -32,10 +32,16 @@ export const B = {
   wealthPerRep: 0.004,
   /** a rich buyer (a legendary hero) brings at least this much, or this many times the dearest good on the shelf */
   richFloor: 2500,
-  /** the showcase: how many goods can be shown (by the guild's favours: none, one, two) */
-  showSlots: [2, 4, 6],
+  /**
+   * The showcase is a small grid of its own, two cells deep: goods are fitted into it by their shape.
+   * Its width in columns, by the guild's favours (none, one, two) — one more column, then two more.
+   */
+  caseDepth: 2,
+  caseCols: [2, 3, 5],
+  /** a showcase packed with no cell left empty counts for this much more appeal */
+  showFull: 3,
   /** a buyer is after what is shown this often (base, and more per good shown; at most showPullMax) */
-  showPull: [0.35, 0.1],
+  showPull: [0.3, 0.08],
   showPullMax: 0.8,
   /** what is shown draws richer heroes: each step of rarity above common, of each good shown, adds this to the odds of a hero of rarity 3, 4, 5 */
   showAppeal: [0, 0, 0, 0.04, 0.07, 0.05],

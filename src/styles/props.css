@@ -788,3 +788,32 @@ html.calm .loupe {
     display: none;
   }
 }
+
+/* the showcase is a grid of its own: goods are fitted into it by their shape */
+.case-grid {
+  position: relative;
+  flex: 0 0 auto;
+  outline: 2px solid var(--ink);
+  background:
+    linear-gradient(to right, var(--ink) 2px, transparent 2px) -1px 0 / var(--cell) var(--cell),
+    linear-gradient(to bottom, var(--ink) 2px, transparent 2px) 0 -1px / var(--cell) var(--cell),
+    color-mix(in srgb, var(--cool) 14%, var(--ink));
+}
+.case-grid .inv-item img {
+  padding: 2px;
+}
+.case-grid .inv-glyph,
+.case-grid .inv-seen {
+  transform: scale(0.8);
+  transform-origin: 0 0;
+}
+.case.full {
+  border-color: var(--gum);
+}
+.case.full .case-tip {
+  color: var(--gum);
+  font-weight: 900;
+}
+.case.hot {
+  transform: none;
+}

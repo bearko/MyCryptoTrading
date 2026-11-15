@@ -4,6 +4,7 @@ import { catalog } from '../src/game/catalog';
 import * as C from '../src/game/craft';
 import * as G from '../src/game/logic';
 import * as N from '../src/game/network';
+import * as N2 from '../src/game/night';
 import { FACTIONS } from '../src/game/factions';
 import type { GameState, Visitor } from '../src/game/state';
 
@@ -23,19 +24,56 @@ function visitors(s: GameState, count: number): Visitor[] {
 }
 
 describe('the showcase', () => {
-  it('holds as many goods as it has room for, and only goods that are in the shop', () => {
+  const ofShape = (shape: string, rarity = 1) => catalog.itemsByRarity[rarity].find((i) => i.shape === shape)!;
+
+  it('is a grid of its own: goods are fitted into it by their shape, and it grows by columns', () => {
     const s = G.newGame(51, catalog);
-    const [a, b, c] = s.stock;
-    expect(G.showSlots(s)).toBe(B.showSlots[0]);
-    expect(G.setShown(s, a.uid, true)).toBe(true);
-    expect(G.setShown(s, b.uid, true)).toBe(true);
-    expect(G.setShown(s, c.uid, true)).toBe(false);
-    expect(G.setShown(s, 9999, true)).toBe(false);
-    // a good that is sold or thrown away is no longer shown
-    G.toTrash(s, catalog, a.uid);
-    expect(G.shownGoods(s).map((x) => x.uid)).toEqual([b.uid]);
+    s.stock = [];
+    s.rows = 8;
+    expect(G.gridOf(s, catalog, 'case')).toMatchObject({ cols: B.caseCols[0], rows: B.caseDepth });
+    // a square fills the two-by-two window; nothing else goes in beside it
+    const sq = G.addTo(s, catalog, 'shelf', ofShape('sq').id, 1, 0)!;
+    const one = G.addTo(s, catalog, 'shelf', ofShape('s1').id, 1, 0)!;
+    const long = G.addTo(s, catalog, 'shelf', ofShape('v3').id, 1, 0)!;
+    expect(N2.transfer(s, catalog, 'shelf', sq, 'case')).toBe(true);
+    expect(s.stock.some((x) => x.uid === sq)).toBe(false);
+    expect(G.caseFull(s, catalog)).toBe(true);
+    expect(N2.transfer(s, catalog, 'shelf', one, 'case')).toBe(false);
+    // a good three cells long does not fit a window two wide, whichever way it is turned
+    expect(N2.transfer(s, catalog, 'case', sq, 'shelf')).toBe(true);
+    expect(N2.transfer(s, catalog, 'shelf', long, 'case')).toBe(false);
+    // one more column from the guild, and it lies on its side
     s.services.push('case1');
-    expect(G.showSlots(s)).toBe(B.showSlots[1]);
+    expect(G.gridOf(s, catalog, 'case').cols).toBe(B.caseCols[1]);
+    expect(N2.transfer(s, catalog, 'shelf', long, 'case')).toBe(true);
+    expect(s.showcase[0].rot % 2).toBe(1);
+    // … and two more with the second favour
+    s.services.push('case2');
+    expect(G.gridOf(s, catalog, 'case').cols).toBe(B.caseCols[2]);
+    // a cell placed by hand, like on the shelf
+    expect(N2.transfer(s, catalog, 'shelf', one, 'case', 4, 1)).toBe(true);
+    expect(s.showcase.find((x) => x.uid === one)).toMatchObject({ x: 4, y: 1 });
+    expect(G.moveStock(s, catalog, one, 3, 0, 'case')).toBe(true);
+    expect(G.moveStock(s, catalog, one, 0, 0, 'case')).toBe(false);
+  });
+
+  it('a window with no cell left empty counts for more; what is shown can be sold straight from it', () => {
+    const s = G.newGame(54, catalog);
+    s.stock = [];
+    const a = G.addTo(s, catalog, 'case', ofShape('h2', 2).id, 1, 0)!;
+    expect(G.showAppeal(s, catalog)).toBe(1);
+    const b = G.addTo(s, catalog, 'case', ofShape('h2', 3).id, 1, 0)!;
+    expect(G.caseFull(s, catalog)).toBe(true);
+    expect(G.showAppeal(s, catalog)).toBe(1 + 2 + B.showFull);
+    // sold from the window: it is gone from there
+    s.day = 2;
+    G.openShop(s, catalog);
+    const v = G.currentVisitor(s)!;
+    Object.assign(v, { kind: 'buy', offers: [], want: { type: 'any' }, budget: 99999, done: false, temper: 0, special: undefined, wanted: false });
+    expect(G.quoteSale(s, catalog, v, [a], 0).asked).toBeGreaterThan(0);
+    expect(G.sell(s, catalog, [a], 0)).toBe('sold');
+    expect(s.showcase.map((x) => x.uid)).toEqual([b]);
+    expect(G.caseFull(s, catalog)).toBe(false);
   });
 
   it('draws buyers after what is shown, and richer heroes the rarer it is', () => {
@@ -45,11 +83,11 @@ describe('the showcase', () => {
     shown.day = 6;
     shown.stock = [];
     shown.services.push('case1', 'case2');
-    // six legendary goods of one parameter line in the window
-    const int = catalog.itemsByRarity[5].filter((i) => i.params.length === 1 && i.params[0] === 'int').slice(0, 6);
-    shown.rows = 8;
-    for (const item of int) G.setShown(shown, G.addTo(shown, catalog, 'shelf', item.id, 1, 0)!, true);
-    expect(G.showAppeal(shown, catalog)).toBe(6 * 4);
+    // legendary goods of one parameter line in the window, as many as fit
+    const int = catalog.itemsByRarity[5].filter((i) => i.params.length === 1 && i.params[0] === 'int');
+    for (const item of int) G.addTo(shown, catalog, 'case', item.id, 1, 0);
+    expect(shown.showcase.length).toBeGreaterThanOrEqual(3);
+    expect(G.showAppeal(shown, catalog)).toBeGreaterThanOrEqual(shown.showcase.length * 4);
 
     const wantsInt = (vs: Visitor[]) => vs.filter((v) => v.kind === 'buy' && v.want.type === 'param' && v.want.param === 'int').length / Math.max(1, vs.filter((v) => v.kind === 'buy').length);
     const rare = (vs: Visitor[]) => vs.filter((v) => catalog.heroById.get(v.heroId)!.rarity >= 4).length / vs.length;
@@ -324,7 +362,9 @@ describe('hot goods and the patrol', () => {
     t.rep = 50;
     const onShelf = t.stock[0];
     onShelf.hot = true;
-    G.setShown(t, onShelf.uid, true);
+    // (a hot good in the window is in plain sight too)
+    const inWindow = G.addTo(t, catalog, 'case', catalog.itemsByRarity[1].find((i) => i.shape === 's1')!.id, 1, 0)!;
+    t.showcase.find((x) => x.uid === inWindow)!.hot = true;
     const hidden = G.addTo(t, catalog, 'wallet', catalog.itemsByRarity[1].find((i) => i.shape === 's1')!.id, 1, 0)!;
     t.wallet.items.find((x) => x.uid === hidden)!.hot = true;
     const before = t.stock.length;
@@ -336,10 +376,11 @@ describe('hot goods and the patrol', () => {
     G.callNext(t, catalog);
     const v = G.currentVisitor(t)!;
     expect(v.special).toBe('patrol');
-    expect(v.seized).toEqual([onShelf.itemId]);
+    expect(v.seized).toHaveLength(2);
+    expect(v.seized).toContain(onShelf.itemId);
     expect(t.stock).toHaveLength(before - 1);
-    expect(t.display).toEqual([]);
-    expect(t.gum).toBe(500 - B.patrolFine);
+    expect(t.showcase).toEqual([]);
+    expect(t.gum).toBe(500 - B.patrolFine * 2);
     expect(t.rep).toBe(50 - B.patrolRep);
     expect(t.wallet.items.some((x) => x.uid === hidden && x.hot)).toBe(true);
     // nothing can be sold to a patrol, and seeing it off does not break the streak

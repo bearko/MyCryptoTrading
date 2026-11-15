@@ -8,7 +8,8 @@ import type { GameState } from '../game/state';
 import { B } from '../game/balance';
 import { factionById, rivalOf } from '../game/factions';
 import { GROUP_JA, hasService, loanBlock, loanNightly, loanTotal, serviceBlock, SERVICES, SUPPLIES, supplyBlock, supplyById, trustDaily } from '../game/network';
-import { atHome, ui } from './core';
+import { atHome, CASE_CELL, ctx, ui } from './core';
+import { gridItem } from './grid';
 import { btn, esc, gum, itemTile, num } from './html';
 
 // drawn flat, in the shop's own ink and paper (no pictures of their own in the catalogue)
@@ -49,21 +50,26 @@ const PHONE = `<svg viewBox="0 0 64 64" aria-hidden="true"><path class="p-ink" d
  */
 export function stageProps(g: GameState): string {
   if (!atHome(g)) return '';
-  const slots = G.showSlots(g);
-  const shown = G.shownGoods(g);
-  const cells = Array.from({ length: slots }, (_, i) => {
-    const x = shown[i];
-    if (!x) return '<span class="case-slot empty"></span>';
-    const item = G.findItem(cat, x.itemId);
-    return `<button class="case-slot" id="shown-${x.uid}" data-act="unshow" data-arg="${x.uid}" data-sfx="cancel" aria-label="${esc(item.ja)}（クリックでショーケースから下げる）">${itemTile(item, 'sm')}</button>`;
-  }).join('');
+  // the showcase: a small grid; goods are fitted into it by their shape, like on the shelf
+  const grid = G.gridOf(g, cat, 'case');
+  const v = G.currentVisitor(g);
+  const want = g.phase === 'open' && v && !v.done && v.kind === 'buy' ? v.want : null;
+  const keep = ctx.cell;
+  ctx.cell = CASE_CELL;
+  const goods = grid.items.map((x) => gridItem(x, ui.counter.includes(x.uid) ? 'away' : want && G.matches(cat, want, x.itemId) ? 'match' : '')).join('');
+  ctx.cell = keep;
+  const full = G.caseFull(g, cat);
+  const appeal = G.showAppeal(g, cat);
+  const tip = grid.items.length === 0 ? '品をここへドラッグ' : full ? `集客 +${appeal}（ぴったり +${B.showFull}）` : `集客 +${appeal}・空き ${G.freeCells(g, cat, 'case')} マス`;
   const sign = hasService(g, 'sign')
     ? `<div class="case-seek" role="group" aria-label="買いたい系統の看板"><small>求む</small>${(['phy', 'int', 'agi'] as const)
         .map((p) => `<button class="seek ${g.seek === p ? 'on' : ''} s-${p}" data-act="seek" data-arg="${p}" aria-pressed="${g.seek === p}">${PARAM_JA[p].replace('系', '')}</button>`)
         .join('')}</div>`
     : '';
   return `<div class="sprops" id="sprops" data-ui>
-    <div class="case" id="case"><b>ショーケース</b><div class="case-slots">${cells}</div>${sign}<small class="case-tip">${shown.length ? `集客 +${G.showAppeal(g, cat)}` : '品をここへドラッグ'}</small></div>
+    <div class="case ${full ? 'full' : ''}" id="case"><b>ショーケース</b>
+      <div class="case-grid" id="case-grid" data-grid="case" style="--cell:${CASE_CELL}px;width:${grid.cols * CASE_CELL}px;height:${grid.rows * CASE_CELL}px">${goods}<div class="preview" id="case-preview" data-live></div></div>
+      ${sign}<small class="case-tip">${tip}</small></div>
     <button class="phone" id="phone" data-act="phone" data-sfx="open" aria-label="電話（商人ギルドに頼みごとをする。信用 ${g.trust}）">${PHONE}<b>電話</b><small>信用 ${num(g.trust)}</small></button>
     ${wantedNotice(g)}
     ${g.parcel.length ? `<button class="parcel" id="parcel" data-act="parcel" data-sfx="open" aria-label="ギルドから届いた荷物（${g.parcel.length} 個。クリックで受け取る）">${CRATE}<b>荷物</b><em>${g.parcel.length}</em></button>` : ''}

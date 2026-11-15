@@ -21,7 +21,9 @@ export function load(): GameState | null {
     s.totals.bestCombo ??= 0;
     for (const v of s.queue) v.deals ??= 0;
     // saves from before the showcase and the guild
-    s.display ??= [];
+    // (saves from before the showcase was a grid: what was marked as shown simply stays on the shelf)
+    s.showcase ??= [];
+    delete (s as { display?: unknown }).display;
     s.seek ??= '';
     s.trust ??= 0;
     s.services ??= [];

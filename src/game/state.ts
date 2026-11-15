@@ -241,8 +241,8 @@ export interface GameState {
   totals: { sold: number; bought: number; bestSale: number; deepest: number; orders: number; bestCombo: number; crafts: number };
   /** every good that has come out of the pot (item ids): the recipe book marks them */
   made: number[];
-  /** the goods shown in the showcase (uids of goods on the shelf or in the wallet) */
-  display: number[];
+  /** the showcase: a grid of its own on the wall; goods are moved into it from the shelf or the wallet */
+  showcase: StockItem[];
   /** the parameter line on the "wanted" sign ('' when none) */
   seek: Param | '';
   /** the guild's trust, and the favours had from it */

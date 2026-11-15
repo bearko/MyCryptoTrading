@@ -66,7 +66,7 @@ function buyerBody(g: GameState, v: Visitor): string {
   const q = G.quoteSale(g, cat, v, ui.counter, ui.tier);
   const goods = ui.counter
     .map((uid) => {
-      const stock = g.stock.find((x) => x.uid === uid)!;
+      const stock = G.forSale(g).find((x) => x.uid === uid)!;
       const item = G.findItem(cat, stock.itemId);
       const wrong = !G.matches(cat, v.want, stock.itemId);
       return `<div class="line on ${wrong ? 'bad' : ''}" id="sline-${uid}">${itemTile(item, 'sm')}<span class="line-main"><b class="pix">${esc(item.ja)}</b>${wrong ? '<small class="bad">希望と違う</small>' : `<small>相場 ${num(G.stockValue(cat, stock))}${stock.fake && stock.seen ? '<b class="seen-note fake">　レプリカ</b>' : ''}</small>`}</span><span class="line-price"><b class="ask">${num(G.salePrice(cat, stock, ui.tier))}</b></span></div>`;
@@ -200,7 +200,7 @@ export function clampWindow(): void {
   // (the showcase grows sideways with its slots)
   if (isWide() && !ui.win.moved) {
     const wall = document.getElementById('sprops')?.getBoundingClientRect();
-    const clear = wall && wall.width > 0 ? wall.right - ctx.root.getBoundingClientRect().left + 12 : 160 + Math.max(0, (ctx.s ? G.showSlots(ctx.s) : 2) - 2) * 51;
+    const clear = wall && wall.width > 0 ? wall.right - ctx.root.getBoundingClientRect().left + 12 : 160 + Math.max(0, (ctx.s ? G.caseCols(ctx.s) : 2) - 3) * 40;
     ui.win.x = Math.max(ui.win.x, Math.round(clear));
   }
   ui.win.x = Math.max(0, Math.min(ui.win.x, areaW - win.offsetWidth));

@@ -68,7 +68,7 @@ export function counterBar(g: GameState, v: Visitor | null): string {
   } else {
     near = ui.counter
       .map((uid) => {
-        const stock = g.stock.find((x) => x.uid === uid)!;
+        const stock = G.forSale(g).find((x) => x.uid === uid)!;
         const item = G.findItem(cat, stock.itemId);
         const wrong = !G.matches(cat, v.want, stock.itemId);
         return `<button class="offer on-counter ${wrong ? 'wrong' : ''}" id="put-${uid}" style="${tone(item)}" data-act="uncounter" data-arg="${uid}" data-sfx="cancel" aria-label="${esc(item.ja)}を棚へ戻す">
