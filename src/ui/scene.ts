@@ -5,7 +5,7 @@ import { factionById } from '../game/factions';
 import * as G from '../game/logic';
 import type { GameState, Visitor } from '../game/state';
 import { audio } from './audio';
-import { ctx, TEMPER_JA, TEMPER_PITCH, ui } from './core';
+import { ctx, isWide, TEMPER_JA, TEMPER_PITCH, ui } from './core';
 import { fx } from './fx';
 import { esc } from './html';
 import { anim, pointOn, tok } from './motion';
@@ -183,7 +183,8 @@ export function sceneEffects(g: GameState, opening: boolean): void {
   }
   // the bubble hangs from the top-left corner of the scene
   const sceneEl = ctx.root.querySelector<HTMLElement>('#scene');
-  if (sceneEl) bubble.style.top = `${Math.round(sceneEl.getBoundingClientRect().top - ctx.root.getBoundingClientRect().top) + 10}px`;
+  // (on a wide screen the line is said beside the customer: a little way down the scene, nearer their head)
+  if (sceneEl) bubble.style.top = `${Math.round(sceneEl.getBoundingClientRect().top - ctx.root.getBoundingClientRect().top) + (isWide() ? Math.round(sceneEl.getBoundingClientRect().height * 0.1) : 10)}px`;
   const fresh = seenCust !== ui.custKey;
   let arrive = 0;
   if (fresh) {

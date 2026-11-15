@@ -49,6 +49,8 @@ export interface Ui {
   gearBefore: number[] | null;
   /** the slot that was just filled (it flashes) */
   gearFlash: string | null;
+  /** the gear window's words of explanation are shown (the ? button) */
+  gearHelp: boolean;
   /** the customer who came while the shutter was still rising (they wait for it) */
   lateKey: number;
 }
@@ -78,6 +80,7 @@ export const ui: Ui = {
   printDay: 0,
   gearBefore: null,
   gearFlash: null,
+  gearHelp: false,
   lateKey: -1,
 };
 

@@ -575,3 +575,83 @@
     margin-inline: auto;
   }
 }
+
+/* The customer's line is said beside them: up and to their left, the tail toward their head. */
+@media (min-width: 900px) and (min-height: 520px) {
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) > .bubble {
+    left: auto;
+    right: calc(100% - var(--goods-x) + 96px);
+    top: 9%;
+    max-width: min(30%, 340px);
+  }
+}
+
+/* the slip is moved by any part of it */
+@media (min-width: 900px) and (min-height: 520px) {
+  #win {
+    cursor: grab;
+  }
+  #win.held {
+    cursor: grabbing;
+  }
+  #win button {
+    cursor: pointer;
+  }
+}
+
+/* The title on a wide screen: the whole width, the logo large on the left, the buttons on the right, the parade right across. */
+@media (min-width: 900px) and (min-height: 520px) {
+  #app[data-phase='title'] {
+    max-width: none;
+  }
+  .title {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+    grid-template-rows: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 6vw;
+    padding: 6vh 9vw 3vh;
+  }
+  .title .logo {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    align-self: center;
+    text-align: left;
+  }
+  .title .logo-top {
+    font-size: clamp(2.125rem, 4.2vw, 3.75rem);
+  }
+  .title .logo-main {
+    font-size: clamp(6.75rem, 13vw, 12rem);
+  }
+  .title .logo-sub {
+    font-size: 1rem;
+  }
+  .title .title-acts {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+  .title .credit {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .title .parade {
+    top: 52%;
+    height: 40%;
+  }
+  .title .marcher {
+    width: calc(var(--size) * 1.5);
+    height: calc(var(--size) * 1.5);
+    animation-name: march-wide;
+  }
+  @keyframes march-wide {
+    from {
+      transform: translateX(-220px);
+    }
+    to {
+      transform: translateX(100vw);
+    }
+  }
+}

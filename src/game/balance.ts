@@ -15,7 +15,13 @@ export const B = {
   rarityValue: [0, 20, 50, 130, 420, 1500],
   /** a limited legendary (made in the pot only) */
   limitedValue: 4500,
-  /** how often each rarity turns up: [base, per point of reputation, per step of the hero's rarity] for rarities 1–5 */
+  /**
+   * What a hero brings to sell is of the hero's own rarity; now and then it is one below, more seldom one above
+   * (a novice brings common goods, and an uncommon one once in a while).
+   */
+  broughtDown: 0.15,
+  broughtUp: 0.12,
+  /** how often each rarity turns up (the night shop's stock, and what buyers ask for): [base, per point of reputation, per step of the hero's rarity] for rarities 1–5 */
   rarityOdds: [
     [52, -0.25, 0],
     [30, 0, 0],

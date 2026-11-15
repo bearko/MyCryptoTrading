@@ -36,7 +36,6 @@ export function title(): string {
       <span class="logo-main">${letters('TRADING', 5)}</span>
       <span class="logo-sub">マイクリプトトレーディング</span>
     </h1>
-    <p class="title-copy"><b>安く買って、高く売る。</b><br />家賃に追われる前に、店を自分のものに。</p>
     <div class="title-acts">
       ${saved ? btn('resume', `つづきから<em>${saved.day}日目</em>`, { cls: 'primary big pulse', sfx: 'none' }) : ''}
       ${btn('new', 'はじめから', { cls: saved ? 'big' : 'primary big pulse', sfx: 'none' })}

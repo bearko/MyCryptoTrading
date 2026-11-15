@@ -42,7 +42,7 @@ export function gridItem(x: { uid: number; itemId: number; x: number; y: number;
   const mark = (left: number, top: number): string => `left:${left}px;top:${top}px${k < 1 ? `;scale:${k.toFixed(2)};transform-origin:0 0` : ''}`;
   return `<div class="inv-item ${cls}${k < 1 ? ' fine' : ''}" id="item-${x.uid}" data-item="${x.uid}" style="${tone(item)};left:${x.x * cell}px;top:${x.y * cell}px;width:${shape.w * cell}px;height:${shape.h * cell}px">
       ${cells}<img src="${item.img}" alt="${esc(item.ja)}" draggable="false" style="width:${size}px;height:${size}px;${imageSpot(shape.cells, size)}${x.rot ? `;transform:rotate(${x.rot * 90}deg)` : ''}" />
-      <span class="inv-glyph" style="${mark(first[0] * cell, first[1] * cell)}">${glyphs(item)}</span>${item.effect || x.bag ? `<b class="inv-fx" style="${mark((first[0] + 1) * cell - 19 * k, (first[1] + 1) * cell - 19 * k)}" aria-label="特別な効果のある品（ダブルクリックで使う）">✦</b>` : ''}${x.hot ? `<b class="inv-seen hot" style="${mark(first[0] * cell + (x.seen ? 16 * k : 0), (first[1] + 1) * cell - 15 * k)}">訳</b>` : ''}${x.seen ? `<b class="inv-seen ${x.fake ? 'fake' : 'real'}" style="${mark(first[0] * cell, (first[1] + 1) * cell - 15 * k)}">${x.fake ? '写' : '真'}</b>` : ''}${cls.split(' ').includes('match') ? `<i class="inv-mark" style="${mark((first[0] + 1) * cell - 17 * k, first[1] * cell + 3 * k)}" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
+      <span class="inv-glyph" style="${mark(first[0] * cell, first[1] * cell)}">${glyphs(item)}</span>${item.effect || x.bag ? `<b class="inv-fx" style="${mark((first[0] + 1) * cell - 19 * k, (first[1] + 1) * cell - 19 * k)}" aria-label="特別な効果のある品（クリックで使う）">✦</b>` : ''}${x.hot ? `<b class="inv-seen hot" style="${mark(first[0] * cell + (x.seen ? 16 * k : 0), (first[1] + 1) * cell - 15 * k)}">訳</b>` : ''}${x.seen ? `<b class="inv-seen ${x.fake ? 'fake' : 'real'}" style="${mark(first[0] * cell, (first[1] + 1) * cell - 15 * k)}">${x.fake ? '写' : '真'}</b>` : ''}${cls.split(' ').includes('match') ? `<i class="inv-mark" style="${mark((first[0] + 1) * cell - 17 * k, first[1] * cell + 3 * k)}" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
 }
 
 const SLOT_LABEL: Record<SlotId | 'wallet', string> = { head: '頭', body: '胴体', arm: '腕', leg: '足', special1: '特殊1', special2: '特殊2', wallet: 'ウォレット' };
@@ -106,7 +106,7 @@ export function gridSection(g: GameState, side = ''): string {
         ? craftBoard(g)
         : `<div class="grid" id="grid-${id}" data-grid="${id}" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${items}<div class="preview" id="preview" data-live></div></div>`;
   return `<section class="inv ${tab} ${side ? 'with-side' : ''}" id="inv" data-ui>
-    <div class="inv-head">${head}<span class="inv-tip">${hasMouse() ? (atHome(g) ? '✦ の品はダブルクリックで開く（壺・ウォレット）　装備は右の装備棚<br />Q・E：回転（ドラッグ中）　Space：せりふ送り　B：ベル　<b>O：操作の案内</b>' : 'クリック：詳細<br />マウスを乗せる：ひと目') : `${atHome(g) ? 'つまんでタブへ：移動' : 'タップ：詳細'}<br />長押し：メニュー`}</span></div>
+    <div class="inv-head">${head}<span class="inv-tip">${hasMouse() ? (atHome(g) ? '✦ の品はクリックで開く（壺・ウォレット）　装備は右の装備棚<br />Q・E：回転（ドラッグ中）　Space：せりふ送り　B：ベル　<b>O：操作の案内</b>' : 'クリック：詳細<br />マウスを乗せる：ひと目') : `${atHome(g) ? 'つまんでタブへ：移動' : 'タップ：詳細'}<br />長押し：メニュー`}</span></div>
     <div class="inv-body">
       <div class="board" ${atHome(g) && boardMin ? `style="min-height:${boardMin}px"` : ''}>${board}</div>
       ${side}

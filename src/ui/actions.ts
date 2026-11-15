@@ -697,6 +697,10 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       render();
       return;
     }
+    case 'gear-help':
+      ui.gearHelp = !ui.gearHelp;
+      render();
+      return;
     case 'pop':
       // a thing of the shop that opens a window (the gear rack): a click opens it, another shuts it
       togglePop(arg as PopId);

@@ -113,6 +113,20 @@ describe('the showcase', () => {
     expect(G.clienteleScore(s, catalog, 3)).toBe(before + B.clienteleShow);
   });
 
+  it('what a hero brings is of the hero\'s own rarity, now and then one off', () => {
+    const s = G.newGame(83, catalog);
+    for (const rarity of [1, 3, 4]) {
+      const seen = [0, 0, 0, 0, 0, 0];
+      for (let n = 0; n < 2000; n++) seen[G.broughtRarity(s, rarity)] += 1;
+      expect(seen[rarity]).toBeGreaterThan(1300);
+      // nothing more than one step away
+      seen.forEach((count, r) => {
+        if (Math.abs(r - rarity) > 1) expect(count).toBe(0);
+      });
+      if (rarity > 1) expect(seen[rarity - 1]).toBeGreaterThan(seen[rarity + 1]);
+    }
+  });
+
   it('a window with no cell left empty counts for more; what is shown can be sold straight from it', () => {
     const s = G.newGame(54, catalog);
     s.stock = [];

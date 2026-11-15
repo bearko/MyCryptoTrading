@@ -219,6 +219,14 @@ export function addRep(s: GameState, delta: number): void {
   s.rep = clamp(s.rep + delta, 0, 100);
 }
 
+/** The rarity of a good a hero brings in to sell: the hero's own, sometimes one below, seldom one above. */
+export function broughtRarity(s: GameState, heroRarity: number): number {
+  const up = B.broughtUp + 0.03 * B.boonRarity * favorRank(s, 'koryu');
+  const roll = rand(s);
+  const step = roll < up ? 1 : roll < up + B.broughtDown ? -1 : 0;
+  return clamp(heroRarity + step, 1, 5);
+}
+
 // ---------------------------------------------------------------- new game and mornings
 
 export function rollRarity(s: GameState, heroBonus: number): number {
@@ -499,7 +507,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
     if (kind === 'hurry') {
       const offers: Offer[] = [];
       for (let i = 0; i < 2 + Math.floor(rand(s) * 2); i++) {
-        const item = pick(s, cat.itemsByRarity[rollRarity(s, heroBonus)]);
+        const item = pick(s, cat.itemsByRarity[broughtRarity(s, hero.rarity)]);
         const cond = pickWeighted(s, B.condWeights);
         offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, 0.66, 0.78) * B.hurryAsk)) });
       }
@@ -517,7 +525,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
     const [lo, hi] = B.askRange[temper];
     const offers: Offer[] = [];
     for (let i = 0; i < count; i++) {
-      let pool = cat.itemsByRarity[rollRarity(s, heroBonus)];
+      let pool = cat.itemsByRarity[broughtRarity(s, hero.rarity)];
       // a "wanted" sign in the showcase: most of what is brought in is of that parameter line
       if (s.seek && hasService(s, 'sign') && rand(s) < B.seekPull) {
         const sought = pool.filter((x) => x.params.includes(s.seek as Param));
