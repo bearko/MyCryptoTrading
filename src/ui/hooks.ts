@@ -72,7 +72,8 @@ export function morningExtras(g: GameState): string {
   };
   const tip = tips[g.day] ? `<p class="news-order news-tip"><span>${tips[g.day]![0]}</span><b>${tips[g.day]![1]}</b></p>` : '';
   const patrol = g.patrolDay && hasService(g, 'tip') ? '<p class="news-order news-patrol"><span>知らせ</span><b>今日は、見回りが来ます</b><em>訳ありの品はウォレットへ</em></p>' : '';
-  return order + patrol + tip + wanted + parcel + perks + houses;
+  const loan = g.loan ? `<p class="news-order news-loan"><span>融資</span><b>今夜の返済 ${num(Math.min(g.loan.left, g.loan.nightly))} GUM</b><em>残り ${num(g.loan.left)}</em></p>` : '';
+  return order + patrol + tip + wanted + parcel + loan + perks + houses;
 }
 
 // ---------------------------------------------------------------- the houses

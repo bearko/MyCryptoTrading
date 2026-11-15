@@ -363,3 +363,61 @@ describe('hot goods and the patrol', () => {
     expect(c.gum).toBe(gum);
   });
 });
+
+describe('a loan from the guild', () => {
+  it('is paid back by the night, with interest; a night that cannot be paid makes it grow', () => {
+    const s = G.newGame(91, catalog);
+    s.rep = B.loanRep[0];
+    expect(N.loanBlock(s, 1)).toBe('rep');
+    const gum = s.gum;
+    expect(N.borrow(s, 0)).toBe(true);
+    expect(s.gum).toBe(gum + B.loans[0]);
+    expect(s.loan!.left).toBe(N.loanTotal(B.loans[0]));
+    expect(N.borrow(s, 0)).toBe(false);
+    // the deed is out of reach while money is owed
+    s.phase = 'evening';
+    s.gum = B.deedPrice + 5000;
+    expect(G.buyDeed(s)).toBe(false);
+
+    // the instalment goes out each night
+    const before = s.gum;
+    G.endDay(s);
+    expect(before - s.gum).toBe(N.loanNightly(B.loans[0]));
+    expect(s.nightNote).toContain('融資');
+
+    // a night with nothing to pay with: the debt grows, the guild trusts the shop less
+    s.phase = 'evening';
+    s.gum = 0;
+    s.trust = 30;
+    const left = s.loan!.left;
+    const rep = s.rep;
+    G.endDay(s);
+    expect(s.loan!.left).toBe(Math.round(left * (1 + B.loanLate)));
+    expect(s.trust).toBe(30 + N.trustDaily(s) - B.loanLateTrust);
+    expect(s.rep).toBe(rep - B.loanLateRep);
+
+    // paid off at once, and the deed can be bought again
+    s.gum = 1;
+    expect(N.repayAll(s)).toBe(false);
+    s.gum = s.loan!.left + B.deedPrice;
+    expect(N.repayAll(s)).toBe(true);
+    expect(s.loan).toBeNull();
+    s.phase = 'evening';
+    expect(G.buyDeed(s)).toBe(true);
+  });
+
+  it('is gone after the last night', () => {
+    const s = G.newGame(92, catalog);
+    s.rep = 100;
+    s.gum = 99999;
+    expect(N.borrow(s, 2)).toBe(true);
+    for (let night = 0; night < B.loanNights; night++) {
+      expect(s.loan).not.toBeNull();
+      s.phase = 'evening';
+      G.endDay(s);
+      if (s.perkOffer) G.choosePerk(s, s.perkOffer[0]);
+    }
+    expect(s.loan).toBeNull();
+    expect(s.nightNote).toContain('返しおえました');
+  });
+});

@@ -4,7 +4,7 @@ import { lines } from './lines';
 import { pick, pickWeighted, rand, randInt, randRange } from './rng';
 import { ROTATED, sameCells, type Shape } from './shapes';
 import { factionOfName, noFavor, rankOf, rivalOf, type FactionId } from './factions';
-import { hasService, supplyBlock, trustDaily, type SupplyId } from './network';
+import { hasService, repayNightly, supplyBlock, trustDaily, type SupplyId } from './network';
 import { PERKS, type PerkId } from './perks';
 import { emptySummary, type DayEvent, type DayOrder, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
 
@@ -356,6 +356,7 @@ export function newGame(seed: number, cat: Catalog): GameState {
     supply: null,
     parcel: [],
     wanted: null,
+    loan: null,
     patrolDay: false,
     patrolSlot: 0,
     trash: [],
@@ -1067,7 +1068,8 @@ export function upgradeShelf(s: GameState): boolean {
 }
 
 export function buyDeed(s: GameState): boolean {
-  if (s.owned || s.gum < B.deedPrice || (s.phase !== 'evening' && s.phase !== 'morning')) return false;
+  // (not while money is owed to the guild)
+  if (s.owned || s.loan || s.gum < B.deedPrice || (s.phase !== 'evening' && s.phase !== 'morning')) return false;
   s.gum -= B.deedPrice;
   s.owned = true;
   s.ownedDay = s.day;
@@ -1086,6 +1088,8 @@ export function endDay(s: GameState): void {
   // (before the rent is counted: what the bin pays can help with it)
   emptyTrash(s);
   s.nightNote = '';
+  // the guild's instalment comes before the rent
+  const loanNote = repayNightly(s);
   if (isRentDay(s)) {
     if (s.gum >= s.rent) {
       s.gum -= s.rent;
@@ -1102,6 +1106,7 @@ export function endDay(s: GameState): void {
       return;
     }
   }
+  if (loanNote) s.nightNote = s.nightNote ? `${s.nightNote} ${loanNote}` : loanNote;
   // the notice comes down once the hero has been and gone
   if (s.wanted?.came) s.wanted = null;
   s.day += 1;

@@ -7,7 +7,7 @@ import * as G from '../game/logic';
 import type { GameState } from '../game/state';
 import { B } from '../game/balance';
 import { factionById, rivalOf } from '../game/factions';
-import { GROUP_JA, hasService, serviceBlock, SERVICES, SUPPLIES, supplyBlock, supplyById, trustDaily } from '../game/network';
+import { GROUP_JA, hasService, loanBlock, loanNightly, loanTotal, serviceBlock, SERVICES, SUPPLIES, supplyBlock, supplyById, trustDaily } from '../game/network';
 import { atHome, ui } from './core';
 import { btn, esc, gum, itemTile, num } from './html';
 
@@ -124,6 +124,21 @@ function supplyRows(g: GameState): string {
   return `<div class="supply-line" role="group" aria-label="取り寄せる系統"><small>系統</small>${lines}</div>${rows}`;
 }
 
+/** Borrowing from the guild: a sum now, paid back with interest over the coming nights. One loan at a time. */
+function loanRows(g: GameState): string {
+  if (g.loan) {
+    return `<div class="svc owned" id="svc-loan"><span class="svc-main"><b>借りています：残り ${num(g.loan.left)} GUM</b><small>毎晩 ${num(g.loan.nightly)} GUM ずつ返します。払えない夜は、残りが 1 割増えます。返しおえるまで、権利書は買えません</small></span>
+      <span class="svc-buy">${btn('repay', 'まとめて返す', { cls: 'small gold', disabled: g.gum < g.loan.left, sfx: 'none' })}</span></div>`;
+  }
+  return B.loans
+    .map((amount, i) => {
+      const block = loanBlock(g, i);
+      return `<div class="svc ${block ? 'locked' : ''}" id="svc-loan-${i}"><span class="svc-main"><b>${num(amount)} GUM を借りる</b><small>毎晩 ${num(loanNightly(amount))} GUM × ${B.loanNights} 晩（合計 ${num(loanTotal(amount))}）</small></span>
+        ${block === 'rep' ? `<em class="svc-lock">評判 ${B.loanRep[i]} から</em>` : `<span class="svc-buy">${btn('borrow', '借りる', { arg: i, cls: 'small', sfx: 'none' })}</span>`}</div>`;
+    })
+    .join('');
+}
+
 /** What has come from the guild: each good is taken onto the shelf (or into the wallet). */
 export function parcelModal(g: GameState): string {
   const rows = g.parcel
@@ -163,7 +178,7 @@ export function networkModal(g: GameState): string {
     <h2 class="modal-title"><small>GUILD</small>商人ギルド</h2>
     <p class="hint">品の<b>取り寄せ</b>と、ずっと効く<b>頼みごと</b>ができます。<b>GUM</b> で払うか、ギルドの<b>信用</b>で払うかを選べます。信用は毎朝 +${trustDaily(g)} ずつ貯まります（待てばただ、急ぐなら GUM）。</p>
     <div class="svc-purse"><span>所持金 <b>${gum(g.gum)}</b></span><span>信用 <b>${num(g.trust)}</b></span></div>
-    <div class="modal-scroll"><h3 class="rc-sub">取り寄せ<small>翌朝に届く</small></h3>${supplyRows(g)}${groups}</div>
+    <div class="modal-scroll"><h3 class="rc-sub">取り寄せ<small>翌朝に届く</small></h3>${supplyRows(g)}${groups}<h3 class="rc-sub">融資<small>いま借りて、あとで返す</small></h3>${loanRows(g)}</div>
     <div class="actions one">${btn('modal-close', '電話を切る', { cls: 'primary' })}</div>
   </div></div>`;
 }
