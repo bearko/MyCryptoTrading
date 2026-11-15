@@ -668,3 +668,85 @@
     align-self: end;
   }
 }
+
+/*
+ * The whole width of the screen: the street's opening is as wide as the shelf, and what is left of it goes to
+ * the walls — the left one, with the showcase and its monitor, most of all.
+ */
+@media (min-width: 900px) and (min-height: 520px) {
+  #app:not([data-phase='title']) {
+    max-width: 2200px;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) {
+    --wall-l: max(196px, calc(var(--goods-x) - var(--goods-w) / 2));
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .wall.wl {
+    width: var(--wall-l);
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .sprops {
+    width: calc(var(--wall-l) - 20px);
+    top: 30%;
+  }
+  .monitor {
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    margin: 8px auto 0;
+    padding: 0;
+    min-width: 88px;
+    min-height: 44px;
+    border: 0;
+    background: none;
+    color: var(--paper);
+    cursor: pointer;
+  }
+  .mon-screen {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    width: 64px;
+    height: 34px;
+    padding: 5px 8px;
+    border: 3px solid var(--ink-3);
+    background: var(--ink);
+    box-shadow:
+      inset 0 0 0 2px var(--ink-2),
+      3px 3px 0 var(--ink);
+  }
+  .mon-screen u {
+    flex: 1;
+    background: var(--leaf);
+    animation: mon-bar 1.6s steps(3) infinite;
+  }
+  .mon-screen u:nth-child(1) {
+    height: 45%;
+  }
+  .mon-screen u:nth-child(2) {
+    height: 90%;
+    background: var(--gum);
+    animation-delay: -0.5s;
+  }
+  .mon-screen u:nth-child(3) {
+    height: 65%;
+    background: var(--cool);
+    animation-delay: -1s;
+  }
+  @keyframes mon-bar {
+    50% {
+      transform: scaleY(0.7);
+      transform-origin: bottom;
+    }
+  }
+  .monitor b {
+    padding: 1px 6px;
+    background: var(--ink);
+    font-family: var(--f-pixel);
+    font-size: 0.6875rem;
+  }
+  .monitor.stale b {
+    background: var(--hot);
+  }
+  .monitor:hover .mon-screen {
+    border-color: var(--gum);
+  }
+}

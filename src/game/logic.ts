@@ -347,6 +347,8 @@ export function newGame(seed: number, cat: Catalog): GameState {
     rent: B.rentFirst,
     graceLeft: B.grace,
     callers: 0,
+    display: null,
+    caseTold: false,
     owned: false,
     ownedDay: 0,
     phase: 'morning',
@@ -599,6 +601,8 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
 export function openShop(s: GameState, cat: Catalog): void {
   if (s.phase !== 'morning') return;
   growClientele(s, cat);
+  // (the window as it stands now is what the day's customers have heard of)
+  s.display = { goods: s.showcase.map((x) => ({ ...x })), full: caseFull(s, cat) };
   s.phase = 'open';
   s.visitorsToday = visitorsExpected(s);
   s.nightNote = '';
@@ -1072,20 +1076,57 @@ export function dispose(s: GameState, cat: Catalog, uid: number, id: GridId = 's
 
 // ---------------------------------------------------------------- the showcase
 
-/** The goods in the showcase. */
-export const shownGoods = (s: GameState): StockItem[] => s.showcase;
+/** The goods that draw customers: the window as it stood when the shop opened (while it is shut, as it stands now). */
+export const shownGoods = (s: GameState): StockItem[] => (s.phase === 'open' && s.display ? s.display.goods : s.showcase);
 /** True when every cell of the showcase is covered: a well-dressed window. */
 export const caseFull = (s: GameState, cat: Catalog): boolean => s.showcase.length > 0 && freeCells(s, cat, 'case') === 0;
 /**
  * What the showcase does for the shop's standing: every step of rarity above common, of every good shown —
  * and a little more when the goods are fitted so that no cell is left empty.
  */
-export function showAppeal(s: GameState, cat: Catalog): number {
-  const goods = s.showcase.reduce((sum, x) => {
+export function showAppeal(s: GameState, cat: Catalog, live = false): number {
+  const set = live || s.phase !== 'open' || !s.display ? { goods: s.showcase, full: caseFull(s, cat) } : s.display;
+  const goods = set.goods.reduce((sum, x) => {
     const item = cat.itemById.get(x.itemId)!;
     return sum + (item.limited ? 5 : item.rarity - 1);
   }, 0);
-  return goods + (caseFull(s, cat) ? B.showFull : 0);
+  return goods + (set.full ? B.showFull : 0);
+}
+
+export interface Forecast {
+  /** goods in the window, and whether no cell is left empty */
+  count: number;
+  full: boolean;
+  appeal: number;
+  /** how often a buyer comes after what is shown (0–1) */
+  pull: number;
+  /** of the buyers drawn in, the share after each line of parameter (they add up to 1) */
+  lines: Record<Param, number>;
+  /** how much more often heroes of rarity 3, 4 and 5 come (1 = as usual) */
+  richer: [number, number, number];
+  /** what a buyer of each class that comes has to spend, about */
+  purses: { rarity: number; budget: number }[];
+}
+
+/** What the window, as it stands now, will do for the shop from its next opening. */
+export function forecast(s: GameState, cat: Catalog): Forecast {
+  const goods = s.showcase;
+  const appeal = showAppeal(s, cat, true);
+  const lines: Record<Param, number> = { hp: 0, phy: 0, int: 0, agi: 0 };
+  for (const x of goods) {
+    const params = cat.itemById.get(x.itemId)!.params;
+    for (const param of params) lines[param] += 1 / params.length / goods.length;
+  }
+  const vip = hasService(s, 'vip') ? B.serviceVip : 1;
+  return {
+    count: goods.length,
+    full: caseFull(s, cat),
+    appeal,
+    pull: goods.length > 0 ? Math.min(B.showPullMax, B.showPull[0] + B.showPull[1] * goods.length) : 0,
+    lines,
+    richer: [3, 4, 5].map((rarity) => (rarity <= s.clientele ? (1 + B.showAppeal[rarity] * appeal) * vip : 0)) as [number, number, number],
+    purses: [1, 2, 3, 4].filter((rarity) => rarity <= s.clientele).map((rarity) => ({ rarity, budget: B.heroWealth[rarity] })),
+  };
 }
 
 // ---------------------------------------------------------------- the clientele

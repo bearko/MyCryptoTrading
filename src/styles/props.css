@@ -1195,3 +1195,52 @@ html.calm .inv-fx {
   font-style: normal;
   opacity: 0.8;
 }
+
+/* the forecast window: rows of what the showcase is expected to bring in */
+.forecast .note {
+  margin: 0 0 8px;
+}
+.fc-row,
+.fc-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+  border-bottom: 1px dashed var(--rule);
+  font-size: 0.875rem;
+}
+.fc-row span,
+.fc-bar span {
+  flex: 1 1 auto;
+}
+.fc-row b,
+.fc-bar b {
+  font-family: var(--f-pixel);
+}
+.fc-row.head {
+  border-bottom: 2px solid var(--ink);
+  font-weight: 700;
+}
+.fc-row.fc-off {
+  color: var(--mute);
+}
+.fc-bar i {
+  flex: 0 0 96px;
+  height: 10px;
+  border: 2px solid var(--ink);
+  background: var(--paper-2);
+}
+.fc-bar u {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+}
+.fc-bar.s-phy u {
+  background: var(--hot);
+}
+.fc-bar.s-int u {
+  background: var(--cool);
+}
+.fc-bar.s-agi u {
+  background: var(--leaf);
+}

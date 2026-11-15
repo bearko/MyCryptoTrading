@@ -810,6 +810,9 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
     case 'calendar':
       ui.modal = 'calendar';
       break;
+    case 'forecast':
+      ui.modal = 'forecast';
+      break;
     case 'rent-ask':
     case 'rent-back':
       ui.rentAsk = name === 'rent-ask';

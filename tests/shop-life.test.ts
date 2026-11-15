@@ -156,6 +156,28 @@ describe('the showcase', () => {
     }
   });
 
+  it('the window draws the day\'s customers as it stood when the shop opened; rearranged, it tells from the next opening', () => {
+    const s = G.newGame(85, catalog);
+    const rare = catalog.itemsByRarity[3][0];
+    // dressed before opening: it tells today
+    G.addTo(s, catalog, 'case', rare.id, 1, 0);
+    expect(G.forecast(s, catalog).count).toBe(1);
+    G.openShop(s, catalog);
+    const appeal = G.showAppeal(s, catalog);
+    expect(appeal).toBe(2);
+    // more put in while the shop is open: today's customers are not moved by it, the forecast is
+    G.addTo(s, catalog, 'case', rare.id, 1, 0);
+    expect(G.showAppeal(s, catalog)).toBe(appeal);
+    expect(G.shownGoods(s)).toHaveLength(1);
+    const next = 4 + (G.caseFull(s, catalog) ? B.showFull : 0);
+    expect(G.forecast(s, catalog).appeal).toBe(next);
+    // the next opening takes it up
+    s.phase = 'morning';
+    G.openShop(s, catalog);
+    expect(G.showAppeal(s, catalog)).toBe(next);
+    expect(G.shownGoods(s)).toHaveLength(2);
+  });
+
   it('a window with no cell left empty counts for more; what is shown can be sold straight from it', () => {
     const s = G.newGame(54, catalog);
     s.stock = [];
