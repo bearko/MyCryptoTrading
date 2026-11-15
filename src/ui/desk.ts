@@ -1,10 +1,11 @@
 /**
  * What a mouse and a keyboard add (a phone needs none of it):
  *  - resting the pointer on a good shows a small card about it;
- *  - keys: Space rings the bell, Enter presses the main button, Esc closes what is open,
+ *  - keys: Space moves the customer's line on, B rings the bell, Enter presses the main button, Esc closes what is open,
  *    1–3 switch between shelf, wallet and gear, R turns the good being dragged.
  * The right button (a good's menu, or a turn while dragging) is in drag.ts, with the rest of the pointer handling.
  */
+import { advanceLine } from './scene';
 import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
 import { ctx, ui } from './core';
@@ -120,7 +121,12 @@ function onKey(event: KeyboardEvent): void {
         : press('#win [data-act="sell"]', '#win [data-act="buy-picked"]', '#greet-skip', '.cta .btn', '#take-all');
       break;
     case ' ':
-      if (!modal) done = press('#greet-skip', '[data-act="bell"]');
+      // the line moves on: a greeting gives way to the slip, a line being typed is shown whole, a finished line is put away
+      if (!modal) done = press('#greet-skip') || advanceLine();
+      break;
+    case 'b':
+    case 'B':
+      if (!modal) done = press('[data-act="bell"]');
       break;
     case '1':
     case '2':
