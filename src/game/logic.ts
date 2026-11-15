@@ -1124,6 +1124,15 @@ export function enlarge(s: GameState, cat: Catalog): void {
   s.big = true;
 }
 
+/** True when a good on the shelf lies outside it (a save from when the shelf was deeper). */
+export const shelfSpills = (s: GameState, cat: Catalog): boolean => {
+  const g = gridOf(s, cat, 'shelf');
+  return s.stock.some((x) => {
+    const shape = shapeOf(cat, x.itemId, x.rot);
+    return x.x + shape.w > g.cols || x.y + shape.h > g.rows;
+  });
+};
+
 export function upgradeShelf(s: GameState): boolean {
   const cost = shelfCost(s);
   if (cost === null || s.gum < cost) return false;

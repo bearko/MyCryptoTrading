@@ -157,7 +157,7 @@ function usedOf(g: GameState, id: G.GridId): string {
 export const sideFits = (g: GameState): boolean => G.walletSize(g, cat).cols <= 10;
 
 /** How much of the screen's height the shelf takes (a wide screen, at home). */
-const SHELF_SHARE = Number(new URLSearchParams(location.search).get('share')) || 0.4;
+const SHELF_SHARE = Number(new URLSearchParams(location.search).get('share')) || 0.36;
 
 /** Fits the cell size to the screen. */
 export function measure(g: GameState): void {
