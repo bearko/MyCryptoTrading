@@ -7,14 +7,9 @@
   --r4: var(--amber);
   --r5: var(--hot);
 }
-/* a good on a grid: the outline of its shape in the rarity's colour, with a hairline of ink inside it */
+/* a good on a grid: the outline of its shape in the rarity's colour */
 .inv-cell {
   border-color: var(--rar, var(--ink));
-  box-shadow:
-    inset 0 var(--it, 0) 0 0 var(--ink),
-    inset calc(-1 * var(--ir, 0px)) 0 0 0 var(--ink),
-    inset 0 calc(-1 * var(--ib, 0px)) 0 0 var(--ink),
-    inset var(--il, 0) 0 0 0 var(--ink);
 }
 .inv-cell.et {
   border-top-width: 4px;
