@@ -509,3 +509,16 @@
     top: 204px;
   }
 }
+
+/* The large shelf: no tab and no hints over it, so it starts right under the counter and takes the deck. */
+@media (min-width: 900px) and (min-height: 520px) {
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) > .inv {
+    padding: 4px 6px 8px;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) > .inv :is(.inv-head, .keys) {
+    display: none;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) > .inv .board {
+    padding: 0;
+  }
+}

@@ -131,6 +131,25 @@ function shapeOf(series, id) {
   return FALLBACK_SHAPES[hash % FALLBACK_SHAPES.length];
 }
 
+// How large a good of each kind is, in cells (width x height), by rarity: common and uncommon are the same
+// (2x2 is the usual size, six cells at most), a rare is up to 8 cells, an epic up to 9, a legendary up to 12.
+const SIZES = {
+  s1: ['1x1', '1x1', '2x2', '2x2'],
+  v2: ['1x2', '1x3', '2x3', '2x4'],
+  h2: ['2x1', '3x1', '3x2', '4x2'],
+  v3: ['1x4', '2x4', '2x4', '2x6'],
+  sq: ['2x2', '3x2', '3x3', '4x3'],
+  l3: ['2x2', '2x2', '2x3', '3x3'],
+  t4: ['3x2', '4x2', '3x3', '4x3'],
+};
+// (the pot that mixes goods is a big thing: three by three)
+const POT_ID = 4600;
+function sizeOf(series, id, rarity) {
+  if (id === POT_ID) return '3x3';
+  if (series === '財布') return '2x2';
+  return SIZES[shapeOf(series, id)][Math.max(0, rarity - 2)];
+}
+
 const items = readJson('Data/Extensions/extensions.json')
   .filter((e) => e.is_dictionary_visible && e.rarity?.id >= 1 && e.rarity.id <= 5)
   .map((e) => {
@@ -146,7 +165,7 @@ const items = readJson('Data/Extensions/extensions.json')
       params: paramsOf(s),
       roles: rolesOf(fx),
       series,
-      shape: shapeOf(series, e.id),
+      shape: sizeOf(series, e.id, e.rarity.id),
       slot: slotOf(series),
       wallet: series === '財布',
       stats: [s.hp ?? 0, s.phy ?? 0, s.int ?? 0, s.agi ?? 0],

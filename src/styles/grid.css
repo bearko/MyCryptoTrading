@@ -372,3 +372,22 @@
 .keys {
   display: none;
 }
+
+/* fine cells (the large shelf): thinner edges, and the picture fills its tile */
+.inv-item.fine img {
+  padding: 1px;
+  filter: none;
+}
+.inv-item.fine .inv-cell.et {
+  border-top-width: 1.5px;
+}
+.inv-item.fine .inv-cell.er {
+  border-right-width: 1.5px;
+}
+.inv-item.fine .inv-cell.eb {
+  border-bottom-width: 1.5px;
+  box-shadow: inset 0 -2px 0 var(--ink-20);
+}
+.inv-item.fine .inv-cell.el {
+  border-left-width: 1.5px;
+}

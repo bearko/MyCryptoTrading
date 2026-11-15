@@ -37,9 +37,12 @@ export function gridItem(x: { uid: number; itemId: number; x: number; y: number;
     .join('');
   const size = Math.min(shape.w, shape.h) * cell;
   const first = shape.cells.reduce((a, c) => (c[1] < a[1] || (c[1] === a[1] && c[0] < a[0]) ? c : a));
-  return `<div class="inv-item ${cls}" id="item-${x.uid}" data-item="${x.uid}" style="${tone(item)};left:${x.x * cell}px;top:${x.y * cell}px;width:${shape.w * cell}px;height:${shape.h * cell}px">
+  // (on fine cells the marks shrink with the cell, so they never cover the good)
+  const k = Math.min(1, cell / 34);
+  const mark = (left: number, top: number): string => `left:${left}px;top:${top}px${k < 1 ? `;scale:${k.toFixed(2)};transform-origin:0 0` : ''}`;
+  return `<div class="inv-item ${cls}${k < 1 ? ' fine' : ''}" id="item-${x.uid}" data-item="${x.uid}" style="${tone(item)};left:${x.x * cell}px;top:${x.y * cell}px;width:${shape.w * cell}px;height:${shape.h * cell}px">
       ${cells}<img src="${item.img}" alt="${esc(item.ja)}" draggable="false" style="width:${size}px;height:${size}px;${imageSpot(shape.cells, size)}${x.rot ? `;transform:rotate(${x.rot * 90}deg)` : ''}" />
-      <span class="inv-glyph" style="left:${first[0] * cell}px;top:${first[1] * cell}px">${glyphs(item)}</span>${item.effect || x.bag ? `<b class="inv-fx" style="left:${(first[0] + 1) * cell - 19}px;top:${(first[1] + 1) * cell - 19}px" aria-label="特別な効果のある品（ダブルクリックで使う）">✦</b>` : ''}${x.hot ? `<b class="inv-seen hot" style="left:${first[0] * cell + (x.seen ? 16 : 0)}px;top:${(first[1] + 1) * cell - 15}px">訳</b>` : ''}${x.seen ? `<b class="inv-seen ${x.fake ? 'fake' : 'real'}" style="left:${first[0] * cell}px;top:${(first[1] + 1) * cell - 15}px">${x.fake ? '写' : '真'}</b>` : ''}${cls.split(' ').includes('match') ? `<i class="inv-mark" style="left:${(first[0] + 1) * cell - 17}px;top:${first[1] * cell + 3}px" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
+      <span class="inv-glyph" style="${mark(first[0] * cell, first[1] * cell)}">${glyphs(item)}</span>${item.effect || x.bag ? `<b class="inv-fx" style="${mark((first[0] + 1) * cell - 19 * k, (first[1] + 1) * cell - 19 * k)}" aria-label="特別な効果のある品（ダブルクリックで使う）">✦</b>` : ''}${x.hot ? `<b class="inv-seen hot" style="${mark(first[0] * cell + (x.seen ? 16 * k : 0), (first[1] + 1) * cell - 15 * k)}">訳</b>` : ''}${x.seen ? `<b class="inv-seen ${x.fake ? 'fake' : 'real'}" style="${mark(first[0] * cell, (first[1] + 1) * cell - 15 * k)}">${x.fake ? '写' : '真'}</b>` : ''}${cls.split(' ').includes('match') ? `<i class="inv-mark" style="${mark((first[0] + 1) * cell - 17 * k, first[1] * cell + 3 * k)}" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
 }
 
 const SLOT_LABEL: Record<SlotId | 'wallet', string> = { head: '頭', body: '胴体', arm: '腕', leg: '足', special1: '特殊1', special2: '特殊2', wallet: 'ウォレット' };
@@ -151,7 +154,10 @@ function usedOf(g: GameState, id: G.GridId): string {
 }
 
 /** True when the night shop's tray fits beside the wallet (a wide wallet takes the whole width). */
-export const sideFits = (g: GameState): boolean => G.walletSize(g, cat).cols <= 5;
+export const sideFits = (g: GameState): boolean => G.walletSize(g, cat).cols <= 10;
+
+/** How much of the screen's height the shelf takes (a wide screen, at home). */
+const SHELF_SHARE = Number(new URLSearchParams(location.search).get('share')) || 0.31;
 
 /** Fits the cell size to the screen. */
 export function measure(g: GameState): void {
@@ -170,8 +176,10 @@ export function measure(g: GameState): void {
     boardMin = 0;
     if (atHome(g)) {
       const shelf = G.gridOf(g, cat, 'shelf');
-      const shelfCell = fit(shelf.cols, shelf.rows);
-      boardMin = shelf.rows * shelfCell + 18;
+      // (the shelf is large and fine-celled: it takes the deck from just under the counter to the foot of the screen,
+      // its height decides the cell, and its width follows from that)
+      const shelfCell = Math.floor(Math.max(8, Math.min(col / shelf.cols, (h * SHELF_SHARE - 14) / shelf.rows)));
+      boardMin = shelf.rows * shelfCell + 6;
       // (the counter's mat is made about as wide as the shelf, so the bell is never far from the goods)
       ctx.root.style.setProperty('--shelf-w', `${shelf.cols * shelfCell}px`);
       ctx.cell = grid === shelf || shownGrid(g) === 'shelf' ? shelfCell : fit(grid.cols, grid.rows);
@@ -184,7 +192,7 @@ export function measure(g: GameState): void {
     // the shelf sets the room; the wallet tab fits itself into the same room
     const shelf = G.gridOf(g, cat, 'shelf');
     const share = h < 700 ? 0.38 : 0.44;
-    const shelfCell = Math.floor(Math.max(36, Math.min((w - 24) / shelf.cols, cap, (h * share - 40) / shelf.rows)));
+    const shelfCell = Math.floor(Math.max(10, Math.min((w - 24) / shelf.cols, cap, (h * share - 40) / shelf.rows)));
     boardMin = shelf.rows * shelfCell + 18;
     ctx.cell = grid === shelf || shownGrid(g) === 'shelf' ? shelfCell : Math.floor(Math.max(28, Math.min((w - 24) / grid.cols, cap, (shelf.rows * shelfCell) / grid.rows)));
     return;

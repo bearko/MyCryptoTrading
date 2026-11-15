@@ -77,7 +77,10 @@ function enterGame(g: GameState | null): void {
     ui.win.size = defaultWinSize();
     ui.craft = [];
     // a save from before the wide shelf: its goods are laid out again, once
-    if (g && !g.wide) {
+    if (g && !g.big) {
+      G.enlarge(g, cat);
+      store.save(g);
+    } else if (g && !g.wide) {
       G.repackShelf(g, cat);
       store.save(g);
     }
