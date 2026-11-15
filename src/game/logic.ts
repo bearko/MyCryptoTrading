@@ -372,6 +372,7 @@ export function newGame(seed: number, cat: Catalog): GameState {
     trash: [],
     trashGum: 0,
     wide: true,
+    big: true,
     potGiven: true,
     crosses: [],
   };
@@ -475,7 +476,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
   // The first day teaches the trade by doing: a friendly seller with one cheap good, then a buyer who wants it.
   const nth = s.queue.length;
   if (s.day === 1 && nth === 0) {
-    const item = pick(s, cat.itemsByRarity[1].filter((i) => i.shape === 's1' || i.shape === 'v2' || i.shape === 'h2'));
+    const item = pick(s, cat.itemsByRarity[1].filter((i) => i.shape === '1x1' || i.shape === '1x2' || i.shape === '2x1'));
     const ask = Math.max(1, Math.round(itemValue(cat, item.id, 1) * 0.6));
     return { ...base, temper: 0, patience: B.temperPatience[0], kind: 'sell', offers: [{ itemId: item.id, cond: 1, ask }], want: { type: 'any' }, budget: 0, line: lines.sellOpen(s, 0) };
   }
@@ -1091,6 +1092,36 @@ export function repackShelf(s: GameState, cat: Catalog): void {
     else s.gum += itemValue(cat, x.itemId, x.cond);
   }
   s.wide = true;
+}
+
+/**
+ * A save from before the large shelf (goods were a cell or two, the shelf three deep): the shelf, the showcase and
+ * the wallet are laid out again with the goods at their new sizes. What finds no room where it was goes to the shelf.
+ */
+export function enlarge(s: GameState, cat: Catalog): void {
+  const bySize = (a: StockItem, b: StockItem): number => shapeOf(cat, b.itemId, 0).cells.length - shapeOf(cat, a.itemId, 0).cells.length;
+  const shelf = [...s.stock].sort(bySize);
+  const shown = [...s.showcase].sort(bySize);
+  const carried = [...s.wallet.items].sort(bySize);
+  s.rows += B.startRows - 4;
+  s.stock = [];
+  s.showcase = [];
+  s.wallet.items = [];
+  const put = (x: StockItem, first: GridId): void => {
+    for (const id of [first, 'shelf'] as GridId[]) {
+      const slot = findSlotIn(gridOf(s, cat, id), cat, x.itemId);
+      if (slot) {
+        itemsOf(s, id).push({ ...x, ...slot });
+        return;
+      }
+    }
+    s.gum += itemValue(cat, x.itemId, x.cond);
+  };
+  for (const x of shelf) put(x, 'shelf');
+  for (const x of shown) put(x, 'case');
+  for (const x of carried) put(x, 'wallet');
+  s.wide = true;
+  s.big = true;
 }
 
 export function upgradeShelf(s: GameState): boolean {

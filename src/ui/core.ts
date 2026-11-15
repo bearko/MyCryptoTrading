@@ -128,7 +128,7 @@ export const ctx = {
 /** At home the shelf or the wallet is shown; out at night, always the wallet. */
 /** The grid the cells are sized for (the gear tab keeps the shelf's room). */
 /** The size of a cell of the showcase on the wall (smaller than the shelf's). */
-export const CASE_CELL = 40;
+export const CASE_CELL = 20;
 
 /** The windows that float over the shop. */
 export type PopId = 'craft' | 'wallet' | 'gear';

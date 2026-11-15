@@ -6,9 +6,9 @@ export const B = {
 
   /** the shelf is a grid; each good takes a footprint on it. Each upgrade adds a row */
   /** the shelf is a long counter under the shop: this deep, and two columns wider with each level (`rows` in the state is that level) */
-  shelfDepth: 3,
+  shelfDepth: 16,
   shelfColsPerLevel: 2,
-  startRows: 4,
+  startRows: 12,
   shelfCost: [200, 400, 700, 1100],
 
   /** market value by rarity (index 1–5), before condition */
@@ -33,11 +33,11 @@ export const B = {
   /** a rich buyer (a legendary hero) brings at least this much, or this many times the dearest good on the shelf */
   richFloor: 2500,
   /**
-   * The showcase is a small grid of its own, two cells deep: goods are fitted into it by their shape.
+   * The showcase is a small grid of its own, four cells deep: goods are fitted into it by their shape.
    * Its width in columns, by the guild's favours (none, one, two) — one more column, then two more.
    */
-  caseDepth: 2,
-  caseCols: [2, 3, 5],
+  caseDepth: 4,
+  caseCols: [4, 6, 10],
   /** a good with an effect of its own is worth this many times a plain good of its rarity */
   effectValue: { pot: 1.3 },
   /** a showcase packed with no cell left empty counts for this much more appeal */
@@ -154,7 +154,7 @@ export const B = {
   disposeRate: 0.5,
 
   /** the wallet is the bag: [columns, rows] by the wallet's rarity (index 1–5) */
-  walletSizes: [[4, 5], [4, 5], [5, 5], [5, 6], [6, 6], [6, 7]],
+  walletSizes: [[8, 10], [8, 10], [10, 10], [10, 12], [12, 12], [12, 14]],
   /** the night shop: how many goods, and their price against market value */
   shopCount: 6,
   shopRate: [0.8, 0.96],

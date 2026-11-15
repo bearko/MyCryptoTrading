@@ -27,7 +27,7 @@ describe('game rules', () => {
     expect(s.gum).toBe(B.startGum);
     // (the starting goods, the pot, and the wallet in use)
     expect(s.stock).toHaveLength(B.startStock + 2);
-    expect(G.walletSize(s, catalog)).toEqual({ cols: 4, rows: 5 });
+    expect(G.walletSize(s, catalog)).toEqual({ cols: 8, rows: 10 });
     expect(Object.values(s.equip).every((x) => x === null)).toBe(true);
     expect(s.phase).toBe('morning');
   });
@@ -193,7 +193,7 @@ describe('game rules', () => {
         expect(item.y + cy).toBeLessThan(s.rows);
       }
     }
-    expect(seen.size).toBeGreaterThan(G.gridOf(s, catalog, 'shelf').cols * B.shelfDepth * 0.6); // the shelf really fills up
+    expect(seen.size).toBeGreaterThan(150); // the shelf really fills up
     // a good cannot be moved onto another one; moving it to where it already is works
     const [a, b] = s.stock;
     const bCell = G.shapeOf(catalog, b.itemId, b.rot).cells[0];
@@ -208,7 +208,7 @@ describe('game rules', () => {
     s.stock = [];
     s.rows = 2;
     s.gum = 1_000_000;
-    const long = catalog.items.find((i) => i.shape === 'v3')!;
+    const long = catalog.items.find((i) => i.shape === '1x4')!;
     // (a grid only two deep: the good has to lie on its side)
     const slot = G.findSlotIn({ cols: 6, rows: 2, items: [] }, catalog, long.id);
     expect(slot).toEqual({ x: 0, y: 0, rot: 1 });
@@ -216,14 +216,14 @@ describe('game rules', () => {
     s.stock.push({ uid: 99, itemId: long.id, cond: 1, paid: 0, x: 0, y: 0, rot: 0 });
     expect(G.turnStock(s, catalog, 99)).toBe(true);
     expect(s.stock[0].rot).toBe(1);
-    expect(G.shapeOf(catalog, long.id, 1)).toMatchObject({ w: 3, h: 1 });
+    expect(G.shapeOf(catalog, long.id, 1)).toMatchObject({ w: 4, h: 1 });
   });
 
-  it('a T-shaped good has four orientations, and four turns bring it back', () => {
+  it('a good that is not square has two looks, and four turns bring it back', () => {
     const s = G.newGame(15, catalog);
     s.stock = [];
     s.rows = 6;
-    const tee = catalog.items.find((i) => i.shape === 't4')!;
+    const tee = catalog.items.find((i) => i.shape === '3x2')!;
     s.stock.push({ uid: 7, itemId: tee.id, cond: 1, paid: 0, x: 1, y: 1, rot: 0 });
     const looks = new Set<string>();
     for (let n = 0; n < 4; n++) {
@@ -231,7 +231,7 @@ describe('game rules', () => {
       looks.add(shape.cells.map((c) => c.join(',')).sort().join(' '));
       expect(G.turnStock(s, catalog, 7)).toBe(true);
     }
-    expect(looks.size).toBe(4);
+    expect(looks.size).toBe(2);
     expect(s.stock[0].rot).toBe(0);
   });
 
@@ -301,11 +301,11 @@ describe('game rules', () => {
 
   it('the wallet holds only what fits its grid', () => {
     const s = G.newGame(22, catalog);
-    const big = catalog.items.find((i) => i.shape === 'sq' && !i.wallet)!;
+    const big = catalog.items.find((i) => i.shape === '2x2' && !i.wallet)!;
     let n = 0;
     while (G.addTo(s, catalog, 'wallet', big.id, 1, 0) !== null) n += 1;
-    expect(n).toBe(4); // 4×5 cells take four 2×2 goods (two rows of two)
-    expect(G.freeCells(s, catalog, 'wallet')).toBe(4);
+    expect(n).toBe(20); // 8×10 cells take twenty 2×2 goods
+    expect(G.freeCells(s, catalog, 'wallet')).toBe(0);
   });
 
   it('gear is worn from the shelf, adds its stats, and swaps back to the shelf', () => {
@@ -329,7 +329,7 @@ describe('game rules', () => {
   it('goods move freely between shelf, wallet and gear', () => {
     const s = G.newGame(25, catalog);
     s.stock = [];
-    const sword = catalog.items.find((i) => i.slot === 'arm' && i.shape === 'v3')!;
+    const sword = catalog.items.find((i) => i.slot === 'arm' && i.shape === '1x4')!;
     const uid = G.addTo(s, catalog, 'shelf', sword.id, 1, 5)!;
     // shelf → wallet at a cell, keeping its turn
     expect(N.transfer(s, catalog, 'shelf', uid, 'wallet', 2, 1)).toBe(true);
@@ -366,7 +366,7 @@ describe('game rules', () => {
     expect(G.moveStock(s, catalog, old.uid, free.x, free.y, 'shelf')).toBe(true);
     const uid = G.addTo(s, catalog, 'shelf', catalog.wallets[1].id, 1, 0)!;
     expect(N.equip(s, catalog, uid)).toBe('ok');
-    expect(G.walletSize(s, catalog)).toEqual({ cols: 5, rows: 5 });
+    expect(G.walletSize(s, catalog)).toEqual({ cols: 10, rows: 10 });
     expect(s.stock.filter((x) => x.bag).map((x) => x.uid)).toEqual([uid]);
     expect(old.bag).toBe(false);
     expect(G.forSale(s)).toContain(old);

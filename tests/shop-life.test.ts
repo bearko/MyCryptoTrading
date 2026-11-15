@@ -31,40 +31,68 @@ describe('the showcase', () => {
     s.stock = [];
     s.rows = 8;
     expect(G.gridOf(s, catalog, 'case')).toMatchObject({ cols: B.caseCols[0], rows: B.caseDepth });
-    // a square fills the two-by-two window; nothing else goes in beside it
-    const sq = G.addTo(s, catalog, 'shelf', ofShape('sq').id, 1, 0)!;
-    const one = G.addTo(s, catalog, 'shelf', ofShape('s1').id, 1, 0)!;
-    const long = G.addTo(s, catalog, 'shelf', ofShape('v3').id, 1, 0)!;
-    expect(N2.transfer(s, catalog, 'shelf', sq, 'case')).toBe(true);
-    expect(s.stock.some((x) => x.uid === sq)).toBe(false);
+    // four squares fill the four-by-four window; nothing else goes in beside them
+    const sqs = [0, 1, 2, 3].map(() => G.addTo(s, catalog, 'shelf', ofShape('2x2').id, 1, 0)!);
+    const one = G.addTo(s, catalog, 'shelf', ofShape('1x1').id, 1, 0)!;
+    const long = G.addTo(s, catalog, 'shelf', ofShape('2x6', 5).id, 1, 0)!;
+    for (const sq of sqs) expect(N2.transfer(s, catalog, 'shelf', sq, 'case')).toBe(true);
+    expect(s.stock.some((x) => x.uid === sqs[0])).toBe(false);
     expect(G.caseFull(s, catalog)).toBe(true);
     expect(N2.transfer(s, catalog, 'shelf', one, 'case')).toBe(false);
-    // a good three cells long does not fit a window two wide, whichever way it is turned
-    expect(N2.transfer(s, catalog, 'case', sq, 'shelf')).toBe(true);
+    // a good six cells long does not fit a window four wide, whichever way it is turned
+    for (const sq of sqs) expect(N2.transfer(s, catalog, 'case', sq, 'shelf')).toBe(true);
     expect(N2.transfer(s, catalog, 'shelf', long, 'case')).toBe(false);
-    // one more column from the guild, and it lies on its side
+    // two more columns from the guild, and it lies on its side
     s.services.push('case1');
     expect(G.gridOf(s, catalog, 'case').cols).toBe(B.caseCols[1]);
     expect(N2.transfer(s, catalog, 'shelf', long, 'case')).toBe(true);
     expect(s.showcase[0].rot % 2).toBe(1);
-    // … and two more with the second favour
+    // … and four more with the second favour
     s.services.push('case2');
     expect(G.gridOf(s, catalog, 'case').cols).toBe(B.caseCols[2]);
     // a cell placed by hand, like on the shelf
-    expect(N2.transfer(s, catalog, 'shelf', one, 'case', 4, 1)).toBe(true);
-    expect(s.showcase.find((x) => x.uid === one)).toMatchObject({ x: 4, y: 1 });
-    expect(G.moveStock(s, catalog, one, 3, 0, 'case')).toBe(true);
+    expect(N2.transfer(s, catalog, 'shelf', one, 'case', 7, 1)).toBe(true);
+    expect(s.showcase.find((x) => x.uid === one)).toMatchObject({ x: 7, y: 1 });
+    expect(G.moveStock(s, catalog, one, 6, 0, 'case')).toBe(true);
     expect(G.moveStock(s, catalog, one, 0, 0, 'case')).toBe(false);
+  });
+
+  it('a save from before the large shelf is laid out again, once, with nothing lost or overlapping', () => {
+    const s = G.newGame(77, catalog);
+    const ids = catalog.itemsByRarity[5].slice(0, 6).map((i) => i.id);
+    // (as an old save had it: a small shelf, goods packed a cell apart)
+    s.big = false;
+    s.rows = 4;
+    s.stock = ids.map((itemId, n) => ({ uid: 500 + n, itemId, cond: 1, paid: 0, x: n, y: 0, rot: 0 }));
+    s.showcase = [{ uid: 600, itemId: ids[0], cond: 1, paid: 0, x: 0, y: 0, rot: 0 }];
+    s.wallet.items = [{ uid: 700, itemId: ids[1], cond: 1, paid: 0, x: 0, y: 0, rot: 0 }];
+    G.enlarge(s, catalog);
+    expect(s.big).toBe(true);
+    expect(G.gridOf(s, catalog, 'shelf')).toMatchObject({ cols: 24, rows: 16 });
+    expect(s.stock.length + s.showcase.length + s.wallet.items.length).toBe(8);
+    for (const id of ['shelf', 'case', 'wallet'] as const) {
+      const grid = G.gridOf(s, catalog, id);
+      const seen = new Set<string>();
+      for (const x of grid.items) {
+        for (const [cx, cy] of G.shapeOf(catalog, x.itemId, x.rot).cells) {
+          const key = `${x.x + cx},${x.y + cy}`;
+          expect(seen.has(key)).toBe(false);
+          seen.add(key);
+          expect(x.x + cx).toBeLessThan(grid.cols);
+          expect(x.y + cy).toBeLessThan(grid.rows);
+        }
+      }
+    }
   });
 
   it('a window with no cell left empty counts for more; what is shown can be sold straight from it', () => {
     const s = G.newGame(54, catalog);
     s.stock = [];
-    const a = G.addTo(s, catalog, 'case', ofShape('h2', 2).id, 1, 0)!;
+    const a = G.addTo(s, catalog, 'case', ofShape('2x2', 2).id, 1, 0)!;
     expect(G.showAppeal(s, catalog)).toBe(1);
-    const b = G.addTo(s, catalog, 'case', ofShape('h2', 3).id, 1, 0)!;
+    const rest = [0, 1, 2].map(() => G.addTo(s, catalog, 'case', ofShape('2x2', 3).id, 1, 0)!);
     expect(G.caseFull(s, catalog)).toBe(true);
-    expect(G.showAppeal(s, catalog)).toBe(1 + 2 + B.showFull);
+    expect(G.showAppeal(s, catalog)).toBe(1 + 3 * 2 + B.showFull);
     // sold from the window: it is gone from there
     s.day = 2;
     G.openShop(s, catalog);
@@ -72,7 +100,7 @@ describe('the showcase', () => {
     Object.assign(v, { kind: 'buy', offers: [], want: { type: 'any' }, budget: 99999, done: false, temper: 0, special: undefined, wanted: false });
     expect(G.quoteSale(s, catalog, v, [a], 0).asked).toBeGreaterThan(0);
     expect(G.sell(s, catalog, [a], 0)).toBe('sold');
-    expect(s.showcase.map((x) => x.uid)).toEqual([b]);
+    expect(s.showcase.map((x) => x.uid)).toEqual(rest);
     expect(G.caseFull(s, catalog)).toBe(false);
   });
 
@@ -179,7 +207,7 @@ describe('the guild', () => {
     s.rows = 0;
     s.wallet.items = [];
     const room = G.gridOf(s, catalog, 'wallet');
-    for (let y = 0; y < room.rows; y++) for (let x = 0; x < room.cols; x++) s.wallet.items.push({ uid: 9000 + y * 20 + x, itemId: catalog.itemsByRarity[1].find((i) => i.shape === 's1')!.id, cond: 1, paid: 0, x, y, rot: 0 });
+    for (let y = 0; y < room.rows; y++) for (let x = 0; x < room.cols; x++) s.wallet.items.push({ uid: 9000 + y * 20 + x, itemId: catalog.itemsByRarity[1].find((i) => i.shape === '1x1')!.id, cond: 1, paid: 0, x, y, rot: 0 });
     expect(G.unpack(s, catalog, 0)).toBe(false);
     expect(s.parcel).toHaveLength(1);
   });
@@ -363,9 +391,9 @@ describe('hot goods and the patrol', () => {
     const onShelf = t.stock[0];
     onShelf.hot = true;
     // (a hot good in the window is in plain sight too)
-    const inWindow = G.addTo(t, catalog, 'case', catalog.itemsByRarity[1].find((i) => i.shape === 's1')!.id, 1, 0)!;
+    const inWindow = G.addTo(t, catalog, 'case', catalog.itemsByRarity[1].find((i) => i.shape === '1x1')!.id, 1, 0)!;
     t.showcase.find((x) => x.uid === inWindow)!.hot = true;
-    const hidden = G.addTo(t, catalog, 'wallet', catalog.itemsByRarity[1].find((i) => i.shape === 's1')!.id, 1, 0)!;
+    const hidden = G.addTo(t, catalog, 'wallet', catalog.itemsByRarity[1].find((i) => i.shape === '1x1')!.id, 1, 0)!;
     t.wallet.items.find((x) => x.uid === hidden)!.hot = true;
     const before = t.stock.length;
     t.patrolDay = true;
