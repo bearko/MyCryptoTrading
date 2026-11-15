@@ -213,6 +213,18 @@ export const B = {
   fakeRep: 3,
   fakeFavor: 5,
   /**
+   * A loan from the guild (one at a time): what can be borrowed, the reputation each sum needs, the interest,
+   * and over how many nights it is paid back. A night that cannot be paid adds to the debt and costs the
+   * guild's trust and the shop's name. The deed cannot be bought while in debt.
+   */
+  loans: [500, 1200, 2500],
+  loanRep: [20, 45, 70],
+  loanInterest: 0.2,
+  loanNights: 7,
+  loanLate: 0.1,
+  loanLateTrust: 10,
+  loanLateRep: 2,
+  /**
    * Hot goods (no questions asked): from this day, the share of what sellers bring, and how cheap it goes.
    * A patrol comes by on some days and goes through the shelf — not the wallet: every hot good it finds is
    * taken away, with a fine each, and the shop's name suffers.

@@ -3,7 +3,7 @@ import { perkById } from '../game/perks';
 import { catalog as cat } from '../game/catalog';
 import { craft, CRAFT_MAX } from '../game/craft';
 import * as G from '../game/logic';
-import { buyService, serviceById, supplyById, type ServiceId, type SupplyId } from '../game/network';
+import { borrow, buyService, repayAll, serviceById, supplyById, type ServiceId, type SupplyId } from '../game/network';
 import * as N from '../game/night';
 import * as Q from '../game/quest';
 import * as store from '../game/save';
@@ -732,6 +732,20 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       audio.sfx('buy');
       haptic('medium');
       note(`${supplyById(id).name}を頼みました。明日の朝に届きます`);
+      return;
+    }
+    case 'borrow':
+    case 'repay': {
+      const before = g.gum;
+      if (!(name === 'borrow' ? borrow(g, n) : repayAll(g))) {
+        nope(el);
+        return;
+      }
+      store.save(g);
+      render();
+      audio.sfx('buy');
+      haptic('medium');
+      note(name === 'borrow' ? `${g.gum - before} GUM を借りました。今夜から、毎晩 ${g.loan?.nightly ?? 0} GUM ずつ返します` : '融資を返しおえました');
       return;
     }
     case 'parcel':

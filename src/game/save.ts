@@ -27,6 +27,7 @@ export function load(): GameState | null {
     s.services ??= [];
     s.supply ??= null;
     s.wanted ??= null;
+    s.loan ??= null;
     s.patrolDay ??= false;
     s.patrolSlot ??= 0;
     s.parcel ??= [];

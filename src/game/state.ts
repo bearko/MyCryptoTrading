@@ -252,6 +252,8 @@ export interface GameState {
   supply: { id: SupplyId; param: Param; goods: Parcel[] } | null;
   /** the last sale ended with the buyer finding a replica (the screen makes a show of it, then clears it) */
   lastFake?: boolean;
+  /** what is owed to the guild, and what is paid back each night */
+  loan: { left: number; nightly: number } | null;
   /** a patrol comes by today, and at which place in the line */
   patrolDay: boolean;
   patrolSlot: number;

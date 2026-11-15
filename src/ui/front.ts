@@ -77,7 +77,7 @@ function nightCard(g: GameState): string {
   }
   // the goal of the game: how far along the shop is shows on the button itself
   const toDeed = Math.max(0, Math.min(100, Math.floor((g.gum / B.deedPrice) * 100)));
-  const deed = g.owned ? '' : `<span class="deed-wrap" style="--p:${toDeed}%">${btn('deed', '権利書を買う', { cls: 'small gold', sub: gum(B.deedPrice), disabled: g.gum < B.deedPrice, sfx: 'none' })}<i class="deed-bar" aria-label="権利書まで ${toDeed}%"><b></b></i></span>`;
+  const deed = g.owned ? '' : `<span class="deed-wrap" style="--p:${toDeed}%">${btn('deed', '権利書を買う', { cls: 'small gold', sub: gum(B.deedPrice), disabled: g.gum < B.deedPrice || !!g.loan, sfx: 'none' })}<i class="deed-bar" aria-label="権利書まで ${toDeed}%"><b></b></i></span>`;
   const shelfBtn = cost === null ? '' : btn('shelf', '棚を広げる', { cls: 'small', sub: gum(cost), disabled: g.gum < cost, sfx: 'none' });
   const print = ui.printDay === g.day ? 'print' : '';
   return `<div class="night" id="night-${g.day}">

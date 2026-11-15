@@ -84,3 +84,56 @@ export function supplyBlock(s: GameState, id: SupplyId, pay: 'gum' | 'trust'): '
   const price = B.supplies[id];
   return (pay === 'gum' ? s.gum < price.gum : s.trust < price.trust) ? 'short' : '';
 }
+
+// ---------------------------------------------------------------- a loan
+
+/** What a loan costs in all, and what goes back each night. */
+export const loanTotal = (amount: number): number => Math.round(amount * (1 + B.loanInterest));
+export const loanNightly = (amount: number): number => Math.ceil(loanTotal(amount) / B.loanNights);
+
+/** Why a sum cannot be borrowed right now ('' when it can): one loan at a time, and a name good enough for it. */
+export function loanBlock(s: GameState, index: number): '' | 'owing' | 'rep' {
+  if (s.loan) return 'owing';
+  return s.rep < B.loanRep[index] ? 'rep' : '';
+}
+
+export function borrow(s: GameState, index: number): boolean {
+  if (loanBlock(s, index) || B.loans[index] === undefined) return false;
+  const amount = B.loans[index];
+  s.gum += amount;
+  s.loan = { left: loanTotal(amount), nightly: loanNightly(amount) };
+  return true;
+}
+
+/** Pays back everything that is left, at once. */
+export function repayAll(s: GameState): boolean {
+  if (!s.loan || s.gum < s.loan.left) return false;
+  s.gum -= s.loan.left;
+  s.today.spend += s.loan.left;
+  s.loan = null;
+  return true;
+}
+
+/**
+ * The night's instalment (before the rent is counted). A night that cannot be paid in full: what there is
+ * goes to the guild, the rest grows, and the guild thinks less of the shop. Returns a line for the night's note.
+ */
+export function repayNightly(s: GameState): string {
+  if (!s.loan) return '';
+  const due = Math.min(s.loan.left, s.loan.nightly);
+  const paid = Math.min(due, s.gum);
+  s.gum -= paid;
+  s.today.spend += paid;
+  s.loan.left -= paid;
+  if (paid < due) {
+    s.loan.left = Math.round(s.loan.left * (1 + B.loanLate));
+    s.trust = Math.max(0, s.trust - B.loanLateTrust);
+    s.rep = Math.max(0, s.rep - B.loanLateRep);
+    return `融資の返済が ${due - paid} GUM 足りませんでした。残りは ${s.loan.left} GUM に増えました。`;
+  }
+  if (s.loan.left <= 0) {
+    s.loan = null;
+    return `融資を返しおえました（今夜 ${paid} GUM）。`;
+  }
+  return `融資の返済 ${paid} GUM（残り ${s.loan.left} GUM）。`;
+}
