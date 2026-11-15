@@ -109,12 +109,15 @@ const shutter = (state: 'down' | 'up', night: boolean): string =>
  * The shop front: the street beyond the counter while open; the shutter with a card on it otherwise.
  * The scene and the counter are always there (the shutter covers them), so nothing jumps when it moves.
  */
+/** The shop's walls, left and right of the opening to the street (a wide screen): the showcase is set into the left one, and customers come out from behind them. */
+const WALLS = '<i class="wall wl" aria-hidden="true"></i><i class="wall wr" aria-hidden="true"></i>';
+
 export function front(g: GameState, v: Visitor | null, opening: boolean): string {
   if (g.phase === 'open' && v) {
     // the street outside follows the day: the light turns towards evening as the line of customers runs out
     const sky = { dusk: g.visitorsToday > 1 ? Math.min(1, g.cursor / (g.visitorsToday - 1)) * 0.75 : 0, rain: g.event.id === 'rain' };
-    return `<div class="front open" id="front" data-ui>${scene(v, opening, farTray(v), sky)}${counterBar(g, v)}${shutter('up', false)}${stageProps(g)}</div>`;
+    return `<div class="front open" id="front" data-ui>${scene(v, opening, { ...farTray(v), html: farTray(v).html + WALLS }, sky)}${counterBar(g, v)}${shutter('up', false)}${stageProps(g)}</div>`;
   }
   const night = g.phase === 'evening';
-  return `<div class="front shut ${night ? 'is-night' : 'is-morning'}" id="front" data-ui>${scene(null, false)}${counterBar(g, null)}${shutter('down', night)}${night ? nightCard(g) : morningCard(g)}${stageProps(g)}</div>`;
+  return `<div class="front shut ${night ? 'is-night' : 'is-morning'}" id="front" data-ui>${scene(null, false)}${counterBar(g, null)}${shutter('down', night)}${WALLS}${night ? nightCard(g) : morningCard(g)}${stageProps(g)}</div>`;
 }

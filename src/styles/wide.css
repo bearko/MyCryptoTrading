@@ -204,3 +204,308 @@
     left: calc(50% - var(--cw) / 2 + 96px);
   }
 }
+
+/*
+ * The shop's walls. Left and right of the opening to the street stands a wall; the showcase is set into the
+ * left one, and what used to be a header hangs on them as things of the shop: a tear-off calendar and a
+ * lit sign for the GUM on the left wall, the shop's standing and the day's order on the right one.
+ * Customers come out from behind the left wall and leave behind the right one.
+ */
+@media (min-width: 900px) and (min-height: 520px) {
+  #app[data-phase='morning'],
+  #app[data-phase='open'],
+  #app[data-phase='evening'] {
+    --wall-w: clamp(196px, 17%, 236px);
+    position: relative;
+  }
+  .wall {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 4;
+    width: var(--wall-w, 200px);
+    background:
+      linear-gradient(to bottom, color-mix(in srgb, var(--ink) 40%, transparent), transparent 30%),
+      repeating-linear-gradient(to bottom, transparent 0 30px, color-mix(in srgb, var(--ink) 55%, transparent) 30px 32px),
+      repeating-linear-gradient(to right, transparent 0 62px, color-mix(in srgb, var(--ink) 35%, transparent) 62px 64px),
+      var(--ink-3);
+  }
+  .wall.wl {
+    left: 0;
+    border-right: 4px solid var(--ink);
+    box-shadow: 10px 0 18px color-mix(in srgb, var(--ink) 60%, transparent);
+  }
+  .wall.wr {
+    right: 0;
+    border-left: 4px solid var(--ink);
+    box-shadow: -10px 0 18px color-mix(in srgb, var(--ink) 60%, transparent);
+  }
+  .front.shut > .wall {
+    z-index: 9;
+    bottom: auto;
+    height: calc(100% - 96px);
+  }
+  /* the customer stands in the middle of the opening, and their goods lie in front of them */
+  .walker {
+    left: 50%;
+  }
+  .far {
+    left: 50%;
+  }
+  .plate {
+    z-index: 6;
+  }
+
+  /* no header at home: its pieces hang on the walls */
+  #app[data-phase='morning'] > .front,
+  #app[data-phase='open'] > .front,
+  #app[data-phase='evening'] > .front {
+    grid-row: 1 / span 2;
+  }
+  #app[data-phase='morning'] > .hud,
+  #app[data-phase='open'] > .hud,
+  #app[data-phase='evening'] > .hud {
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: 16;
+    display: block;
+    height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    pointer-events: none;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) > .hud > .hud-row {
+    display: contents;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) > .hud :is(.day-tag, .hud-gum, .hud-rep, .hud-btn, .rent, .goals) {
+    position: absolute;
+    pointer-events: auto;
+    margin: 0;
+  }
+  /* a tear-off calendar */
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .day-tag {
+    left: 12px;
+    top: 12px;
+    display: grid;
+    justify-items: center;
+    width: 58px;
+    padding: 0 0 4px;
+    border: 3px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 3px 3px 0 var(--ink-50);
+    transform: rotate(-2deg);
+    clip-path: none;
+    cursor: pointer;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .day-tag small {
+    width: 100%;
+    background: var(--hot);
+    color: var(--paper);
+    font-size: 0.5625rem;
+    line-height: 1.5;
+    text-align: center;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .day-tag b {
+    font-size: 1.5rem;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .day-tag i {
+    position: static;
+    width: auto;
+    height: auto;
+    background: none;
+    color: var(--sub);
+    font-size: 0.625rem;
+    font-style: normal;
+  }
+  /* a lit sign: the shop's GUM */
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .hud-gum {
+    left: 82px;
+    top: 14px;
+    width: calc(var(--wall-w) - 96px);
+    justify-content: flex-end;
+    gap: 5px;
+    padding: 3px 8px;
+    border: 3px solid var(--ink);
+    background:
+      radial-gradient(circle, color-mix(in srgb, var(--gum) 16%, transparent) 1px, transparent 1.5px) 0 0 / 4px 4px,
+      #0a0a0f;
+    box-shadow: 3px 3px 0 var(--ink-50);
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .hud-gum b {
+    font-size: 1.5rem;
+    color: var(--gum);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--gum) 70%, transparent);
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .hud-gum img {
+    width: 20px;
+    height: 20px;
+  }
+  /* a slip of paper under them: the rent */
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .rent {
+    left: 82px;
+    top: 58px;
+    width: calc(var(--wall-w) - 96px);
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    font-size: 0.6875rem;
+    font-weight: 900;
+    color: var(--paper);
+    text-align: right;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .rent > :not(.rent-note) {
+    display: none;
+  }
+  .rent.hot .rent-note {
+    color: var(--hot);
+  }
+  /* on the right wall: the shop's standing, the day's order, the settings */
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .hud-rep {
+    right: 12px;
+    top: 74px;
+    width: calc(var(--wall-w) - 28px);
+    border: 3px solid var(--ink);
+    background: var(--ink-2);
+    box-shadow: 3px 3px 0 var(--ink-50);
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .hud-btn {
+    right: 12px;
+    top: 150px;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .goals {
+    right: 64px;
+    top: 150px;
+    width: calc(var(--wall-w) - 80px);
+  }
+
+  /* the showcase is set into the left wall: no name, no hint — a lit recess with a frame */
+  .sprops {
+    left: 12px;
+    top: 92px;
+  }
+  .sprops .case {
+    min-width: 0;
+    padding: 6px;
+    border: 4px solid var(--ink);
+    background: #07070c;
+    box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--paper) 22%, transparent), inset 0 10px 18px color-mix(in srgb, var(--cool) 30%, transparent);
+  }
+  .sprops .case > b,
+  .sprops .case .case-tip {
+    display: none;
+  }
+  /* the telephone is a set on the counter, left of the mat */
+  .front > .phone {
+    position: absolute;
+    left: max(8px, calc(50% - (var(--shelf-w, 640px) + 70px) / 2 - 132px));
+    bottom: 12px;
+    z-index: 14;
+  }
+}
+
+/* a customer comes out of the dark behind the wall into the light of the shop front, and goes back into it */
+@keyframes walk-in {
+  from {
+    transform: translate(-260%, var(--dip));
+    filter: brightness(0.15);
+  }
+  55% {
+    filter: brightness(0.55);
+  }
+  to {
+    transform: translate(-50%, var(--dip));
+    filter: brightness(1);
+  }
+}
+@keyframes walk-out {
+  from {
+    transform: translate(-50%, var(--dip));
+    filter: brightness(1);
+  }
+  45% {
+    filter: brightness(0.55);
+  }
+  to {
+    transform: translate(160%, var(--dip));
+    filter: brightness(0.15);
+  }
+}
+
+/* the calendar's window */
+.cal-day {
+  display: grid;
+  grid-template-columns: 34px 22px 1fr;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 2px;
+  border-bottom: 2px dashed var(--rule);
+  font-size: 0.8125rem;
+}
+.cal-day b {
+  font-family: var(--f-num);
+  font-weight: 400;
+  font-size: 1.125rem;
+  text-align: right;
+}
+.cal-day small {
+  color: var(--sub);
+}
+.cal-day.plain {
+  opacity: 0.5;
+}
+.cal-day.now {
+  background: var(--gum-wash);
+}
+.cal-mark {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 6px;
+  background: var(--ink);
+  color: var(--paper);
+  font-style: normal;
+  font-size: 0.6875rem;
+  font-weight: 900;
+}
+.cal-mark.rent,
+.cal-mark.warn {
+  background: var(--hot);
+}
+.cal-mark.today {
+  background: var(--gum);
+  color: var(--ink);
+}
+@media (min-width: 900px) and (min-height: 520px) {
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .day-tag {
+    height: auto;
+    overflow: visible;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .day-tag :is(small, b, i) {
+    position: static;
+    display: block;
+    transform: none;
+    text-shadow: none;
+    -webkit-text-stroke: 0;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .day-tag b {
+    color: var(--ink) !important;
+  }
+  /* (as wide as the wall, so that the slip opens clear of it) */
+  .sprops {
+    width: calc(var(--wall-w, 200px) - 20px);
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .goals {
+    right: 12px;
+    top: 150px;
+    width: calc(var(--wall-w) - 28px);
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .hud-btn {
+    top: 204px;
+  }
+}

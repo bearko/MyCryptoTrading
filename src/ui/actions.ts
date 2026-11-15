@@ -794,6 +794,9 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
     case 'wanted':
       ui.modal = 'wanted';
       break;
+    case 'calendar':
+      ui.modal = 'calendar';
+      break;
     case 'report': {
       const bounty = g.wanted?.bounty ?? 0;
       const result = G.report(g);
