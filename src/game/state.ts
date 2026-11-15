@@ -17,6 +17,9 @@ export interface StockItem {
   cond: number;
   /** what the shop paid for it */
   paid: number;
+  /** a replica, and whether the shop knows what it is (looked at through the loupe) */
+  fake?: boolean;
+  seen?: boolean;
   /** top-left cell of its footprint on the grid it lies on */
   x: number;
   y: number;
@@ -29,6 +32,9 @@ export interface LooseItem {
   itemId: number;
   cond: number;
   paid: number;
+  /** (a replica stays one wherever it is carried or worn) */
+  fake?: boolean;
+  seen?: boolean;
 }
 
 export type Want = { type: 'param'; param: Param } | { type: 'role'; role: Role } | { type: 'rarity'; min: number } | { type: 'any' };
@@ -39,6 +45,10 @@ export interface Offer {
   cond: number;
   /** the current asking price */
   ask: number;
+  /** a replica (the shop does not know until it has looked through the loupe) */
+  fake?: boolean;
+  /** looked at through the loupe: the shop knows what it is */
+  seen?: boolean;
 }
 
 export interface Visitor {
@@ -105,6 +115,8 @@ export interface DaySummary {
   walkouts: number;
   /** how many times the pot was used today */
   crafts: number;
+  /** looks through the loupe today */
+  looks: number;
 }
 
 /** The six places gear is worn. */
@@ -230,6 +242,8 @@ export interface GameState {
   services: ServiceId[];
   /** goods on order from the guild (they come tomorrow morning), and goods that have come and wait at the door */
   supply: { id: SupplyId; param: Param; goods: Parcel[] } | null;
+  /** the last sale ended with the buyer finding a replica (the screen makes a show of it, then clears it) */
+  lastFake?: boolean;
   /** the wanted notice on the wall, if one is up */
   wanted: Wanted | null;
   parcel: Parcel[];
@@ -243,4 +257,4 @@ export interface GameState {
   crosses: string[];
 }
 
-export const emptySummary = (): DaySummary => ({ revenue: 0, spend: 0, bought: 0, sold: 0, walkouts: 0, crafts: 0 });
+export const emptySummary = (): DaySummary => ({ revenue: 0, spend: 0, bought: 0, sold: 0, walkouts: 0, crafts: 0, looks: 0 });

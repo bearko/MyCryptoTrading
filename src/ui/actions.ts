@@ -332,6 +332,17 @@ function doSell(g: GameState, v: Visitor): void {
       audio.sfx('stamp');
       haptic('medium');
       fx.hitStop(70);
+      if (g.lastFake) {
+        // the buyer has found a replica among what was sold as the real thing
+        g.lastFake = false;
+        store.save(g);
+        window.setTimeout(() => {
+          audio.sfx('error');
+          haptic('heavy');
+          custShake();
+          void fx.banner('レプリカだった！', { sub: `評判 −${B.fakeRep}`, color: tok('--hot'), ms: 1300 });
+        }, 900);
+      }
       fx.stamp('SOLD', at, { color: tok('--hot'), size: 72 });
       custHop();
       let arrived = false;
@@ -726,6 +737,10 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
     case 'parcel':
       ui.modal = 'parcel';
       break;
+    case 'loupe':
+      audio.sfx('tap');
+      note(G.looksLeft(g) > 0 ? `品をルーペへドラッグすると、本物かレプリカかを見分けます（今日はあと ${G.looksLeft(g)} 回）` : 'ルーペは、今日はもう使えません（1 日 3 回）', 'info');
+      return;
     case 'wanted':
       ui.modal = 'wanted';
       break;

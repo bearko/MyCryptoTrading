@@ -1,3 +1,4 @@
+import { B } from '../game/balance';
 import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState, Visitor } from '../game/state';
@@ -6,6 +7,8 @@ import { esc, glyphs, num, tone } from './html';
 import { ICON } from './icons';
 
 /** A name for a seller's good that stays the same when the goods before it are bought (indexes shift then). */
+const LOUPE = `<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="20" cy="20" r="14" fill="var(--paper)" stroke="var(--ink)" stroke-width="5"/><path d="M30 30l13 13" stroke="var(--ink)" stroke-width="7" stroke-linecap="square"/><path d="M13 18a8 8 0 0 1 8-7" fill="none" stroke="var(--cool)" stroke-width="3"/></svg>`;
+
 export function offerKey(v: Visitor, index: number): string {
   const id = v.offers[index].itemId;
   let nth = 0;
@@ -18,7 +21,7 @@ function offerTile(v: Visitor, index: number): string {
   const o = v.offers[index];
   const item = G.findItem(cat, o.itemId);
   return `<div class="offer" id="offer-${offerKey(v, index)}" style="${tone(item)}" data-offer="${index}" role="button" aria-label="${esc(item.ja)} ${o.ask} GUM">
-    <img src="${item.img}" alt="" draggable="false" />${glyphs(item)}<span class="ptag">${num(o.ask)}</span></div>`;
+    <img src="${item.img}" alt="" draggable="false" />${glyphs(item)}${o.seen ? `<span class="seen ${o.fake ? 'fake' : 'real'}">${o.fake ? 'レプリカ' : '本物'}</span>` : ''}<span class="ptag">${num(o.ask)}</span></div>`;
 }
 
 /** True when the bell is the next thing to do: the customer is done, or the shop has nothing for them. */
@@ -83,9 +86,15 @@ export function counterBar(g: GameState, v: Visitor | null): string {
   const ready = !!v && bellReady(g, v);
   const left = G.visitorsLeft(g);
   const queue = !v ? '' : left > 0 ? `<small class="bell-queue" id="queue" aria-label="このあと ${left} 人">あと<b>${left}</b>人</small>` : '<small class="bell-queue last" id="queue">最後の客</small>';
+  // the loupe lies on the counter's edge once replicas are about: a good dragged onto it is looked at closely
+  const looks = G.looksLeft(g);
+  const loupe =
+    g.phase === 'open' && g.day >= B.fakeFromDay
+      ? `<button class="loupe ${looks ? '' : 'spent'}" id="loupe" data-act="loupe" data-sfx="none" aria-label="ルーペ（品をここへドラッグして、本物かレプリカかを見分ける。今日はあと ${looks} 回）">${LOUPE}<em>${looks}</em></button>`
+      : '';
   return `<div class="ledge" aria-hidden="true"></div>
     <div class="counter ${nearCls}" id="near">
-      ${takeAll}
+      ${takeAll}${loupe}
       <div class="counter-mat">${nearLabel ? `<span class="zone-label">${nearLabel}</span>` : ''}<div class="zone-goods">${near}</div></div>
       <button class="bell ${ready ? 'ring' : ''}" id="bell" data-act="bell" data-sfx="none" ${v ? '' : 'tabindex="-1"'} aria-label="${!v || v.done ? '次のお客さんを呼ぶ' : 'このお客さんを帰して、次のお客さんを呼ぶ'}">${ICON.bell}${queue}</button>
     </div>`;

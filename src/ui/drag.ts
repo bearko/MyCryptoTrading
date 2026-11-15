@@ -34,6 +34,8 @@ type ItemDrag = {
   bin?: boolean;
   /** over the showcase */
   show?: boolean;
+  /** held over the loupe on the counter */
+  loupe?: boolean;
   px?: number;
   py?: number;
   /** the tab the good is being held over, and the timer that opens it */
@@ -49,7 +51,29 @@ type ItemDrag = {
   ring: number;
   ok: boolean;
 };
-type OfferDrag = { kind: 'offer'; index: number; id: string; startX: number; startY: number; active: boolean; ghost: HTMLElement | null; offX: number; offY: number };
+type OfferDrag = { kind: 'offer'; loupe?: boolean; index: number; id: string; startX: number; startY: number; active: boolean; ghost: HTMLElement | null; offX: number; offY: number };
+const grown = (r: DOMRect, by: number): DOMRect => new DOMRect(r.x - by, r.y - by, r.width + by * 2, r.height + by * 2);
+
+/** What the loupe showed: a stamp over the good, a sound, and a word when there was nothing to see. */
+function examined(result: '' | 'real' | 'fake', at: () => HTMLElement | null, known: boolean): void {
+  const g = ctx.s;
+  if (g) store.save(g);
+  ctx.render();
+  const el = at();
+  if (!result) {
+    audio.sfx('error');
+    haptic('double');
+    note(known ? 'その品は、もう見分けてあります' : 'ルーペは、今日はもう使えません（1 日 3 回）', 'info');
+    return;
+  }
+  audio.sfx(result === 'fake' ? 'error' : 'confirm');
+  haptic(result === 'fake' ? 'heavy' : 'medium');
+  if (el) {
+    fx.stamp(result === 'fake' ? 'レプリカ' : '本物', el, { size: 24 });
+    fx.burst(result === 'fake' ? 'ring' : 'stars', el, { count: 10 });
+  }
+}
+
 type Drag = { kind: 'win'; dx: number; dy: number } | OfferDrag | ItemDrag;
 let drag: Drag | null = null;
 
@@ -286,8 +310,24 @@ function onMove(event: PointerEvent): void {
   const rootRect = root.getBoundingClientRect();
   d.ghost!.style.left = `${event.clientX - rootRect.left - d.offX}px`;
   d.ghost!.style.top = `${event.clientY - rootRect.top - d.offY}px`;
+  // the loupe on the counter's edge: a good held over it will be looked at closely
+  const loupe = root.querySelector<HTMLElement>('#loupe');
+  const overLoupe = !!loupe && (d.kind === 'offer' || (!d.slot && d.uid >= 0)) && inside(grown(loupe.getBoundingClientRect(), 10), event.clientX, event.clientY);
+  loupe?.classList.toggle('hot', overLoupe);
+  d.loupe = overLoupe;
   if (d.kind === 'offer') {
-    for (const zone of root.querySelectorAll('#near.take, #far.take')) zone.classList.toggle('hot', inside(zone.getBoundingClientRect(), event.clientX, event.clientY));
+    for (const zone of root.querySelectorAll('#near.take, #far.take')) zone.classList.toggle('hot', !overLoupe && inside(zone.getBoundingClientRect(), event.clientX, event.clientY));
+    return;
+  }
+  if (overLoupe) {
+    d.ok = true;
+    d.ghost!.classList.remove('bad');
+    root.querySelector('#trash')?.classList.remove('hot');
+    root.querySelector('#case')?.classList.remove('hot');
+    root.querySelector('#near.drop')?.classList.remove('hot');
+    d.bin = false;
+    d.show = false;
+    root.querySelector<HTMLElement>('#preview')?.classList.remove('show');
     return;
   }
   d.px = event.clientX;
@@ -405,6 +445,12 @@ function onUp(event: PointerEvent): void {
     const v = G.currentVisitor(g);
     const picked = ui.picked.includes(d.index);
     let want = !picked; // a tap moves it to the other side
+    if (d.active && d.loupe) {
+      cleanup();
+      root.querySelector('#loupe')?.classList.remove('hot');
+      examined(v ? G.examineOffer(g, cat, d.index) : '', () => document.getElementById(d.id), !!v?.offers[d.index]?.seen);
+      return;
+    }
     if (d.active) {
       const near = root.querySelector('#near.take');
       const far = root.querySelector('#far.take');
@@ -469,7 +515,12 @@ function onUp(event: PointerEvent): void {
   const home = (): HTMLElement | null => document.getElementById(d.slot ? `gslot-${d.slot}` : `item-${d.uid}`);
   root.querySelector('#trash')?.classList.remove('hot');
   root.querySelector('#case')?.classList.remove('hot');
-  if (d.show) {
+  root.querySelector('#loupe')?.classList.remove('hot');
+  if (d.loupe) {
+    // held over the loupe: looked at, and back in its place
+    const known = !!(g.stock.find((x) => x.uid === d.uid) ?? g.wallet.items.find((x) => x.uid === d.uid))?.seen;
+    examined(G.examineStock(g, d.uid), home, known);
+  } else if (d.show) {
     // dropped on the showcase: shown there, and back in its place on the shelf
     const shown = d.ok && G.setShown(g, d.uid, true);
     ctx.render();

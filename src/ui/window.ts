@@ -36,7 +36,7 @@ function sellerBody(g: GameState, v: Visitor): string {
       const price = struck && struck[i] !== o.ask ? `<s>${num(struck[i])}</s><b class="ask new">${num(o.ask)}</b>` : `<b class="ask">${num(o.ask)}</b>`;
       return `<button class="line ${on ? 'on' : ''}" id="line-${offerKey(v, i)}" data-act="pick-line" data-arg="${i}" data-sfx="none" aria-pressed="${on}">
           ${itemTile(item, 'sm')}
-          <span class="line-main"><b class="pix">${esc(item.ja)}</b><small>${RARITY_JA[item.rarity]}・${COND_JA[o.cond]}・相場 ${num(G.itemValue(cat, o.itemId, o.cond))}</small><span class="tags">${labels(item)}</span></span>
+          <span class="line-main"><b class="pix">${esc(item.ja)}</b><small>${RARITY_JA[item.rarity]}・${COND_JA[o.cond]}・相場 ${num(G.stockValue(cat, o))}${o.seen ? `<b class="seen-note ${o.fake ? 'fake' : 'real'}">${o.fake ? '　レプリカ' : '　本物'}</b>` : ''}</small><span class="tags">${labels(item)}</span></span>
           <span class="line-shape">${shapeIcon(o.itemId)}<small>${G.shapeOf(cat, o.itemId, 0).cells.length}マス</small></span>
           <span class="line-price">${price}</span></button>`;
     })
@@ -69,7 +69,7 @@ function buyerBody(g: GameState, v: Visitor): string {
       const stock = g.stock.find((x) => x.uid === uid)!;
       const item = G.findItem(cat, stock.itemId);
       const wrong = !G.matches(cat, v.want, stock.itemId);
-      return `<div class="line on ${wrong ? 'bad' : ''}" id="sline-${uid}">${itemTile(item, 'sm')}<span class="line-main"><b class="pix">${esc(item.ja)}</b>${wrong ? '<small class="bad">希望と違う</small>' : `<small>相場 ${num(G.itemValue(cat, stock.itemId, stock.cond))}</small>`}</span><span class="line-price"><b class="ask">${num(G.salePrice(cat, stock, ui.tier))}</b></span></div>`;
+      return `<div class="line on ${wrong ? 'bad' : ''}" id="sline-${uid}">${itemTile(item, 'sm')}<span class="line-main"><b class="pix">${esc(item.ja)}</b>${wrong ? '<small class="bad">希望と違う</small>' : `<small>相場 ${num(G.stockValue(cat, stock))}${stock.fake && stock.seen ? '<b class="seen-note fake">　レプリカ</b>' : ''}</small>`}</span><span class="line-price"><b class="ask">${num(G.salePrice(cat, stock, ui.tier))}</b></span></div>`;
     })
     .join('');
   const over = q.over > 0;

@@ -228,3 +228,78 @@ describe('the wanted notice', () => {
     expect(s.wanted).toBeNull();
   });
 });
+
+describe('replicas and the loupe', () => {
+  /** A seller at the counter who has brought a replica (after the day replicas start). */
+  function sellerWithFake(seed: number): { s: GameState; v: Visitor; index: number } {
+    const s = G.newGame(seed, catalog);
+    s.day = B.fakeFromDay;
+    s.gum = 99999;
+    for (const v of visitors(s, 3000)) {
+      const index = v.kind === 'sell' && !v.special ? v.offers.findIndex((o) => o.fake) : -1;
+      if (index < 0) continue;
+      s.queue = [v];
+      s.cursor = 0;
+      s.stock = [];
+      s.phase = 'open';
+      return { s, v, index };
+    }
+    throw new Error('no replica came');
+  }
+
+  it('no replicas in the first days; later, some of what sellers bring', () => {
+    const early = G.newGame(71, catalog);
+    early.day = B.fakeFromDay - 1;
+    expect(visitors(early, 800).flatMap((v) => v.offers).some((o) => o.fake)).toBe(false);
+    const late = G.newGame(71, catalog);
+    late.day = B.fakeFromDay;
+    const offers = visitors(late, 2000).flatMap((v) => v.offers);
+    const share = offers.filter((o) => o.fake).length / offers.length;
+    expect(share).toBeGreaterThan(0.02);
+    expect(share).toBeLessThan(0.12);
+  });
+
+  it('the loupe tells, a few times a day; a seller found out lets the replica go for little', () => {
+    const { s, v, index } = sellerWithFake(72);
+    const ask = v.offers[index].ask;
+    expect(G.looksLeft(s)).toBe(B.looksPerDay);
+    expect(G.examineOffer(s, catalog, index)).toBe('fake');
+    expect(v.offers[index].ask).toBeLessThan(ask * 0.5);
+    expect(G.examineOffer(s, catalog, index)).toBe('');
+    expect(G.looksLeft(s)).toBe(B.looksPerDay - 1);
+    // bought knowing what it is: worth a replica's price on the shelf, wherever it is carried
+    expect(G.buy(s, catalog, [index])).toBe(true);
+    const x = s.stock[s.stock.length - 1];
+    expect(x.fake && x.seen).toBe(true);
+    expect(G.stockValue(catalog, x)).toBe(Math.round(G.itemValue(catalog, x.itemId, x.cond) * B.fakeValue));
+    // the looks run out
+    s.today.looks = B.looksPerDay;
+    expect(G.examineStock(s, s.stock[0].uid)).toBe('');
+  });
+
+  it('a replica sold as the real thing is sometimes found out, and costs the shop its name', () => {
+    let found = 0;
+    for (let seed = 0; seed < 40; seed++) {
+      const { s, v, index } = sellerWithFake(100 + seed);
+      expect(G.buy(s, catalog, [index])).toBe(true);
+      const x = s.stock[s.stock.length - 1];
+      expect(x.fake).toBe(true);
+      expect(x.seen).toBeFalsy();
+      // unknown to the shop: priced like the real thing
+      expect(G.stockValue(catalog, x)).toBe(G.itemValue(catalog, x.itemId, x.cond));
+      const buyer: Visitor = { ...v, kind: 'buy', offers: [], want: { type: 'any' }, budget: 999999, done: false, deals: 0, faction: 'suzaku', temper: 0 };
+      s.queue = [buyer];
+      s.cursor = 0;
+      s.rep = 50;
+      const favor = s.favor.suzaku;
+      expect(G.sell(s, catalog, [x.uid], 0)).toBe('sold');
+      if (s.lastFake) {
+        found += 1;
+        expect(s.rep).toBeLessThan(50);
+        expect(s.favor.suzaku).toBe(favor + B.favorDeal - B.fakeFavor);
+      }
+    }
+    expect(found).toBeGreaterThan(8);
+    expect(found).toBeLessThan(32);
+  });
+});
