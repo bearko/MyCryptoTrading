@@ -5,7 +5,7 @@ import * as N from '../game/night';
 import * as store from '../game/save';
 import type { SlotId } from '../game/state';
 import { audio, haptic } from './audio';
-import { atHome, CASE_CELL, ctx, isWide, popsOn, shownTab, ui, type PopId } from './core';
+import { atHome, ctx, isWide, popsOn, shownTab, ui, type PopId } from './core';
 import { gridItem } from './grid';
 import { fx } from './fx';
 import { anim, flip, layer, nope, pointOn, settle } from './motion';
@@ -145,8 +145,8 @@ function dropCell(d: ItemDrag, x: number, y: number, tab: string = 'shelf'): { x
 function caseCell(d: ItemDrag, board: HTMLElement, x: number, y: number): { x: number; y: number } {
   const rect = board.getBoundingClientRect();
   // (a held good is always drawn at the shelf's scale: its grip is scaled down to the showcase's cells)
-  const k = CASE_CELL / ctx.cell;
-  return { x: Math.floor((x - d.offX * k + CASE_CELL / 2 - rect.left) / CASE_CELL), y: Math.floor((y - d.offY * k + CASE_CELL / 2 - rect.top) / CASE_CELL) };
+  const k = ctx.caseCell / ctx.cell;
+  return { x: Math.floor((x - d.offX * k + ctx.caseCell / 2 - rect.left) / ctx.caseCell), y: Math.floor((y - d.offY * k + ctx.caseCell / 2 - rect.top) / ctx.caseCell) };
 }
 
 function ringAt(x: number, y: number): HTMLElement {
@@ -495,7 +495,7 @@ function onMove(event: PointerEvent): void {
       const shape = G.shapeOf(cat, d.itemId, d.rot);
       casePreview.style.display = 'block';
       casePreview.className = `preview ${d.ok ? 'ok' : 'ng'}`;
-      casePreview.innerHTML = shape.cells.map(([cx, cy]) => `<i style="left:${(spot.x + cx) * CASE_CELL}px;top:${(spot.y + cy) * CASE_CELL}px"></i>`).join('');
+      casePreview.innerHTML = shape.cells.map(([cx, cy]) => `<i style="left:${(spot.x + cx) * ctx.caseCell}px;top:${(spot.y + cy) * ctx.caseCell}px"></i>`).join('');
     }
     counter?.classList.remove('hot');
     root.querySelector<HTMLElement>('#preview')?.classList.remove('show');
@@ -714,6 +714,11 @@ function onUp(event: PointerEvent): void {
     const shown = !!held && d.ok && !!spot && (d.grid === 'case' ? G.moveStock(g, cat, d.uid, spot.x, spot.y, 'case') : N.transfer(g, cat, d.grid, d.uid, 'case', spot.x, spot.y));
     if (!shown && held && turned) held.rot = d.rot0!;
     if (shown) ui.craft = ui.craft.filter((uid) => uid !== d.uid);
+    // (the first time the window is touched while the shop is open: what it does tells from the next opening)
+    if (shown && g.phase === 'open' && !g.caseTold) {
+      g.caseTold = true;
+      ui.modal = 'casetold';
+    }
     ctx.render();
     if (shown) good(document.getElementById(`item-${d.uid}`), 'drop');
     else bad(home(), d.slot ? '装備中の品は、外してから飾ってください' : 'ここには入りません（R か右クリックで向きを変えられます）');

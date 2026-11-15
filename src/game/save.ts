@@ -38,6 +38,8 @@ export function load(): GameState | null {
     s.trashGum ??= 0;
     // saves from before the clientele: everyone already comes
     s.callers ??= 0;
+    s.display ??= null;
+    s.caseTold ??= false;
     s.handled ??= [0, 0, 0, 0, 0, 0];
     s.clientele ??= 5;
     s.wide ??= false;

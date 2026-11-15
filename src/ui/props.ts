@@ -8,7 +8,7 @@ import { SLOT_IDS, type GameState } from '../game/state';
 import { B, WEEKDAYS } from '../game/balance';
 import { factionById, rivalOf } from '../game/factions';
 import { GROUP_JA, hasService, loanBlock, loanNightly, loanTotal, serviceBlock, SERVICES, SUPPLIES, supplyBlock, supplyById, trustDaily } from '../game/network';
-import { atHome, CASE_CELL, ctx, ui } from './core';
+import { atHome, caseCellFor, ctx, ui } from './core';
 import { gridItem } from './grid';
 import { btn, esc, gum, itemTile, num } from './html';
 
@@ -62,6 +62,9 @@ export function stageProps(g: GameState): string {
   const v = G.currentVisitor(g);
   const want = g.phase === 'open' && v && !v.done && v.kind === 'buy' ? v.want : null;
   const keep = ctx.cell;
+  // (the shelf's cell is in hand here: the wall beside the shelf says how large the window's cells can be)
+  const CASE_CELL = caseCellFor(grid.cols, G.gridOf(g, cat, 'shelf').cols * keep);
+  ctx.caseCell = CASE_CELL;
   ctx.cell = CASE_CELL;
   const goods = grid.items.map((x) => gridItem(x, ui.counter.includes(x.uid) ? 'away' : want && G.matches(cat, want, x.itemId) ? 'match' : '')).join('');
   ctx.cell = keep;
@@ -79,9 +82,68 @@ export function stageProps(g: GameState): string {
     <div class="case ${full ? 'full' : ''}" id="case"><b>ショーケース</b>
       <div class="case-grid" id="case-grid" data-grid="case" style="--cell:${CASE_CELL}px;width:${grid.cols * CASE_CELL}px;height:${grid.rows * CASE_CELL}px">${goods}<div class="preview" id="case-preview" data-live></div></div>
       ${sign}<small class="case-tip">${tip}</small></div>
+    <button class="monitor ${g.phase === 'open' && pending(g) ? 'stale' : ''}" id="monitor" data-act="forecast" data-sfx="open" aria-label="予測客のモニター（ショーケースが呼ぶ客の見込みを見る）"><i class="mon-screen"><u></u><u></u><u></u></i><b>予測客</b></button>
     ${wantedNotice(g)}
     ${g.parcel.length ? `<button class="parcel" id="parcel" data-act="parcel" data-sfx="open" aria-label="ギルドから届いた荷物（${g.parcel.length} 個。クリックで受け取る）">${CRATE}<b>荷物</b><em>${g.parcel.length}</em></button>` : ''}
   </div>${phone}`;
+}
+
+/** True when the window has been rearranged since the shop opened (what it does now is not yet what is shown). */
+const pending = (g: GameState): boolean => {
+  const was = (g.display?.goods ?? []).map((x) => x.uid).sort().join(',');
+  return was !== g.showcase.map((x) => x.uid).sort().join(',');
+};
+
+const pct = (rate: number): string => `${Math.round(rate * 100)}%`;
+
+/** The monitor beside the showcase: what the window, as it stands, is expected to bring in. */
+export function forecastModal(g: GameState): string {
+  const f = G.forecast(g, cat);
+  const open = g.phase === 'open';
+  const when = open
+    ? pending(g)
+      ? '<p class="note bad">ショーケースを開店中に並べかえました。この見込みは<b>次に店を開けたとき</b>から効きます（今日の客は、開店のときの並びで決まっています）。</p>'
+      : '<p class="note">今日の客は、この並びで呼んでいます。</p>'
+    : '<p class="note">この並びは、<b>次に店を開けたとき</b>から効きます。</p>';
+  const lines = (['phy', 'int', 'agi'] as const)
+    .filter((param) => f.lines[param] > 0)
+    .map((param) => `<div class="fc-bar s-${param}"><span>${PARAM_JA[param]}を欲しがる客</span><i><u style="width:${pct(f.pull * f.lines[param])}"></u></i><b>${pct(f.pull * f.lines[param])}</b></div>`)
+    .join('');
+  const richer = ([3, 4, 5] as const)
+    .map((rarity, i) =>
+      f.richer[i] > 0
+        ? `<div class="fc-row"><span>${HERO_CLASS_JA[rarity]}のヒーロー</span><b>${f.richer[i] > 1.005 ? `ふだんの ${f.richer[i].toFixed(2)} 倍` : 'ふだんどおり'}</b></div>`
+        : `<div class="fc-row fc-off"><span>${HERO_CLASS_JA[rarity]}のヒーロー</span><b>まだ来ない</b></div>`,
+    )
+    .join('');
+  const purses = f.purses.map((x) => `<div class="fc-row"><span>${HERO_CLASS_JA[x.rarity]}</span><b>およそ ${num(x.budget)} GUM</b></div>`).join('');
+  const next = g.clientele + 1;
+  const crowd = next > 5 ? '' : `<div class="fc-row"><span>次の客層：${HERO_CLASS_JA[next]}</span><b>${Math.min(G.clienteleScore(g, cat, next), B.clienteleNeed[next])}/${B.clienteleNeed[next]}</b></div>`;
+  return `<div class="modal" id="modal-forecast" data-ui><div class="modal-box tall">
+    <h2 class="modal-title"><small>FORECAST</small>予測客</h2>
+    <div class="modal-scroll forecast">
+      ${when}
+      <div class="fc-row head"><span>展示 ${f.count} 個${f.full ? '（すきまなし）' : ''}</span><b>集客 +${f.appeal}</b></div>
+      ${
+        f.count === 0
+          ? '<p class="hint">ショーケースが空です。品を飾ると、その系統を欲しがる客と、上の階級のヒーローが来やすくなります。</p>'
+          : `<h3 class="rc-sub">欲しがる品<small>買い客のうち</small></h3>${lines}<div class="fc-row"><span>ショーケースを見て来る買い客</span><b>${pct(f.pull)}</b></div>
+      <h3 class="rc-sub">来る階級<small>レアリティの高い品ほど効く</small></h3>${richer}`
+      }
+      <h3 class="rc-sub">客の予算<small>買い客 1 人あたり</small></h3>${purses}${crowd}
+    </div>
+    <div class="actions one">${btn('modal-close', '閉じる', { cls: 'primary' })}</div>
+  </div></div>`;
+}
+
+/** Said once: the window rearranged while the shop is open tells from the next opening. */
+export function caseToldModal(): string {
+  return `<div class="modal" id="modal-casetold" data-ui><div class="modal-box">
+    <h2 class="modal-title"><small>SHOWCASE</small>ショーケースの効きめ</h2>
+    <p class="modal-text">ショーケースの並びは、<b>次に店を開けたとき</b>から客を呼びます。開店中に並べかえても、今日の客は変わりません。</p>
+    <p class="modal-text">開店の前（シャッターが開く前）に並べれば、その日から効きます。見込みは、ショーケースの横の<b>予測客</b>のモニターで見られます。</p>
+    <div class="actions one">${btn('modal-close', 'わかった', { cls: 'primary' })}</div>
+  </div></div>`;
 }
 
 /** The notice on the wall: a face, and what the house that posted it will pay. */

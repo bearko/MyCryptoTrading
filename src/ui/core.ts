@@ -2,7 +2,7 @@ import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState, SlotId } from '../game/state';
 
-export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'network' | 'parcel' | 'wanted' | 'calendar';
+export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'network' | 'parcel' | 'wanted' | 'calendar' | 'forecast' | 'casetold';
 
 /** Screen state that is not part of the saved game. */
 export interface Ui {
@@ -100,7 +100,8 @@ export const hasMouse = (): boolean => typeof window !== 'undefined' && typeof w
 /** The width of the shop's side of the screen (the slip and its panel keep inside it): the whole screen. */
 export const stageWidth = (): number => ctx.root.clientWidth;
 /** How wide the game is on a wide screen (it is narrower on the title screen, so this is not read off the page). */
-const appWidth = (): number => Math.min(document.documentElement.clientWidth, 1280) - 6;
+export const APP_MAX = 2200;
+const appWidth = (): number => Math.min(document.documentElement.clientWidth, APP_MAX) - 6;
 /** The width of the things beside the shelf on a wide screen (the bin, the bed), and of the shelf between them. */
 export const PROP_W = 128;
 /** The gear rack stands between the shelf and the bed. */
@@ -123,6 +124,7 @@ export const ctx = {
   root: null as unknown as HTMLElement,
   /** size of one grid cell in px (fits the screen) */
   cell: 48,
+  caseCell: 30,
   /** input is ignored while this is above zero (beats, transitions) */
   busy: 0,
   /** a window was just opened from under the finger: the click that the same touch still sends is not for it */
@@ -133,8 +135,12 @@ export const ctx = {
 
 /** At home the shelf or the wallet is shown; out at night, always the wallet. */
 /** The grid the cells are sized for (the gear tab keeps the shelf's room). */
-/** The size of a cell of the showcase on the wall (smaller than the shelf's). */
-export const CASE_CELL = 20;
+/** The size of a cell of the showcase at its largest (it is set into the left wall, and shrinks to fit a narrow one). */
+export const CASE_CELL = 30;
+/** The left wall reaches from the screen's edge to the left end of the shelf (so the street's opening is as wide as the shelf). */
+export const leftWall = (shelfWidth: number): number => (appWidth() + 6) / 2 - 52 - (shelfWidth + 6) / 2;
+/** The showcase's cell for this many columns: as large as the left wall lets it be. */
+export const caseCellFor = (cols: number, shelfWidth: number): number => Math.max(14, Math.min(CASE_CELL, Math.floor((leftWall(shelfWidth) - 44) / cols)));
 
 /** The windows that float over the shop. */
 export type PopId = 'craft' | 'wallet' | 'gear';

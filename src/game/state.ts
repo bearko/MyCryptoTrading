@@ -269,6 +269,13 @@ export interface GameState {
   /** what the night's collection will pay for them */
   trashGum: number;
   /** the shelf is laid out wide (saves from before are repacked once) */
+  /**
+   * What stood in the showcase as the shop opened, and whether it was full: this is what draws the day's
+   * customers (rearranging the window during the day tells from the next opening).
+   */
+  display: { goods: StockItem[]; full: boolean } | null;
+  /** the shopkeeper has been told that (the first time the window is touched while the shop is open) */
+  caseTold: boolean;
   /** how many goods of each rarity (index 1–5) the shop has bought, sold or made */
   handled: number[];
   /** the rarest class of hero that comes to the shop (1 = novices only … 5 = everyone) */
