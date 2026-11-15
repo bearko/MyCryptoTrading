@@ -228,8 +228,8 @@ export function clampWindow(): void {
     // (the customer stands in the middle: the slip opens to their right, before the right wall; where the
     // opening is too narrow for that, it lies over the wall, so the customer and their goods stay in view)
     const wallW = root.querySelector<HTMLElement>('.wall.wr')?.offsetWidth ?? 0;
-    const far = root.querySelector<HTMLElement>('#far')?.getBoundingClientRect();
-    const clear = far && far.width > 0 ? far.right - base.left + 16 : areaW / 2 + 70;
+    const far = root.querySelector<HTMLElement>('#far .zone-goods')?.getBoundingClientRect();
+    const clear = far && far.width > 0 ? far.right - base.left + 28 : areaW / 2 + 70;
     ui.win.x = Math.round(Math.max(areaW - wallW - win.offsetWidth - 12, clear));
   }
   ui.win.x = Math.max(0, Math.min(ui.win.x, areaW - win.offsetWidth));

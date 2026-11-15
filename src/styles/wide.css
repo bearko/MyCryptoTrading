@@ -522,3 +522,56 @@
     padding: 0;
   }
 }
+
+/*
+ * One width for the three places goods lie: the customer's mat, the shop's mat and the shelf stand in a column,
+ * edge to edge. The bell stands just right of them, and the right wall is as wide as the room beside the shelf
+ * (so the bell is under it). The showcase sits in the middle of the left wall, at the customer's eye level.
+ */
+@media (min-width: 900px) and (min-height: 520px) {
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) {
+    --goods-w: calc(var(--shelf-w, 640px) + 6px);
+    /* (the shelf's middle: it stands between the bin and the rack with the bed, which are not equally wide) */
+    --goods-x: calc(50% - 52px);
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .counter {
+    justify-content: center;
+    min-height: 84px;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .counter .counter-mat {
+    flex: 0 0 var(--goods-w);
+    box-sizing: border-box;
+    translate: -52px 0;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .counter .bell {
+    position: absolute;
+    left: calc(var(--goods-x) + var(--goods-w) / 2 + 10px);
+    top: 8px;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .far {
+    left: var(--goods-x);
+    box-sizing: border-box;
+    width: var(--goods-w);
+    min-width: 0;
+    max-width: none;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .front > .phone {
+    left: max(8px, calc(var(--goods-x) - var(--goods-w) / 2 - 122px));
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .wall.wr {
+    width: max(var(--wall-w), calc(50% + 52px - var(--goods-w) / 2));
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .walker {
+    left: var(--goods-x);
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .take-all {
+    left: var(--goods-x);
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .sprops {
+    top: 32%;
+    align-items: center;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .sprops .case {
+    margin-inline: auto;
+  }
+}
