@@ -163,7 +163,7 @@ export function planCraft(s: GameState, cat: Catalog, uids: readonly number[]): 
   const cond = cross ? B.condMult.length - 1 : Math.min(B.condMult.length - 1, inputs[0].cond + (match ? 1 : 0));
   const fee = result ? feeOf(result) : 0;
   // (no pot on the shelf, no synthesis; and a good with an effect of its own does not go into the pot)
-  const special = [base, ...partners].some((x) => x.effect);
+  const special = [base, ...partners].some((x) => x.effect) || uids.some((uid) => s.stock.find((x) => x.uid === uid)?.bag);
   const block = !hasEffect(s, cat, 'pot') ? 'nopot' : special ? 'special' : !result ? 'top' : partners.length === 0 ? 'alone' : have < need ? 'short' : craftsLeft(s) === 0 ? 'spent' : s.gum < fee ? 'poor' : '';
   return { base, result, cond, need, have, match, fee, cross: cross?.key ?? '', block };
 }

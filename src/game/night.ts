@@ -96,7 +96,8 @@ export function slotFor(s: GameState, item: Item): SlotId {
 function take(s: GameState, id: GridId, uid: number): LooseItem | null {
   const items = itemsOf(s, id);
   const index = items.findIndex((x) => x.uid === uid);
-  if (index < 0) return null;
+  // (the wallet in use stays on the shelf)
+  if (index < 0 || items[index].bag) return null;
   const [x] = items.splice(index, 1);
   return { itemId: x.itemId, cond: x.cond, paid: x.paid, ...(x.fake ? { fake: true } : {}), ...(x.seen ? { seen: true } : {}), ...(x.hot ? { hot: true } : {}) };
 }
@@ -109,7 +110,8 @@ export function transfer(s: GameState, cat: Catalog, from: GridId, uid: number, 
   if (from === to) return false;
   const source = itemsOf(s, from);
   const index = source.findIndex((it) => it.uid === uid);
-  if (index < 0) return false;
+  // (the wallet in use stays on the shelf)
+  if (index < 0 || source[index].bag) return false;
   const stock = source[index];
   const target = gridOf(s, cat, to);
   const slot = x === undefined || y === undefined ? findSlotIn(target, cat, stock.itemId) : canPlaceIn(target, cat, stock.itemId, x, y, stock.rot) ? { x, y, rot: stock.rot } : null;
@@ -142,11 +144,12 @@ export function equip(s: GameState, cat: Catalog, uid: number, slot?: SlotId, fr
     const [cols, rows] = B.walletSizes[item.rarity];
     const now = walletSize(s, cat);
     if (s.wallet.items.length > 0 && (cols < now.cols || rows < now.rows)) return 'walletfull';
-    take(s, 'shelf', uid);
-    if (addTo(s, cat, 'shelf', s.wallet.itemId, 1, 0) === null) {
-      s.stock.push(backup);
-      return 'noroom';
-    }
+    // the wallet in use is a good on the shelf: the new one takes its place where it stands, and the old
+    // one is a good like any other again
+    if (stock.bag) return 'invalid';
+    const old = s.stock.find((x) => x.bag);
+    if (old) old.bag = false;
+    stock.bag = true;
     s.wallet.itemId = item.id;
     return 'ok';
   }

@@ -8,7 +8,7 @@
 import { advanceLine } from './scene';
 import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
-import { ctx, ui } from './core';
+import { ctx, ui, popsOn } from './core';
 import { dragging, rotateDragged } from './drag';
 import { closeOverlay, overlayOpen, toggleOverlay } from './overlay';
 import { esc, itemCard } from './html';
@@ -160,7 +160,11 @@ function onKey(event: KeyboardEvent): void {
     case '1':
     case '2':
     case '3':
-      if (!modal) done = press(`#inv [data-act="grid"][data-arg="${['shelf', 'wallet', 'gear'][Number(event.key) - 1]}"]`);
+      if (!modal && ctx.s && popsOn(ctx.s)) {
+        // (no tabs on a wide screen: 2 and 3 open and shut the wallet's and the gear's windows)
+        if (event.key !== '1') ctx.act('pop', event.key === '2' ? 'wallet' : 'gear');
+        done = event.key !== '1';
+      } else if (!modal) done = press(`#inv [data-act="grid"][data-arg="${['shelf', 'wallet', 'gear'][Number(event.key) - 1]}"]`);
       break;
     default:
       return;

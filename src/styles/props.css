@@ -998,3 +998,72 @@ html.calm .inv-fx {
   font-size: 0.9375rem;
   cursor: pointer;
 }
+
+/* ---------- the windows over the shop (a wide screen): the pot, the wallet's inside, the gear. They are
+   opened from things in the shop, dragged by their bar, and left open or shut as the shopkeeper likes. */
+.pop {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100% - 8px);
+  border: 3px solid var(--ink);
+  background: var(--ink-2);
+  box-shadow: 6px 6px 0 var(--ink-50);
+  color: var(--paper);
+  animation: win-in 0.24s var(--ease-pop) both;
+  transform-origin: 50% 0;
+}
+.pop.held {
+  box-shadow: 10px 12px 0 var(--ink-50);
+}
+.pop-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 0 0 10px;
+  background: var(--ink);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.pop.held .pop-bar {
+  cursor: grabbing;
+}
+.pop-bar b {
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--gum);
+}
+.pop-bar em {
+  font-style: normal;
+  font-family: var(--f-num);
+  font-size: 0.875rem;
+  color: var(--mute);
+}
+.pop-bar .win-grip {
+  flex: 1 1 auto;
+}
+.pop-body {
+  padding: 8px;
+}
+.pop-body .grid {
+  margin: 0;
+}
+.pop-craft {
+  width: min(430px, calc(100% - 8px));
+}
+.pop-gear {
+  width: min(380px, calc(100% - 8px));
+}
+.prop.rack svg {
+  width: 62px;
+}
+.prop.rack .p-fill {
+  fill: var(--cool);
+}
+.prop.rack.open b {
+  background: var(--gum);
+  color: var(--ink);
+}

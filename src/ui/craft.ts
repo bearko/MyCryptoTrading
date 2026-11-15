@@ -7,7 +7,7 @@ import { catalog as cat, POT_ID, COND_JA, RARITY_JA, type Item } from '../game/c
 import * as C from '../game/craft';
 import * as G from '../game/logic';
 import type { GameState, StockItem } from '../game/state';
-import { ctx, ui } from './core';
+import { ctx, ui, popsOn } from './core';
 import { btn, esc, gum, itemTile, num, tone } from './html';
 
 /** The pot itself: an epic good of the catalogue lends its picture. */
@@ -21,7 +21,7 @@ export function tidyCraft(g: GameState): void {
 }
 
 const WHY: Record<Exclude<C.CraftPlan['block'], ''>, string> = {
-  empty: '下の持ちものから、土台にする品を選ぶ',
+  empty: '棚の品をここへドラッグ（下の一覧から選んでもよい）',
   top: 'この品は、これより上がありません',
   alone: '相手にする品を入れる',
   short: '相手の点が足りません',
@@ -65,7 +65,7 @@ export function craftBoard(g: GameState): string {
     : '';
   const used = new Set(ui.craft);
   const mine = [...g.stock, ...g.wallet.items]
-    .filter((x) => !used.has(x.uid) && !ui.counter.includes(x.uid) && !G.findItem(cat, x.itemId).effect)
+    .filter((x) => !used.has(x.uid) && !ui.counter.includes(x.uid) && !x.bag && !G.findItem(cat, x.itemId).effect)
     .sort((a, b) => G.findItem(cat, b.itemId).rarity - G.findItem(cat, a.itemId).rarity || a.itemId - b.itemId)
     .map((x) => {
       const item = G.findItem(cat, x.itemId);
@@ -84,7 +84,7 @@ export function craftBoard(g: GameState): string {
     ${resultText}
     ${hint}
     <div class="pinfo">${chips}<span class="pchip ${left === 0 ? 'ng' : ''}">今日あと <b>${left}</b> 回</span>${plan.block && plan.result ? `<span class="pwhy">${WHY[plan.block]}</span>` : ''}</div>
-    <div class="pacts">${btn('craft-go', '配合する', { cls: 'primary', disabled: !!plan.block, sfx: 'none' })}${btn('recipes', '配合表', { cls: 'ghost', sfx: 'open' })}${btn('grid', '棚へ戻る', { arg: 'shelf', cls: 'ghost', sfx: 'close' })}</div>
+    <div class="pacts">${btn('craft-go', '配合する', { cls: 'primary', disabled: !!plan.block, sfx: 'none' })}${btn('recipes', '配合表', { cls: 'ghost', sfx: 'open' })}${popsOn(g) ? '' : btn('grid', '棚へ戻る', { arg: 'shelf', cls: 'ghost', sfx: 'close' })}</div>
     <div class="pgoods" id="pgoods" aria-label="持ちもの（タップで壺に入れる）">${mine || '<small class="pnone">入れられる品がありません</small>'}</div>
   </div>`;
 }

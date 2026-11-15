@@ -21,6 +21,8 @@ const LABELS: [selector: string, text: string][] = [
   ['.inv-item.special', '特別な品（ダブルクリックで使う）'],
   ['#inv .grid', '棚'],
   ['#trash', 'ゴミ箱（品を重ねて捨てる）'],
+  ['#rack', '装備棚（クリックで装備の窓）'],
+  ['.inv-item.special:nth-of-type(1)', ''],
   ['#bed', '寝床（夜にクリックで翌日へ）'],
 ];
 
@@ -34,7 +36,8 @@ const KEYS: [keys: string[], text: string][] = [
   [['Space'], 'せりふを送る'],
   [['B'], 'ベルを鳴らす'],
   [['Enter'], '決定（買う・売る・店を開ける）'],
-  [['1', '2', '3'], '棚・ウォレット・装備'],
+  [['2'], 'ウォレットの窓を開く／閉じる'],
+  [['3'], '装備の窓を開く／閉じる'],
   [['Esc'], '閉じる／設定を開く'],
   [['O'], 'この案内を表示／非表示'],
 ];
@@ -68,7 +71,7 @@ export function toggleOverlay(): boolean {
     // (the counter is behind the shutter until the shop is open)
     if (COUNTER.has(selector) && ctx.s?.phase !== 'open') return '';
     const target = ctx.root.querySelector<HTMLElement>(selector);
-    if (!target || target.offsetParent === null) return '';
+    if (!text || !target || target.offsetParent === null) return '';
     const r = target.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) return '';
     // the name sits on the thing's top edge, kept inside the window

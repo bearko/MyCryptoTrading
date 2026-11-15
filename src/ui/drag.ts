@@ -5,7 +5,7 @@ import * as N from '../game/night';
 import * as store from '../game/save';
 import type { SlotId } from '../game/state';
 import { audio, haptic } from './audio';
-import { atHome, CASE_CELL, ctx, shownTab, ui } from './core';
+import { atHome, CASE_CELL, ctx, popsOn, shownTab, ui, type PopId } from './core';
 import { gridItem } from './grid';
 import { fx } from './fx';
 import { anim, flip, layer, nope, pointOn, settle } from './motion';
@@ -125,15 +125,15 @@ function examined(result: '' | 'real' | 'fake', at: () => HTMLElement | null, kn
   }
 }
 
-type Drag = { kind: 'win'; dx: number; dy: number } | OfferDrag | ItemDrag;
+type Drag = { kind: 'win'; dx: number; dy: number } | { kind: 'pop'; id: PopId; dx: number; dy: number } | OfferDrag | ItemDrag;
 let drag: Drag | null = null;
 
 const HOLD_MS = 500;
 const inside = (rect: DOMRect, x: number, y: number): boolean => x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 
 /** The cell a dragged good would land on (its top-left cell), or null when off its grid. */
-function dropCell(d: ItemDrag, x: number, y: number): { x: number; y: number } | null {
-  const grid = ctx.root.querySelector('.grid');
+function dropCell(d: ItemDrag, x: number, y: number, tab: string = 'shelf'): { x: number; y: number } | null {
+  const grid = ctx.root.querySelector(`.grid[data-grid="${tab}"]`) ?? ctx.root.querySelector('.grid');
   if (!grid) return null;
   const rect = grid.getBoundingClientRect();
   // a little slack around the board, so the edge cells are easy to hit
@@ -195,6 +195,42 @@ function fitsPlace(d: ItemDrag, place: string): boolean {
  * Held over another tab for a second: that tab opens, and the good stays in the hand. The ghost is redrawn at
  * the new tab's cell size, held by its first cell.
  */
+/**
+ * What a held good is over. With tabs (a phone) it is the tab that is shown. On a wide screen the shelf is
+ * always there and the wallet, the gear and the pot are windows over it: whichever window is under the
+ * pointer, or else the shelf.
+ */
+function tabAt(g: NonNullable<typeof ctx.s>, x: number, y: number): G.GridId | 'gear' | 'craft' {
+  if (!popsOn(g)) return shownTab(g);
+  const pop = document.elementFromPoint(x, y)?.closest<HTMLElement>('.pop');
+  const id = pop?.id.replace('pop-', '');
+  return id === 'wallet' ? 'wallet' : id === 'gear' ? 'gear' : id === 'craft' ? 'craft' : 'shelf';
+}
+
+/** The preview of a board (each board has its own), and all of them put away. */
+const previewOf = (tab: string): HTMLElement | null => ctx.root.querySelector<HTMLElement>(`.grid[data-grid="${tab}"] .preview`) ?? ctx.root.querySelector<HTMLElement>('#preview');
+function hidePreviews(except?: HTMLElement | null): void {
+  for (const el of ctx.root.querySelectorAll<HTMLElement>('.grid .preview')) {
+    if (el === except) continue;
+    el.classList.remove('show');
+    el.style.display = 'none';
+  }
+}
+
+/** Keeps a window inside the game and puts it where its state says. */
+export function placePops(): void {
+  const root = ctx.root;
+  for (const id of ['craft', 'wallet', 'gear'] as const) {
+    const el = root.querySelector<HTMLElement>(`#pop-${id}`);
+    if (!el) continue;
+    const p = ui.pops[id];
+    p.x = Math.round(Math.max(4, Math.min(root.clientWidth - el.offsetWidth - 4, p.x)));
+    p.y = Math.round(Math.max(56, Math.min(root.clientHeight - 60, p.y)));
+    el.style.left = `${p.x}px`;
+    el.style.top = `${p.y}px`;
+  }
+}
+
 function watchTabs(d: ItemDrag, x: number, y: number): void {
   const s = ctx.s;
   if (!s || !atHome(s)) return;
@@ -251,6 +287,25 @@ function onDown(event: PointerEvent): void {
   if (!s || ui.modal !== 'none' || ctx.busy > 0 || ui.screen !== 'game') return;
   if (event.pointerType === 'mouse' && event.button !== 0) return;
   const target = event.target as HTMLElement;
+  // a window over the shop: a press on it brings it to the front; its bar drags it
+  const popEl = target.closest<HTMLElement>('.pop');
+  if (popEl) {
+    const id = popEl.id.replace('pop-', '') as PopId;
+    if (ui.popOrder[ui.popOrder.length - 1] !== id) {
+      ui.popOrder = [...ui.popOrder.filter((x) => x !== id), id];
+      ui.popOrder.forEach((x, z) => {
+        const el = ctx.root.querySelector<HTMLElement>(`#pop-${x}`);
+        if (el) el.style.zIndex = String(24 + z);
+      });
+    }
+    if (target.closest('.pop-bar') && !target.closest('button')) {
+      const rect = ctx.root.getBoundingClientRect();
+      drag = { kind: 'pop', id, dx: event.clientX - rect.left - ui.pops[id].x, dy: event.clientY - rect.top - ui.pops[id].y };
+      popEl.classList.add('held');
+      event.preventDefault();
+      return;
+    }
+  }
   const bar = target.closest('.win-bar');
   if (bar && !target.closest('button')) {
     const rect = ctx.root.getBoundingClientRect();
@@ -356,6 +411,13 @@ function onMove(event: PointerEvent): void {
   const s = ctx.s;
   if (!drag || !s) return;
   const root = ctx.root;
+  if (drag.kind === 'pop') {
+    const rect = root.getBoundingClientRect();
+    ui.pops[drag.id].x = event.clientX - rect.left - drag.dx;
+    ui.pops[drag.id].y = event.clientY - rect.top - drag.dy;
+    placePops();
+    return;
+  }
   if (drag.kind === 'win') {
     const rect = root.getBoundingClientRect();
     ui.win.x = event.clientX - rect.left - drag.dx;
@@ -396,7 +458,7 @@ function onMove(event: PointerEvent): void {
   d.px = event.clientX;
   d.py = event.clientY;
   watchTabs(d, event.clientX, event.clientY);
-  const tab = shownTab(s);
+  const tab = tabAt(s, event.clientX, event.clientY);
   const counter = (d.grid === 'shelf' || d.grid === 'case') && !d.slot ? root.querySelector('#near.drop') : null;
   const overCounter = !!counter && inside(counter.getBoundingClientRect(), event.clientX, event.clientY);
   counter?.classList.toggle('hot', overCounter);
@@ -456,10 +518,11 @@ function onMove(event: PointerEvent): void {
     d.ok = overCounter || fits;
     return;
   }
-  const preview = root.querySelector<HTMLElement>('#preview');
+  const preview = previewOf(tab);
+  hidePreviews(preview);
   const grid = G.gridOf(s, cat, tab);
   const same = !d.slot && tab === d.grid;
-  const spot = overCounter ? null : dropCell(d, event.clientX, event.clientY);
+  const spot = overCounter ? null : dropCell(d, event.clientX, event.clientY, tab);
   let ok = overCounter;
   if (preview) {
     if (!spot) preview.style.display = 'none';
@@ -516,6 +579,10 @@ function onUp(event: PointerEvent): void {
   const d = drag;
   const root = ctx.root;
   drag = null;
+  if (d.kind === 'pop') {
+    root.querySelector(`#pop-${d.id}`)?.classList.remove('held');
+    return;
+  }
   if (d.kind === 'win') {
     cleanup();
     return;
@@ -571,7 +638,7 @@ function onUp(event: PointerEvent): void {
     if (d.slot) return; // a tap on a worn good: the button opens the list
     // a good with an effect of its own: a second click in quick succession uses it (the first one waits a
     // moment before it opens the good's window, so that the window does not get in the way)
-    if (atHome(g) && cat.itemById.get(d.itemId)?.effect && d.grid === 'shelf') {
+    if (atHome(g) && d.grid === 'shelf' && (cat.itemById.get(d.itemId)?.effect || g.stock.find((x) => x.uid === d.uid)?.bag)) {
       const open = (): void => {
         tapWait = null;
         ui.sel = { grid: d.grid, uid: d.uid };
@@ -604,7 +671,7 @@ function onUp(event: PointerEvent): void {
     return;
   }
   const v = G.currentVisitor(g);
-  const tab = shownTab(g);
+  const tab = tabAt(g, event.clientX, event.clientY);
   const counter = (d.grid === 'shelf' || d.grid === 'case') && !d.slot ? root.querySelector('#near.drop') : null;
   const good = (el: HTMLElement | null, sound: 'drop' | 'equip'): void => {
     land(el, from, true);
@@ -689,7 +756,7 @@ function onUp(event: PointerEvent): void {
       bad(home(), place ? 'ここには装備できない' : '');
     }
   } else {
-    const spot = dropCell(d, event.clientX, event.clientY);
+    const spot = dropCell(d, event.clientX, event.clientY, tab);
     let ok = false;
     let uid = d.uid;
     if (spot && d.slot) {
@@ -714,7 +781,7 @@ function onUp(event: PointerEvent): void {
 
 function onCancel(): void {
   if (!drag) return;
-  if (drag.kind !== 'win') drag.ghost?.remove();
+  if (drag.kind !== 'win' && drag.kind !== 'pop') drag.ghost?.remove();
   if (drag.kind === 'item') {
     endItemTimers(drag);
     endDwell(drag);
@@ -725,7 +792,7 @@ function onCancel(): void {
 }
 
 /** True while something is being dragged (the screen must not be redrawn under it). */
-export const dragging = (): boolean => !!drag && drag.kind !== 'win' && drag.active;
+export const dragging = (): boolean => !!drag && drag.kind !== 'win' && drag.kind !== 'pop' && drag.active;
 
 /** Turns the good being dragged a quarter (R, or the right button). True when something was turned. */
 export function rotateDragged(dir: 1 | -1 = 1): boolean {

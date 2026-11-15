@@ -105,7 +105,7 @@ export type GridId = 'shelf' | 'wallet' | 'case';
 /** The goods lying on a grid. */
 export const itemsOf = (s: GameState, id: GridId): StockItem[] => (id === 'shelf' ? s.stock : id === 'wallet' ? s.wallet.items : s.showcase);
 /** Everything a buyer can be sold: what is on the shelf and what is in the showcase. */
-export const forSale = (s: GameState): StockItem[] => [...s.stock, ...s.showcase];
+export const forSale = (s: GameState): StockItem[] => [...s.stock.filter((x) => !x.bag), ...s.showcase];
 /** How wide the showcase is, in columns. */
 export const caseCols = (s: GameState): number => B.caseCols[(hasService(s, 'case1') ? 1 : 0) + (hasService(s, 'case2') ? 1 : 0)];
 
@@ -383,6 +383,8 @@ export function newGame(seed: number, cat: Catalog): GameState {
   // every shop starts with a pot on the shelf (a good like any other: it can be sold — and then there is no pot)
   // (an old, well-used one)
   if (cat.itemById.has(POT_ID)) addTo(s, cat, 'shelf', POT_ID, 0, 0);
+  // … and its wallet stands there too (one cell)
+  giveBag(s, cat);
   return s;
 }
 
@@ -453,7 +455,8 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
   const heroBonus = hero.rarity - 1;
   const temper = pickWeighted(s, B.temperWeights);
   let sellerShare: number = B.sellerShare;
-  if (s.stock.length === 0) sellerShare = 0.85;
+  // (nothing to sell: the wallet and the like do not count)
+  if (forSale(s).length === 0) sellerShare = 0.85;
   else if (freeCells(s, cat) < 4) sellerShare = 0.2;
   const base = {
     heroId: hero.id,
@@ -476,8 +479,10 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
     const ask = Math.max(1, Math.round(itemValue(cat, item.id, 1) * 0.6));
     return { ...base, temper: 0, patience: B.temperPatience[0], kind: 'sell', offers: [{ itemId: item.id, cond: 1, ask }], want: { type: 'any' }, budget: 0, line: lines.sellOpen(s, 0) };
   }
-  if (s.day === 1 && nth === 1 && s.stock.length > 0) {
-    const target = s.stock[s.stock.length - 1];
+  // (the first day's buyer is after an ordinary good of the shop's — not its pot or its wallet)
+  const firstGoods = s.stock.filter((x) => !x.bag && !cat.itemById.get(x.itemId)?.effect);
+  if (s.day === 1 && nth === 1 && firstGoods.length > 0) {
+    const target = firstGoods[firstGoods.length - 1];
     const want: Want = { type: 'param', param: cat.itemById.get(target.itemId)!.params[0] };
     const budget = Math.round(itemValue(cat, target.itemId, target.cond) * B.retail * 1.6);
     return { ...base, temper: 0, patience: B.temperPatience[0], kind: 'buy', want, budget, line: lines.buyOpen(s, want) };
@@ -542,7 +547,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
   let want: Want;
   const shown = shownGoods(s);
   // (word of what the shop has does not bring customers after the shop's own tools, such as the pot)
-  const plain = s.stock.filter((x) => !cat.itemById.get(x.itemId)?.effect);
+  const plain = s.stock.filter((x) => !x.bag && !cat.itemById.get(x.itemId)?.effect);
   if (shown.length > 0 && rand(s) < Math.min(B.showPullMax, B.showPull[0] + B.showPull[1] * shown.length)) {
     // drawn in by the showcase: after the kind of good that is shown there
     const item = cat.itemById.get(pick(s, shown).itemId)!;
@@ -936,7 +941,7 @@ export function pass(s: GameState): void {
 export function dispose(s: GameState, cat: Catalog, uid: number, id: GridId = 'shelf'): boolean {
   const items = itemsOf(s, id);
   const index = items.findIndex((x) => x.uid === uid);
-  if (index < 0) return false;
+  if (index < 0 || items[index].bag) return false;
   const price = disposePrice(cat, items[index]);
   items.splice(index, 1);
   s.gum += price;
@@ -967,6 +972,18 @@ export function showAppeal(s: GameState, cat: Catalog): number {
 /** True when a good with this effect stands on the shelf (that is where it works from). */
 export const hasEffect = (s: GameState, cat: Catalog, effect: Effect): boolean => s.stock.some((x) => cat.itemById.get(x.itemId)?.effect === effect);
 
+/** The wallet in use stands on the shelf. A shop without one there (a new shop, an old save) is given it, if there is a free cell. */
+export function giveBag(s: GameState, cat: Catalog): boolean {
+  if (s.stock.some((x) => x.bag)) return true;
+  // (a wallet of the same kind already on the shelf becomes the one in use)
+  const same = s.stock.find((x) => x.itemId === s.wallet.itemId);
+  const uid = same ? same.uid : addTo(s, cat, 'shelf', s.wallet.itemId, 1, 0);
+  const x = uid === null ? undefined : s.stock.find((it) => it.uid === uid);
+  if (!x) return false;
+  x.bag = true;
+  return true;
+}
+
 /** A save from before the pot was a good: it is handed one, once (on the shelf, in the wallet, or in a parcel by the telephone). */
 export function givePot(s: GameState, cat: Catalog): void {
   if (s.potGiven) return;
@@ -981,7 +998,7 @@ export function givePot(s: GameState, cat: Catalog): void {
 export function toTrash(s: GameState, cat: Catalog, uid: number, id: GridId = 'shelf'): boolean {
   const items = itemsOf(s, id);
   const index = items.findIndex((x) => x.uid === uid);
-  if (index < 0) return false;
+  if (index < 0 || items[index].bag) return false;
   const [x] = items.splice(index, 1);
   s.trash.push(x);
   s.trashGum += disposePrice(cat, x);
