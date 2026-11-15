@@ -26,6 +26,7 @@ export function load(): GameState | null {
     s.trust ??= 0;
     s.services ??= [];
     s.supply ??= null;
+    s.wanted ??= null;
     s.parcel ??= [];
     // saves from before the bin and the wide shelf (the shelf is repacked when the game is entered)
     s.trash ??= [];

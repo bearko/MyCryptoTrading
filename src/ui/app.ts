@@ -11,7 +11,7 @@ import { gearEffects, gearModal, pickModal } from './gear';
 import { gridSection, measure } from './grid';
 import { hud, hudEffects } from './hud';
 import { recipesModal } from './craft';
-import { deckProps, networkModal, parcelModal, trashModal } from './props';
+import { deckProps, networkModal, parcelModal, trashModal, wantedModal } from './props';
 import { mountDesk } from './desk';
 import { hookEffects, housesModal, perkModal } from './hooks';
 import { destModal, ending, helpModal, inspectModal, leaveModal, menuModal, overModal, settingsModal } from './modals';
@@ -57,6 +57,7 @@ function screenHtml(): string {
   if (ui.modal === 'trash' && ctx.s) html += trashModal(ctx.s);
   if (ui.modal === 'network' && ctx.s) html += networkModal(ctx.s);
   if (ui.modal === 'parcel' && ctx.s) html += parcelModal(ctx.s);
+  if (ui.modal === 'wanted' && ctx.s) html += wantedModal(ctx.s);
   if (ui.modal === 'help') html += helpModal();
   if (ui.modal === 'settings') html += settingsModal();
   return html;

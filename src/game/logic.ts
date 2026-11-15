@@ -1,7 +1,7 @@
 import { B } from './balance';
 import type { Param, Catalog, Item } from './catalog';
 import { lines } from './lines';
-import { pick, pickWeighted, rand, randRange } from './rng';
+import { pick, pickWeighted, rand, randInt, randRange } from './rng';
 import { ROTATED, sameCells, type Shape } from './shapes';
 import { factionOfName, noFavor, rankOf, rivalOf, type FactionId } from './factions';
 import { hasService, supplyBlock, trustDaily, type SupplyId } from './network';
@@ -276,6 +276,11 @@ export function comboRate(s: GameState): number {
 
 function dealClosed(s: GameState, v: Visitor): void {
   v.deals += 1;
+  // dealing with the hero on the notice is taking their side: their house remembers it, and so does the house that asked
+  if (v.wanted && v.deals === 1 && s.wanted) {
+    if (v.faction) moveFavor(s, v.faction, B.harbourFavor);
+    moveFavor(s, s.wanted.by, -B.harbourGrudge);
+  }
   s.combo += 1;
   s.totals.bestCombo = Math.max(s.totals.bestCombo, s.combo);
 }
@@ -345,6 +350,7 @@ export function newGame(seed: number, cat: Catalog): GameState {
     services: [],
     supply: null,
     parcel: [],
+    wanted: null,
     trash: [],
     trashGum: 0,
     wide: true,
@@ -360,7 +366,27 @@ export function newGame(seed: number, cat: Catalog): GameState {
 
 // ---------------------------------------------------------------- customers
 
+/** The next customer in line — or, when their day has come, the hero on the wanted notice. */
 function makeVisitor(s: GameState, cat: Catalog): Visitor {
+  const nth = s.queue.length;
+  const v = rollVisitor(s, cat);
+  const w = s.wanted;
+  if (w && !w.came && w.day <= s.day && nth >= w.slot && !v.special && s.day > 1) {
+    const hero = cat.heroById.get(w.heroId)!;
+    w.came = true;
+    v.heroId = hero.id;
+    v.faction = factionOfName(hero.faction);
+    v.wanted = true;
+    // on the run: money to spend freely, or goods to be rid of
+    // (the purse is this hero's own, not that of whoever would have come instead)
+    if (v.kind === 'buy') v.budget = Math.round(B.heroWealth[Math.min(hero.rarity, 4)] * randRange(s, B.wealthSpread[0], B.wealthSpread[1]) * (1 + s.rep * B.wealthPerRep) * B.wantedBudget);
+    else for (const o of v.offers) o.ask = Math.max(1, Math.round(o.ask * B.wantedAsk));
+    v.line = lines.wantedOpen(s);
+  }
+  return v;
+}
+
+function rollVisitor(s: GameState, cat: Catalog): Visitor {
   // which hero: rarer ones come less often. A legendary hero is a rich buyer — none before the routine has
   // settled in, and the third day's second customer is always one
   const nthToday = s.queue.length;
@@ -484,7 +510,50 @@ export function openShop(s: GameState, cat: Catalog): void {
   s.phase = 'open';
   s.visitorsToday = visitorsExpected(s);
   s.cursor = -1;
+  if (!s.wanted && s.day >= B.wantedFromDay && rand(s) < B.wantedChance) postWanted(s, cat);
   callNext(s, cat);
+}
+
+// ---------------------------------------------------------------- the wanted notice
+
+/** A house posts a notice for a hero of its rival house: they will come by within a few days. */
+function postWanted(s: GameState, cat: Catalog): void {
+  const by = pick(s, ['suzaku', 'seiryu', 'genbu', 'byakko'] as const);
+  const prey = rivalOf(by)!;
+  const heroes = cat.heroes.filter((h) => factionOfName(h.faction) === prey && h.rarity >= 2 && h.rarity <= 4);
+  if (heroes.length === 0) return;
+  const hero = pick(s, heroes);
+  s.wanted = { heroId: hero.id, by, bounty: B.wantedBounty[hero.rarity], day: s.day + randInt(s, B.wantedWithin + 1), slot: randInt(s, Math.max(1, s.visitorsToday - 1)), came: false };
+}
+
+/**
+ * Turns in the customer at the counter. The hero on the notice: the bounty, the thanks of the house that
+ * asked, and a grudge from the hero's own. Anyone else: a fine, and their house thinks less of the shop.
+ */
+export function report(s: GameState): '' | 'caught' | 'wrong' {
+  const v = currentVisitor(s);
+  if (s.phase !== 'open' || !s.wanted || !v || v.done) return '';
+  if (v.wanted) {
+    s.gum += s.wanted.bounty;
+    s.today.revenue += s.wanted.bounty;
+    moveFavor(s, s.wanted.by, B.wantedFavor);
+    if (v.faction) moveFavor(s, v.faction, -B.wantedGrudge);
+    s.wanted = null;
+    v.wanted = false;
+    v.line = '……覚えていろ。';
+    v.mood = 'annoyed';
+    v.done = true;
+    return 'caught';
+  }
+  const fine = Math.min(s.gum, B.wantedFine);
+  s.gum -= fine;
+  s.today.spend += fine;
+  if (v.faction) moveFavor(s, v.faction, -B.wantedSlight);
+  v.line = '人違いだ！ 失礼な店だな。';
+  v.mood = 'annoyed';
+  v.done = true;
+  leftEmpty(s, v);
+  return 'wrong';
 }
 
 /** Brings the next customer to the counter, or closes the shop when the day's line is done. */
@@ -929,6 +998,8 @@ export function endDay(s: GameState): void {
       return;
     }
   }
+  // the notice comes down once the hero has been and gone
+  if (s.wanted?.came) s.wanted = null;
   s.day += 1;
   startMorning(s);
 }

@@ -70,6 +70,20 @@ export interface Visitor {
   deals: number;
   /** an unusual customer: 大富豪 / 急ぎの旅人 / 収集家 */
   special?: 'rich' | 'hurry' | 'collector';
+  /** the hero on the wanted notice */
+  wanted?: boolean;
+}
+
+/** A notice on the shop's wall: a house wants a hero of its rival house. */
+export interface Wanted {
+  heroId: number;
+  /** the house that posted it */
+  by: FactionId;
+  bounty: number;
+  /** the day the hero comes, and from which place in the line */
+  day: number;
+  slot: number;
+  came: boolean;
 }
 
 /** Today's order: a small goal for the day, paid at once when it is met. */
@@ -216,6 +230,8 @@ export interface GameState {
   services: ServiceId[];
   /** goods on order from the guild (they come tomorrow morning), and goods that have come and wait at the door */
   supply: { id: SupplyId; param: Param; goods: Parcel[] } | null;
+  /** the wanted notice on the wall, if one is up */
+  wanted: Wanted | null;
   parcel: Parcel[];
   /** goods dropped in the bin: they can be taken back until the night, when they are carried off and paid for */
   trash: StockItem[];

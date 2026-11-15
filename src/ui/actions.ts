@@ -1,3 +1,4 @@
+import { B } from '../game/balance';
 import { perkById } from '../game/perks';
 import { catalog as cat } from '../game/catalog';
 import { craft, CRAFT_MAX } from '../game/craft';
@@ -97,7 +98,9 @@ function openShop(g: GameState): void {
   void locked(async () => {
     audio.sfx('shutterUp');
     haptic('medium');
+    const posted = !g.wanted;
     G.openShop(g, cat);
+    if (posted && g.wanted) window.setTimeout(() => note('壁に、新しい手配書が貼り出されました'), OPEN_MS + 600);
     newCustomer();
     ui.lateKey = ui.custKey;
     store.save(g);
@@ -723,6 +726,39 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
     case 'parcel':
       ui.modal = 'parcel';
       break;
+    case 'wanted':
+      ui.modal = 'wanted';
+      break;
+    case 'report': {
+      const bounty = g.wanted?.bounty ?? 0;
+      const result = G.report(g);
+      if (!result) {
+        nope(el);
+        return;
+      }
+      // the customer is led away (or storms off): the slip closes, they walk out, the next one comes in
+      ui.modal = 'none';
+      ui.win.open = false;
+      ui.haggleOpen = false;
+      store.save(g);
+      render();
+      haptic('heavy');
+      if (result === 'caught') {
+        audio.sfx('buy');
+        void fx.banner('通報成立', { sub: `賞金 +${bounty} GUM`, color: tok('--gum'), ms: 1400 });
+      } else {
+        audio.sfx('error');
+        custShake();
+        note(`人違いでした。罰金 ${B.wantedFine} GUM`);
+      }
+      const key = ui.custKey;
+      window.clearTimeout(nextTimer);
+      nextTimer = window.setTimeout(() => {
+        if (ctx.s !== g || key !== ui.custKey || !G.currentVisitor(g)?.done || ctx.busy > 0) return;
+        callNext(g);
+      }, result === 'caught' ? 1700 : 1000);
+      return;
+    }
     case 'unpack': {
       const taken = arg === 'all' ? G.unpackAll(g, cat) : G.unpack(g, cat, n) ? 1 : 0;
       if (taken === 0) {

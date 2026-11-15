@@ -191,6 +191,25 @@ export const B = {
   orderRep: 1,
   /** unusual customers: from this day on, each customer has this chance to be one */
   specialFromDay: 3,
+  /**
+   * A wanted notice: from this day on, when none is up, the odds each morning that a house posts one for a
+   * hero of its rival house. The hero comes to the shop within a few days — with a fat purse, or goods going
+   * cheap — and the shop turns them in (the bounty, by the hero's rarity, and the regard of the house that
+   * asked) or deals with them (the regard of their own house).
+   */
+  wantedFromDay: 4,
+  wantedChance: 0.35,
+  wantedWithin: 2,
+  wantedBounty: [0, 90, 140, 230, 400, 700],
+  wantedBudget: 1.6,
+  wantedAsk: 0.65,
+  wantedFavor: 8,
+  wantedGrudge: 6,
+  harbourFavor: 6,
+  harbourGrudge: 4,
+  /** turning in the wrong customer: a fine, and their house thinks less of the shop */
+  wantedFine: 60,
+  wantedSlight: 3,
   specialChance: 0.055,
   richBudget: 1.5,
   collectorBudget: 2.5,

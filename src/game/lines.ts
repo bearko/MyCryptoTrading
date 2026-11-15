@@ -9,6 +9,7 @@ const SELL_OPEN = [
   ['値は決めてある。まける気はないぞ。', '目利きなら価値が分かるはずだ。', 'この値で買え。話はそれからだ。'],
 ];
 const BUY_OPEN = ['{want}を探しているんだ。', '{want}は置いてあるかい？', '{want}が要る。予算は見てのとおりだ。'];
+const WANTED_OPEN = ['……今日は、顔を見なかったことにしてくれないか。', '急いでいる。訳は聞かないでくれ。', '追われていてね。長居はできないんだ。'];
 const HAGGLE_OK = ['まあ、いいだろう。その値で手を打とう。', '仕方ないね。それでいいよ。', '……分かった。持っていけ。'];
 const HAGGLE_NG = ['それは安すぎるよ。', 'その値では手放せません。', '冗談はよせ。'];
 const SWEETENED = ['えっ、色をつけてくれるのかい？ 恩に着るよ！', 'よろしいのですか。ありがとうございます。', '……ほう。話の分かる店だ。'];
@@ -36,6 +37,7 @@ export function wantText(want: Want): string {
 
 export const lines = {
   sellOpen: (h: RngHolder, temper: number) => pick(h, SELL_OPEN[temper]),
+  wantedOpen: (h: RngHolder) => pick(h, WANTED_OPEN),
   buyOpen: (h: RngHolder, want: Want) => pick(h, BUY_OPEN).replace('{want}', wantText(want)),
   haggleOk: (temper: number) => HAGGLE_OK[temper],
   haggleNg: (temper: number) => HAGGLE_NG[temper],
