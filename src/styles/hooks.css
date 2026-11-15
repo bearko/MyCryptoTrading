@@ -384,3 +384,16 @@ button.hud-rep {
   line-height: 1.3;
   color: var(--sub);
 }
+
+/* a word of advice in the morning paper */
+.news-tip b {
+  font-family: var(--f-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.news-tip b b {
+  font-weight: 900;
+  background: var(--gum-wash);
+  padding: 0 2px;
+}

@@ -5,7 +5,7 @@ import * as G from '../game/logic';
 import { perkById } from '../game/perks';
 import type { DayOrder, GameState } from '../game/state';
 import { audio, haptic } from './audio';
-import { ctx } from './core';
+import { ctx, isWide } from './core';
 import { fx } from './fx';
 import { btn, esc, num } from './html';
 
@@ -61,7 +61,15 @@ export function morningExtras(g: GameState): string {
     : '';
   const parcel = g.parcel.length ? `<p class="news-order news-parcel"><span>荷物</span><b>ギルドから ${g.parcel.length} 個届いています</b><em>電話の下の箱から受け取る</em></p>` : '';
   const wanted = g.wanted ? `<p class="news-order news-wanted"><span>手配</span><b>${esc(cat.heroById.get(g.wanted.heroId)!.ja)}</b><em>賞金 ${num(g.wanted.bounty)} GUM</em></p>` : '';
-  return order + wanted + parcel + perks + houses;
+  // a word of advice on the mornings when something new is in the shop (the things on the wall are on a wide screen only)
+  const tips: Record<number, [string, string] | undefined> = {
+    2: isWide() ? ['手引き', '棚の品を、壁の<b>ショーケース</b>へドラッグすると、その系統を欲しがる客が来やすくなります'] : undefined,
+    3: isWide() ? ['手引き', '壁の<b>電話</b>で、商人ギルドに頼みごとや取り寄せができます（信用は毎朝貯まります）'] : undefined,
+    [B.wantedFromDay]: isWide() ? ['手引き', '壁に<b>手配書</b>が貼られることがあります。その客が来たら、通報するか取引するかを選べます'] : undefined,
+    [B.fakeFromDay]: ['うわさ', '<b>レプリカ</b>が出回りはじめました。品をカウンターの<b>ルーペ</b>へドラッグすると見分けられます（1 日 3 回）'],
+  };
+  const tip = tips[g.day] ? `<p class="news-order news-tip"><span>${tips[g.day]![0]}</span><b>${tips[g.day]![1]}</b></p>` : '';
+  return order + tip + wanted + parcel + perks + houses;
 }
 
 // ---------------------------------------------------------------- the houses
