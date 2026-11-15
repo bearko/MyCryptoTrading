@@ -197,7 +197,12 @@ export function clampWindow(): void {
   // (on a wide screen the slip keeps to the shop's side)
   const areaW = stageWidth();
   // (on a wide screen the slip opens clear of the showcase on the wall, until it is moved by hand)
-  if (isWide() && !ui.win.moved) ui.win.x = Math.max(ui.win.x, 160);
+  // (the showcase grows sideways with its slots)
+  if (isWide() && !ui.win.moved) {
+    const wall = document.getElementById('sprops')?.getBoundingClientRect();
+    const clear = wall && wall.width > 0 ? wall.right - ctx.root.getBoundingClientRect().left + 12 : 160 + Math.max(0, (ctx.s ? G.showSlots(ctx.s) : 2) - 2) * 51;
+    ui.win.x = Math.max(ui.win.x, Math.round(clear));
+  }
   ui.win.x = Math.max(0, Math.min(ui.win.x, areaW - win.offsetWidth));
   ui.win.y = Math.max(0, Math.min(ui.win.y, root.clientHeight - 48));
   win.style.left = `${ui.win.x}px`;
