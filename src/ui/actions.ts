@@ -571,6 +571,8 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
         const ids = G.allPicks(v).map((i) => `offer-${offerKey(v, i)}`);
         flip(ids, () => {
           ui.picked = G.allPicks(v);
+          // the slip comes up at once, even in the middle of the customer's greeting
+          if (!v.done) ui.win.open = true;
           render();
         });
         audio.sfx('drop');

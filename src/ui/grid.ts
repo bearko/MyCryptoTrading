@@ -98,7 +98,7 @@ export function gridSection(g: GameState, side = ''): string {
         ? craftBoard(g)
         : `<div class="grid" id="grid-${id}" data-grid="${id}" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${items}<div class="preview" id="preview" data-live></div></div>`;
   return `<section class="inv ${tab} ${side ? 'with-side' : ''}" id="inv" data-ui>
-    <div class="inv-head">${head}<span class="inv-tip">${hasMouse() ? (atHome(g) ? 'ドラッグ中に R：回転<br />右クリック：メニュー' : 'クリック：詳細<br />マウスを乗せる：ひと目') : `${atHome(g) ? 'つまんでタブへ：移動' : 'タップ：詳細'}<br />長押し：メニュー`}</span></div>
+    <div class="inv-head">${head}<span class="inv-tip">${hasMouse() ? (atHome(g) ? 'R：回転（ドラッグ中）　右クリック：メニュー<br />Space：せりふ送り　B：ベル' : 'クリック：詳細<br />マウスを乗せる：ひと目') : `${atHome(g) ? 'つまんでタブへ：移動' : 'タップ：詳細'}<br />長押し：メニュー`}</span></div>
     <div class="inv-body">
       <div class="board" ${atHome(g) && boardMin ? `style="min-height:${boardMin}px"` : ''}>${board}</div>
       ${side}
@@ -135,6 +135,8 @@ export function measure(g: GameState): void {
       const shelf = G.gridOf(g, cat, 'shelf');
       const shelfCell = fit(shelf.cols, shelf.rows);
       boardMin = shelf.rows * shelfCell + 18;
+      // (the counter's mat is made about as wide as the shelf, so the bell is never far from the goods)
+      ctx.root.style.setProperty('--shelf-w', `${shelf.cols * shelfCell}px`);
       ctx.cell = grid === shelf || shownGrid(g) === 'shelf' ? shelfCell : fit(grid.cols, grid.rows);
       return;
     }

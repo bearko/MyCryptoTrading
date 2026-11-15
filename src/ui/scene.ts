@@ -73,6 +73,25 @@ export function hushBubble(): void {
   el.classList.add('fade');
 }
 
+/**
+ * The space bar moves the customer's line on: a line still being typed is shown whole at once, and a line
+ * that is all there is put away. True when there was a line to move on.
+ */
+export function advanceLine(): boolean {
+  const el = ctx.root.querySelector<HTMLElement>('#bubble');
+  if (!el || !el.classList.contains('show') || el.classList.contains('fade')) return false;
+  const typed = el.querySelector<HTMLElement>('.typed');
+  const rest = el.querySelector<HTMLElement>('.rest');
+  if (typed && rest && rest.textContent) {
+    window.clearTimeout(typing.timer);
+    typed.textContent = `${typed.textContent ?? ''}${rest.textContent}`;
+    rest.textContent = '';
+    return true;
+  }
+  hushBubble();
+  return true;
+}
+
 function type(el: HTMLElement, text: string, pitch: number, delay: number): void {
   window.clearTimeout(typing.timer);
   window.clearTimeout(typing.hide);

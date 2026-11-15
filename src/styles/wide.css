@@ -184,3 +184,18 @@
     display: none;
   }
 }
+
+/* The shop's side of the counter is about as wide as the shelf below it, in the middle: the mat and the bell
+   sit together, so the pointer never has to cross the screen to ring it. The wood runs the full width. */
+@media (min-width: 900px) and (min-height: 520px) {
+  .counter {
+    --cw: clamp(420px, calc(var(--shelf-w, 640px) + 70px), 100% - 24px);
+    justify-content: center;
+  }
+  .counter .counter-mat {
+    flex: 0 1 calc(var(--cw) - 70px);
+  }
+  .counter .loupe {
+    left: calc(50% - var(--cw) / 2 + 96px);
+  }
+}
