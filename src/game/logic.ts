@@ -22,8 +22,11 @@ export function itemValue(cat: Catalog, itemId: number, cond: number): number {
 
 /** What a customer is asked to pay at a markup tier. */
 export function salePrice(cat: Catalog, stock: StockItem, tier: number): number {
-  return Math.round(itemValue(cat, stock.itemId, stock.cond) * B.retail * (1 + markupOf(tier)));
+  return Math.round(stockValue(cat, stock) * B.retail * (1 + markupOf(tier)));
 }
+/** What a good on the shelf is worth to the shop: a replica known for one is worth a fraction of the real thing. */
+export const stockValue = (cat: Catalog, x: { itemId: number; cond: number; fake?: boolean; seen?: boolean }): number =>
+  Math.round(itemValue(cat, x.itemId, x.cond) * (x.fake && x.seen ? B.fakeValue : 1));
 /** A price tier as a rate: 0 and up are markups over the fair price; −1 and −2 are the kind prices under it. */
 export const markupOf = (tier: number): number => (tier >= 0 ? B.markupTiers[tier] : -B.generousTiers[-tier - 1]);
 /** Every tier a sale can be priced at, from the kindest to the dearest. */
@@ -465,6 +468,14 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
       const guild = hasService(s, 'eye') ? 1 - B.serviceAsk : 1;
       offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi) * hurry * guild * (1 - B.boonAsk * favorRank(s, 'genbu')))) });
     }
+    // some of it is not what it seems: a replica, priced a little low
+    if (s.day >= B.fakeFromDay) {
+      for (const o of offers) {
+        if (rand(s) >= B.fakeOdds[cat.itemById.get(o.itemId)!.rarity]) continue;
+        o.fake = true;
+        o.ask = Math.max(1, Math.round(o.ask * B.fakeAsk));
+      }
+    }
     const bundleRate = count >= 2 ? B.bundleRates[pickWeighted(s, B.bundleWeights)] : 0;
     return { ...base, kind: 'sell', offers, bundleRate, want: { type: 'any' }, budget: 0, line: lines.sellOpen(s, temper) };
   }
@@ -512,6 +523,36 @@ export function openShop(s: GameState, cat: Catalog): void {
   s.cursor = -1;
   if (!s.wanted && s.day >= B.wantedFromDay && rand(s) < B.wantedChance) postWanted(s, cat);
   callNext(s, cat);
+}
+
+// ---------------------------------------------------------------- the loupe
+
+export const looksLeft = (s: GameState): number => Math.max(0, B.looksPerDay - s.today.looks);
+
+/**
+ * Looks at a seller's good through the loupe: the real thing, or a replica. A seller found out takes
+ * whatever a replica is worth.
+ */
+export function examineOffer(s: GameState, cat: Catalog, index: number): '' | 'real' | 'fake' {
+  const v = currentVisitor(s);
+  const o = v?.kind === 'sell' && !v.done ? v.offers[index] : undefined;
+  if (!v || !o || o.seen || looksLeft(s) <= 0) return '';
+  s.today.looks += 1;
+  o.seen = true;
+  if (!o.fake) return 'real';
+  o.ask = Math.max(1, Math.round(itemValue(cat, o.itemId, o.cond) * B.fakeValue * B.fakeCaughtAsk));
+  v.line = 'ば、ばれたか……。その値でいい、引き取ってくれないか。';
+  v.mood = 'annoyed';
+  return 'fake';
+}
+
+/** Looks at a good of the shop's own (on the shelf or in the wallet). */
+export function examineStock(s: GameState, uid: number): '' | 'real' | 'fake' {
+  const x = s.stock.find((it) => it.uid === uid) ?? s.wallet.items.find((it) => it.uid === uid);
+  if (!x || x.seen || looksLeft(s) <= 0) return '';
+  s.today.looks += 1;
+  x.seen = true;
+  return x.fake ? 'fake' : 'real';
 }
 
 // ---------------------------------------------------------------- the wanted notice
@@ -650,7 +691,10 @@ export function buy(s: GameState, cat: Catalog, picks: readonly number[]): boole
   taken.forEach((o, i) => {
     const paid = i === taken.length - 1 ? left : Math.round(o.ask * (1 - quote.rate));
     left -= paid;
-    addStock(s, cat, o.itemId, o.cond, paid);
+    const uid = addTo(s, cat, 'shelf', o.itemId, o.cond, paid);
+    const got = uid === null ? undefined : s.stock.find((x) => x.uid === uid);
+    if (got && o.fake) got.fake = true;
+    if (got && o.seen) got.seen = true;
   });
   s.gum -= quote.price;
   s.today.spend += quote.price;
@@ -767,6 +811,8 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
     const params = uids.map((uid) => cat.itemById.get(s.stock.find((x) => x.uid === uid)!.itemId)!.params);
     s.last = { bonus, orderReward: 0 };
     s.gum += quote.paid + bonus;
+    // a replica sold as the real thing: the buyer may find out
+    const found = s.stock.some((x) => uids.includes(x.uid) && x.fake && !x.seen) && rand(s) < B.fakeFound;
     s.stock = s.stock.filter((x) => !uids.includes(x.uid));
     s.today.revenue += quote.paid + bonus;
     s.today.sold += uids.length;
@@ -787,6 +833,13 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
       v.line = lines.dealBuyer(v.temper);
     } else {
       v.line = tier < 0 ? lines.kindPrice(v.temper) : lines.moreBuyer(v.temper);
+    }
+    if (found) {
+      addRep(s, -B.fakeRep);
+      if (v.faction) moveFavor(s, v.faction, -B.fakeFavor);
+      v.line = '……待て。これはレプリカじゃないか！';
+      v.mood = 'annoyed';
+      s.lastFake = true;
     }
     return 'sold';
   }

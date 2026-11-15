@@ -98,7 +98,7 @@ function take(s: GameState, id: GridId, uid: number): LooseItem | null {
   const index = items.findIndex((x) => x.uid === uid);
   if (index < 0) return null;
   const [x] = items.splice(index, 1);
-  return { itemId: x.itemId, cond: x.cond, paid: x.paid };
+  return { itemId: x.itemId, cond: x.cond, paid: x.paid, ...(x.fake ? { fake: true } : {}), ...(x.seen ? { seen: true } : {}) };
 }
 
 /**
@@ -154,7 +154,12 @@ export function equip(s: GameState, cat: Catalog, uid: number, slot?: SlotId, fr
   if (!fitsSlot(item, target)) return 'invalid';
   const old = s.equip[target];
   const worn = take(s, from, uid)!;
-  if (old && addTo(s, cat, from, old.itemId, old.cond, old.paid) === null) {
+  const backUid = old ? addTo(s, cat, from, old.itemId, old.cond, old.paid) : null;
+  // (what comes off keeps what is known about it)
+  const back = backUid === null ? undefined : gridOf(s, cat, from).items.find((x) => x.uid === backUid);
+  if (back && old?.fake) back.fake = true;
+  if (back && old?.seen) back.seen = true;
+  if (old && backUid === null) {
     source.push(backup);
     return 'noroom';
   }
@@ -172,7 +177,7 @@ export function unequip(s: GameState, cat: Catalog, slot: SlotId, to: GridId = '
   const target = gridOf(s, cat, to);
   const spot = x === undefined || y === undefined ? findSlotIn(target, cat, old.itemId) : canPlaceIn(target, cat, old.itemId, x, y, 0) ? { x, y, rot: 0 } : null;
   if (!spot) return false;
-  target.items.push({ uid: s.nextUid++, itemId: old.itemId, cond: old.cond, paid: old.paid, ...spot });
+  target.items.push({ uid: s.nextUid++, itemId: old.itemId, cond: old.cond, paid: old.paid, ...(old.fake ? { fake: true } : {}), ...(old.seen ? { seen: true } : {}), ...spot });
   s.equip[slot] = null;
   return true;
 }

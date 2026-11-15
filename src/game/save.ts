@@ -36,6 +36,7 @@ export function load(): GameState | null {
     s.made ??= [];
     s.crosses ??= [];
     s.today.crafts ??= 0;
+    s.today.looks ??= 0;
     s.totals.crafts ??= 0;
     // saves from before the houses
     s.favor = { ...noFavor(), ...(s.favor ?? {}) };

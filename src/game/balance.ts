@@ -197,6 +197,21 @@ export const B = {
    * cheap — and the shop turns them in (the bounty, by the hero's rarity, and the regard of the house that
    * asked) or deals with them (the regard of their own house).
    */
+  /**
+   * Replicas among what sellers bring, from this day on: the odds by rarity; what a replica is worth once it
+   * is known for one (a share of the real thing); how much lower its asking price is (a hint for a sharp eye);
+   * what a seller found out will take for it (a share of the replica's worth); the looks through the loupe a
+   * day; and what selling one as the real thing costs when the buyer finds out (the odds, reputation, regard).
+   */
+  fakeFromDay: 5,
+  fakeOdds: [0, 0.03, 0.05, 0.12, 0.18, 0.2],
+  fakeValue: 0.3,
+  fakeAsk: 0.88,
+  fakeCaughtAsk: 0.5,
+  looksPerDay: 3,
+  fakeFound: 0.5,
+  fakeRep: 3,
+  fakeFavor: 5,
   wantedFromDay: 4,
   wantedChance: 0.35,
   wantedWithin: 2,
