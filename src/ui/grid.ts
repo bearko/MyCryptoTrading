@@ -100,7 +100,7 @@ export function gridSection(g: GameState, side = ''): string {
         ? craftBoard(g)
         : `<div class="grid" id="grid-${id}" data-grid="${id}" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${items}<div class="preview" id="preview" data-live></div></div>`;
   return `<section class="inv ${tab} ${side ? 'with-side' : ''}" id="inv" data-ui>
-    <div class="inv-head">${head}<span class="inv-tip">${hasMouse() ? (atHome(g) ? 'R：回転（ドラッグ中）　右クリック：メニュー<br />Space：せりふ送り　B：ベル' : 'クリック：詳細<br />マウスを乗せる：ひと目') : `${atHome(g) ? 'つまんでタブへ：移動' : 'タップ：詳細'}<br />長押し：メニュー`}</span></div>
+    <div class="inv-head">${head}<span class="inv-tip">${hasMouse() ? (atHome(g) ? 'Q・E：回転（ドラッグ中）　右クリック：メニュー<br />Space：せりふ送り　B：ベル　<b>O：操作の案内</b>' : 'クリック：詳細<br />マウスを乗せる：ひと目') : `${atHome(g) ? 'つまんでタブへ：移動' : 'タップ：詳細'}<br />長押し：メニュー`}</span></div>
     <div class="inv-body">
       <div class="board" ${atHome(g) && boardMin ? `style="min-height:${boardMin}px"` : ''}>${board}</div>
       ${side}

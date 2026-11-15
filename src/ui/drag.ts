@@ -57,6 +57,52 @@ type OfferDrag = { kind: 'offer'; loupe?: boolean; index: number; id: string; st
 /** A click on a good with an effect, waiting to see whether a second one follows. */
 let tapWait: { uid: number; timer: number } | null = null;
 
+/**
+ * A click with a key held: Ctrl (or ⌘) sends the good to the shelf, Shift to the showcase, Alt onto the
+ * counter for the buyer who is there. True when the click was one of these (whether or not the good moved).
+ */
+function quickMove(g: NonNullable<typeof ctx.s>, grid: G.GridId, uid: number, event: PointerEvent): boolean {
+  const to = event.altKey ? 'counter' : event.shiftKey ? 'case' : event.ctrlKey || event.metaKey ? 'shelf' : '';
+  if (!to || !atHome(g) || event.button !== 0) return false;
+  event.preventDefault();
+  ctx.swallowClick = true;
+  let ok = false;
+  let why = '';
+  if (to === 'counter') {
+    const v = G.currentVisitor(g);
+    const x = G.forSale(g).find((it) => it.uid === uid);
+    if (!v || v.done || v.kind !== 'buy' || g.phase !== 'open') why = 'いまは、売る相手がいません';
+    else if (!x) why = '棚かショーケースの品だけ、カウンターに出せます';
+    else if (!G.matches(cat, v.want, x.itemId)) why = '希望と違う品です';
+    else if (!ui.counter.includes(uid)) {
+      ui.counter.push(uid);
+      ui.win.open = true;
+      ok = true;
+    }
+  } else if (grid === to) why = to === 'shelf' ? 'もう棚にあります' : 'もうショーケースにあります';
+  else if (ui.counter.includes(uid)) why = 'カウンターに出している品です';
+  else {
+    ok = N.transfer(g, cat, grid, uid, to);
+    if (!ok) why = to === 'shelf' ? '棚に、置く場所がありません' : 'ショーケースに入りません（形が合う空きがありません）';
+  }
+  if (ok) {
+    ui.craft = ui.craft.filter((id) => id !== uid);
+    store.save(g);
+  }
+  ctx.render();
+  if (ok) {
+    audio.sfx('drop');
+    haptic('light');
+    const el = document.getElementById(to === 'counter' ? `put-${uid}` : `item-${uid}`);
+    if (el) fx.burst('dust', pointOn(el, 0.5, 0.8), { count: 6, scale: 0.7 });
+  } else {
+    audio.sfx('error');
+    haptic('double');
+    if (why) note(why, 'info');
+  }
+  return true;
+}
+
 const grown = (r: DOMRect, by: number): DOMRect => new DOMRect(r.x - by, r.y - by, r.width + by * 2, r.height + by * 2);
 
 /** What the loupe showed: a stamp over the good, a sound, and a word when there was nothing to see. */
@@ -237,6 +283,8 @@ function onDown(event: PointerEvent): void {
   const grid = (cellEl.closest<HTMLElement>('[data-grid]')?.dataset.grid ?? 'shelf') as G.GridId;
   const stockNow = G.gridOf(s, cat, grid).items.find((it) => it.uid === uid);
   if (!stockNow) return;
+  // a click with a key held sends the good straight to the shelf, the showcase or the counter
+  if (quickMove(s, grid, uid, event)) return;
   const rect = cellEl.parentElement!.getBoundingClientRect();
   const x = event.clientX;
   const y = event.clientY;
@@ -680,11 +728,11 @@ function onCancel(): void {
 export const dragging = (): boolean => !!drag && drag.kind !== 'win' && drag.active;
 
 /** Turns the good being dragged a quarter (R, or the right button). True when something was turned. */
-export function rotateDragged(): boolean {
+export function rotateDragged(dir: 1 | -1 = 1): boolean {
   if (!drag || drag.kind !== 'item' || !drag.active || drag.slot || drag.uid < 0) return false;
   const d = drag;
   d.rot0 ??= d.rot;
-  d.rot = (d.rot + 1) % 4;
+  d.rot = (d.rot + dir + 4) % 4;
   const x = d.px ?? d.startX;
   const y = d.py ?? d.startY;
   reGhost(d, x, y);
