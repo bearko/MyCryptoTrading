@@ -52,13 +52,13 @@ export function hud(g: GameState): string {
     rent = `<div class="rent ${left <= 1 ? 'hot' : ''} ${left === 0 ? 'due' : ''}" id="rent" aria-label="家賃 ${g.rent} GUM、${left === 0 ? '今夜' : `あと${left}日`}">
       <span class="rent-k">家賃</span><b class="rent-n ${short && left <= 1 ? 'short' : ''}">${num(g.rent)}</b>
       <span class="rent-gauge">${segs}</span>
-      <span class="rent-left">${left === 0 ? '今夜' : `あと<b>${left}</b>日`}</span>
+      <span class="rent-left">${left === 0 ? '今夜' : `あと<b>${left}</b>日`}</span><span class="rent-note">${left === 0 ? '今夜' : `あと ${left} 日で`}家賃 ${num(g.rent)} GUM</span>
     </div>`;
   }
   const stars = Math.max(0, Math.min(100, g.rep));
   return `<header class="hud" id="hud" data-ui>
     <div class="hud-row">
-      <div class="day-tag" id="day-tag"><small>DAY</small><b>${g.day}</b><i>${weekday}</i></div>
+      <button class="day-tag" id="day-tag" data-act="calendar" data-sfx="open" aria-label="${g.day} 日目（${weekday}）。クリックで暦を見る"><small>DAY</small><b>${g.day}</b><i>${weekday}</i></button>
       <div class="hud-gum" id="hud-gum" aria-label="所持 GUM"><img src="${cat.icons.gum}" alt="" /><b id="gum-num" data-live>${num(shown.gum)}</b><small>GUM</small></div>
       <button class="hud-rep" id="hud-rep" data-act="houses" data-sfx="open" aria-label="評判 ${g.rep}（タップで派閥の評価を見る）">
         <span class="rep-top"><small>評判</small><b id="rep-num">${g.rep}</b></span>

@@ -5,7 +5,7 @@
 import { catalog as cat, PARAM_JA } from '../game/catalog';
 import * as G from '../game/logic';
 import { SLOT_IDS, type GameState } from '../game/state';
-import { B } from '../game/balance';
+import { B, WEEKDAYS } from '../game/balance';
 import { factionById, rivalOf } from '../game/factions';
 import { GROUP_JA, hasService, loanBlock, loanNightly, loanTotal, serviceBlock, SERVICES, SUPPLIES, supplyBlock, supplyById, trustDaily } from '../game/network';
 import { atHome, CASE_CELL, ctx, ui } from './core';
@@ -70,14 +70,15 @@ export function stageProps(g: GameState): string {
         .map((p) => `<button class="seek ${g.seek === p ? 'on' : ''} s-${p}" data-act="seek" data-arg="${p}" aria-pressed="${g.seek === p}">${PARAM_JA[p].replace('系', '')}</button>`)
         .join('')}</div>`
     : '';
+  // (the telephone is a set that stands on the counter)
+  const phone = `<button class="phone" id="phone" data-act="phone" data-sfx="open" aria-label="電話（商人ギルドに頼みごとをする。信用 ${g.trust}）">${PHONE}<b>電話</b><small>信用 ${num(g.trust)}</small></button>`;
   return `<div class="sprops" id="sprops" data-ui>
     <div class="case ${full ? 'full' : ''}" id="case"><b>ショーケース</b>
       <div class="case-grid" id="case-grid" data-grid="case" style="--cell:${CASE_CELL}px;width:${grid.cols * CASE_CELL}px;height:${grid.rows * CASE_CELL}px">${goods}<div class="preview" id="case-preview" data-live></div></div>
       ${sign}<small class="case-tip">${tip}</small></div>
-    <button class="phone" id="phone" data-act="phone" data-sfx="open" aria-label="電話（商人ギルドに頼みごとをする。信用 ${g.trust}）">${PHONE}<b>電話</b><small>信用 ${num(g.trust)}</small></button>
     ${wantedNotice(g)}
     ${g.parcel.length ? `<button class="parcel" id="parcel" data-act="parcel" data-sfx="open" aria-label="ギルドから届いた荷物（${g.parcel.length} 個。クリックで受け取る）">${CRATE}<b>荷物</b><em>${g.parcel.length}</em></button>` : ''}
-  </div>`;
+  </div>${phone}`;
 }
 
 /** The notice on the wall: a face, and what the house that posted it will pay. */
@@ -190,5 +191,30 @@ export function networkModal(g: GameState): string {
     <div class="svc-purse"><span>所持金 <b>${gum(g.gum)}</b></span><span>信用 <b>${num(g.trust)}</b></span></div>
     <div class="modal-scroll"><h3 class="rc-sub">取り寄せ<small>翌朝に届く</small></h3>${supplyRows(g)}${groups}<h3 class="rc-sub">融資<small>いま借りて、あとで返す</small></h3>${loanRows(g)}</div>
     <div class="actions one">${btn('modal-close', '電話を切る', { cls: 'primary' })}</div>
+  </div></div>`;
+}
+
+/** The calendar on the wall, opened: the days ahead, with what is already known about them. */
+export function calendarModal(g: GameState): string {
+  const rows: string[] = [];
+  let rent = g.rent;
+  for (let day = g.day; day < g.day + 14; day++) {
+    const marks: string[] = [];
+    if (day === g.day) marks.push(`<i class="cal-mark today">今日</i>${{ none: 'いつもどおりの一日', demand: '流行りの系統がある日', caravan: '隊商が来る日', rain: '雨の日', bargain: '投げ売りの日' }[g.event.id]}`);
+    if (day === g.day && g.patrolDay && hasService(g, 'tip')) marks.push('<i class="cal-mark warn">見回り</i>棚とショーケースを改めに来る');
+    if (day === g.day + 1 && g.supply) marks.push('<i class="cal-mark">荷物</i>ギルドに頼んだ品が届く');
+    if (g.wanted && !g.wanted.came && day === Math.max(g.day, g.wanted.day)) marks.push(`<i class="cal-mark warn">手配</i>${esc(cat.heroById.get(g.wanted.heroId)!.ja)} が来るころ`);
+    if (g.loan && day - g.day < Math.ceil(g.loan.left / g.loan.nightly)) marks.push(`<i class="cal-mark">返済</i>夜に ${num(Math.min(g.loan.nightly, g.loan.left - g.loan.nightly * (day - g.day)))} GUM`);
+    if (!g.owned && day % B.rentEvery === 0) {
+      marks.push(`<i class="cal-mark rent">家賃</i>夜に ${num(rent)} GUM`);
+      rent = Math.round(rent * B.rentGrowth);
+    }
+    rows.push(`<div class="cal-day ${day === g.day ? 'now' : ''} ${marks.length ? '' : 'plain'}"><b>${day}</b><small>${WEEKDAYS[(day - 1) % 7]}</small><span>${marks.join('<br />') || '—'}</span></div>`);
+  }
+  return `<div class="modal" id="modal-calendar" data-ui><div class="modal-box tall">
+    <h2 class="modal-title"><small>CALENDAR</small>暦</h2>
+    <p class="hint">これから 2 週間の、いま分かっている予定です。</p>
+    <div class="modal-scroll cal">${rows.join('')}</div>
+    <div class="actions one">${btn('modal-close', '閉じる', { cls: 'primary' })}</div>
   </div></div>`;
 }
