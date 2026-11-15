@@ -15,7 +15,8 @@ import { btn, esc, gum, itemTile, num } from './html';
 // drawn flat, in the shop's own ink and paper (no pictures of their own in the catalogue)
 const BIN = `<svg viewBox="0 0 64 64" aria-hidden="true"><path class="p-ink" d="M10 16h44v6H10z"/><path class="p-ink" d="M24 9h16v8H24z"/><path class="p-fill" d="M14 22h36l-4 34H18z"/><path class="p-ink" d="M14 22h36l-4 34H18zm4 4 3 26h22l3-26z" fill-rule="evenodd"/><path class="p-ink" d="M25 29h3v20h-3zM36 29h3v20h-3z"/></svg>`;
 const RACK = `<svg viewBox="0 0 64 64" aria-hidden="true"><path class="p-ink" d="M8 6h48v52H8z"/><path class="p-paper" d="M12 10h40v44H12z"/><path class="p-ink" d="M12 24h40v4H12zM12 40h40v4H12z"/><path class="p-fill" d="M16 13h10v9H16zM31 14h8v8h-8zM42 12h7v10h-7zM17 30h12v8H17zM36 29h10v9H36zM20 46h9v6h-9zM34 45h12v7H34z"/></svg>`;
-const BED = `<svg viewBox="0 0 96 64" aria-hidden="true"><path class="p-ink" d="M2 46h92v8H2zM6 54h8v8H6zM82 54h8v8h-8z"/><path class="p-ink" d="M6 34h84v14H6z"/><path class="p-paper" d="M9 37h78v8H9z"/><path class="p-ink" d="M30 22h60v20H30z"/><path class="p-fill" d="M33 25h54v14H33z"/><path class="p-ink" d="M44 25h3v14h-3z"/><path class="p-ink" d="M6 22h26v18H6z"/><path class="p-paper" d="M9 25h20v12H9z"/><path class="p-z" d="M58 4h12v3l-7 6h7v3H58v-3l7-6h-7zM76 12h8v2l-5 4h5v2h-8v-2l5-4h-5z"/></svg>`;
+// (the bedding, folded and put away: three folds of mattress and quilt, the pillow on top)
+const BED = `<svg viewBox="0 0 96 80" aria-hidden="true"><path class="p-ink" d="M4 56h88v20H4z"/><path class="p-paper" d="M8 60h80v12H8z"/><path class="p-ink" d="M8 38h80v20H8z"/><path class="p-fill" d="M12 42h72v12H12z"/><path class="p-ink" d="M12 22h72v18H12z"/><path class="p-paper" d="M16 26h64v10H16z"/><path class="p-ink" d="M26 8h44v16H26z"/><path class="p-paper" d="M30 12h36v8H30z"/><path class="p-z" d="M76 2h10v3l-6 5h6v3H76v-3l6-5h-6z"/></svg>`;
 
 export function deckProps(g: GameState): string {
   if (!atHome(g)) return '';
@@ -26,11 +27,11 @@ export function deckProps(g: GameState): string {
   return `<button class="prop exit ${out ? 'ready' : ''} ${night && g.wentOut ? 'used' : ''}" id="door" data-act="door" data-sfx="none" title="${night ? (g.wentOut ? '今夜はもう外出しました' : '外へ出る（ショップ／クエスト）') : '閉店後にならないと、外出はできません'}" aria-label="ドア（閉店後に、ここから外出する）">
       <span class="exit-leaf"><i class="exit-win"></i><i class="exit-knob"></i></span><b>ドア</b></button>
     <button class="prop trash ${count ? 'full' : ''}" id="trash" data-act="trash" data-sfx="open" aria-label="ゴミ箱（品をドラッグして捨てる。中身は ${count} 個。クリックで中を見る）">
-      ${BIN}<b>ゴミ箱</b>${count ? `<em>${count}</em>` : ''}<small>ここへドラッグ</small></button>
+      ${BIN}<b>ゴミ箱</b>${count ? `<em>${count}</em>` : ''}</button>
     <button class="prop rack ${ui.pops.gear.open ? 'open' : ''}" id="rack" data-act="gear" aria-label="装備棚（クリックで装備の窓を開く・閉じる。身につけている品 ${worn} 個）">
       ${RACK}<b>装備棚</b><small>${worn}/6</small></button>
     <button class="prop bed ${night ? 'ready' : ''}" id="bed" data-act="bed" data-sfx="none" aria-label="寝床（店を閉めたあと、クリックで眠って翌日へ）">
-      ${BED}<b>寝床</b><small>${night ? 'クリックで眠る' : '夜になったら'}</small></button>`;
+      ${BED}<b>寝床</b></button>`;
 }
 
 /** What is in the bin: anything can be taken back until the night. */
