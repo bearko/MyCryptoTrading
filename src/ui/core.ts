@@ -118,6 +118,9 @@ export const ctx = {
 
 /** At home the shelf or the wallet is shown; out at night, always the wallet. */
 /** The grid the cells are sized for (the gear tab keeps the shelf's room). */
+/** The size of a cell of the showcase on the wall (smaller than the shelf's). */
+export const CASE_CELL = 40;
+
 export const shownGrid = (g: GameState): G.GridId => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView === 'gear' || ui.gridView === 'craft' ? 'shelf' : ui.gridView);
 /** The tab on screen: a grid, or the gear. */
 export const shownTab = (g: GameState): G.GridId | 'gear' | 'craft' => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView);

@@ -31,7 +31,7 @@ function screenHtml(): string {
   } else {
     measure(g);
     const v = G.currentVisitor(g);
-    ui.counter = v && !v.done && v.kind === 'buy' ? ui.counter.filter((uid) => g.stock.some((x) => x.uid === uid)) : [];
+    ui.counter = v && !v.done && v.kind === 'buy' ? ui.counter.filter((uid) => G.forSale(g).some((x) => x.uid === uid)) : [];
     ui.picked = v && !v.done && v.kind === 'sell' ? ui.picked.filter((i) => i < v.offers.length) : [];
     if (g.phase === 'won' || g.phase === 'lost') {
       html = `${hud(g)}${ending(g)}`;

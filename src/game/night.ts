@@ -1,6 +1,6 @@
 import { B } from './balance';
 import type { Catalog, Item } from './catalog';
-import { addTo, canPlaceIn, findSlotIn, gridOf, hasPerk, itemValue, rollRarity, walletSize, type GridId } from './logic';
+import { addTo, canPlaceIn, findSlotIn, gridOf, hasPerk, itemsOf, itemValue, rollRarity, walletSize, type GridId } from './logic';
 import { pick, pickWeighted, rand, randRange } from './rng';
 import { SLOT_IDS, type GameState, type LooseItem, type SlotId } from './state';
 
@@ -94,7 +94,7 @@ export function slotFor(s: GameState, item: Item): SlotId {
 
 /** Takes a good off a grid and returns it (null when it is not there). */
 function take(s: GameState, id: GridId, uid: number): LooseItem | null {
-  const items = id === 'shelf' ? s.stock : s.wallet.items;
+  const items = itemsOf(s, id);
   const index = items.findIndex((x) => x.uid === uid);
   if (index < 0) return null;
   const [x] = items.splice(index, 1);
@@ -107,7 +107,7 @@ function take(s: GameState, id: GridId, uid: number): LooseItem | null {
  */
 export function transfer(s: GameState, cat: Catalog, from: GridId, uid: number, to: GridId, x?: number, y?: number): boolean {
   if (from === to) return false;
-  const source = from === 'shelf' ? s.stock : s.wallet.items;
+  const source = itemsOf(s, from);
   const index = source.findIndex((it) => it.uid === uid);
   if (index < 0) return false;
   const stock = source[index];
@@ -132,7 +132,7 @@ export type EquipResult = 'ok' | 'noroom' | 'walletfull' | 'invalid';
  * A wallet replaces the wallet (from the shelf only); a smaller one is refused while the wallet holds goods.
  */
 export function equip(s: GameState, cat: Catalog, uid: number, slot?: SlotId, from: GridId = 'shelf'): EquipResult {
-  const source = from === 'shelf' ? s.stock : s.wallet.items;
+  const source = itemsOf(s, from);
   const stock = source.find((x) => x.uid === uid);
   if (!stock) return 'invalid';
   const item = cat.itemById.get(stock.itemId)!;

@@ -98,7 +98,14 @@ export interface Grid {
   rows: number;
   items: StockItem[];
 }
-export type GridId = 'shelf' | 'wallet';
+export type GridId = 'shelf' | 'wallet' | 'case';
+
+/** The goods lying on a grid. */
+export const itemsOf = (s: GameState, id: GridId): StockItem[] => (id === 'shelf' ? s.stock : id === 'wallet' ? s.wallet.items : s.showcase);
+/** Everything a buyer can be sold: what is on the shelf and what is in the showcase. */
+export const forSale = (s: GameState): StockItem[] => [...s.stock, ...s.showcase];
+/** How wide the showcase is, in columns. */
+export const caseCols = (s: GameState): number => B.caseCols[(hasService(s, 'case1') ? 1 : 0) + (hasService(s, 'case2') ? 1 : 0)];
 
 export function walletSize(s: GameState, cat: Catalog): { cols: number; rows: number } {
   const [cols, rows] = B.walletSizes[cat.itemById.get(s.wallet.itemId)?.rarity ?? 1];
@@ -106,6 +113,7 @@ export function walletSize(s: GameState, cat: Catalog): { cols: number; rows: nu
 }
 
 export function gridOf(s: GameState, cat: Catalog, id: GridId): Grid {
+  if (id === 'case') return { cols: caseCols(s), rows: B.caseDepth, items: s.showcase };
   return id === 'shelf' ? { cols: s.rows * B.shelfColsPerLevel, rows: B.shelfDepth, items: s.stock } : { ...walletSize(s, cat), items: s.wallet.items };
 }
 
@@ -349,7 +357,7 @@ export function newGame(seed: number, cat: Catalog): GameState {
     last: { bonus: 0, orderReward: 0 },
     totals: { sold: 0, bought: 0, bestSale: 0, deepest: 0, orders: 0, bestCombo: 0, crafts: 0 },
     made: [],
-    display: [],
+    showcase: [],
     seek: '',
     trust: 0,
     services: [],
@@ -400,11 +408,11 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
  * bag, and is left alone): hot goods are taken away, with a fine for each.
  */
 function patrol(s: GameState, cat: Catalog, v: Visitor): Visitor {
-  const hot = s.stock.filter((x) => x.hot);
+  const hot = forSale(s).filter((x) => x.hot);
   const fine = Math.min(s.gum, hot.length * B.patrolFine);
   if (hot.length > 0) {
     s.stock = s.stock.filter((x) => !x.hot);
-    s.display = s.display.filter((uid) => s.stock.some((x) => x.uid === uid));
+    s.showcase = s.showcase.filter((x) => !x.hot);
     s.gum -= fine;
     s.today.spend += fine;
     addRep(s, -B.patrolRep);
@@ -594,7 +602,7 @@ export function examineOffer(s: GameState, cat: Catalog, index: number): '' | 'r
 
 /** Looks at a good of the shop's own (on the shelf or in the wallet). */
 export function examineStock(s: GameState, uid: number): '' | 'real' | 'fake' {
-  const x = s.stock.find((it) => it.uid === uid) ?? s.wallet.items.find((it) => it.uid === uid);
+  const x = [...forSale(s), ...s.wallet.items].find((it) => it.uid === uid);
   if (!x || x.seen || looksLeft(s) <= 0) return '';
   s.today.looks += 1;
   x.seen = true;
@@ -821,7 +829,7 @@ export const budgetFactor = (tier: number): number => 1 - markupOf(tier);
 export const budgetAt = (v: Visitor, tier: number): number => Math.round(v.budget * budgetFactor(tier));
 
 export function quoteSale(s: GameState, cat: Catalog, v: Visitor, uids: readonly number[], tier: number): SaleQuote {
-  const goods = uids.map((uid) => s.stock.find((x) => x.uid === uid)).filter((x): x is StockItem => !!x);
+  const goods = uids.map((uid) => forSale(s).find((x) => x.uid === uid)).filter((x): x is StockItem => !!x);
   const fair = goods.reduce((sum, x) => sum + salePrice(cat, x, 0), 0);
   const asked = goods.reduce((sum, x) => sum + salePrice(cat, x, tier), 0);
   const budget = budgetAt(v, tier);
@@ -846,7 +854,7 @@ export type SellResult = 'sold' | 'refused' | 'left' | 'nomatch' | 'invalid';
  */
 export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: number): SellResult {
   const v = currentVisitor(s);
-  if (!v || v.done || v.kind !== 'buy' || uids.length === 0 || uids.some((uid) => !s.stock.some((x) => x.uid === uid))) return 'invalid';
+  if (!v || v.done || v.kind !== 'buy' || uids.length === 0 || uids.some((uid) => !forSale(s).some((x) => x.uid === uid))) return 'invalid';
   const quote = quoteSale(s, cat, v, uids, tier);
   if (!quote.matches) {
     v.line = lines.noMatch();
@@ -855,12 +863,13 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
   if (rand(s) < quote.chance) {
     // the streak adds a little on top (the customer's goodwill; it does not come out of their budget)
     const bonus = Math.round(quote.paid * comboRate(s));
-    const params = uids.map((uid) => cat.itemById.get(s.stock.find((x) => x.uid === uid)!.itemId)!.params);
+    const params = uids.map((uid) => cat.itemById.get(forSale(s).find((x) => x.uid === uid)!.itemId)!.params);
     s.last = { bonus, orderReward: 0 };
     s.gum += quote.paid + bonus;
     // a replica sold as the real thing: the buyer may find out
-    const found = s.stock.some((x) => uids.includes(x.uid) && x.fake && !x.seen) && rand(s) < B.fakeFound;
+    const found = forSale(s).some((x) => uids.includes(x.uid) && x.fake && !x.seen) && rand(s) < B.fakeFound;
     s.stock = s.stock.filter((x) => !uids.includes(x.uid));
+    s.showcase = s.showcase.filter((x) => !uids.includes(x.uid));
     s.today.revenue += quote.paid + bonus;
     s.today.sold += uids.length;
     dealClosed(s, v);
@@ -917,7 +926,7 @@ export function pass(s: GameState): void {
 // ---------------------------------------------------------------- shop management
 
 export function dispose(s: GameState, cat: Catalog, uid: number, id: GridId = 'shelf'): boolean {
-  const items = id === 'shelf' ? s.stock : s.wallet.items;
+  const items = itemsOf(s, id);
   const index = items.findIndex((x) => x.uid === uid);
   if (index < 0) return false;
   const price = disposePrice(cat, items[index]);
@@ -929,39 +938,27 @@ export function dispose(s: GameState, cat: Catalog, uid: number, id: GridId = 's
 
 // ---------------------------------------------------------------- the showcase
 
-/** How many goods the showcase holds. */
-export const showSlots = (s: GameState): number => B.showSlots[(hasService(s, 'case1') ? 1 : 0) + (hasService(s, 'case2') ? 1 : 0)];
-/** The goods shown (those that are still in the shop). */
-export function shownGoods(s: GameState): StockItem[] {
-  const out: StockItem[] = [];
-  for (const uid of s.display) {
-    const x = s.stock.find((it) => it.uid === uid) ?? s.wallet.items.find((it) => it.uid === uid);
-    if (x) out.push(x);
-  }
-  return out;
-}
-/** What the showcase does for the shop's standing: every step of rarity above common, of every good shown. */
+/** The goods in the showcase. */
+export const shownGoods = (s: GameState): StockItem[] => s.showcase;
+/** True when every cell of the showcase is covered: a well-dressed window. */
+export const caseFull = (s: GameState, cat: Catalog): boolean => s.showcase.length > 0 && freeCells(s, cat, 'case') === 0;
+/**
+ * What the showcase does for the shop's standing: every step of rarity above common, of every good shown —
+ * and a little more when the goods are fitted so that no cell is left empty.
+ */
 export function showAppeal(s: GameState, cat: Catalog): number {
-  return shownGoods(s).reduce((sum, x) => {
+  const goods = s.showcase.reduce((sum, x) => {
     const item = cat.itemById.get(x.itemId)!;
     return sum + (item.limited ? 5 : item.rarity - 1);
   }, 0);
-}
-/** Puts a good in the showcase, or takes it out. False when the showcase is full. */
-export function setShown(s: GameState, uid: number, on: boolean): boolean {
-  s.display = shownGoods(s).map((x) => x.uid).filter((id) => id !== uid);
-  if (!on) return true;
-  if (s.display.length >= showSlots(s)) return false;
-  if (!s.stock.some((x) => x.uid === uid) && !s.wallet.items.some((x) => x.uid === uid)) return false;
-  s.display.push(uid);
-  return true;
+  return goods + (caseFull(s, cat) ? B.showFull : 0);
 }
 
 // ---------------------------------------------------------------- the bin
 
 /** Into the bin: nothing is paid yet, and it can be taken back until the night. */
 export function toTrash(s: GameState, cat: Catalog, uid: number, id: GridId = 'shelf'): boolean {
-  const items = id === 'shelf' ? s.stock : s.wallet.items;
+  const items = itemsOf(s, id);
   const index = items.findIndex((x) => x.uid === uid);
   if (index < 0) return false;
   const [x] = items.splice(index, 1);

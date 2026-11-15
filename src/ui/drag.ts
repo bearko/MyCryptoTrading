@@ -5,7 +5,7 @@ import * as N from '../game/night';
 import * as store from '../game/save';
 import type { SlotId } from '../game/state';
 import { audio, haptic } from './audio';
-import { atHome, ctx, shownTab, ui } from './core';
+import { atHome, CASE_CELL, ctx, shownTab, ui } from './core';
 import { gridItem } from './grid';
 import { fx } from './fx';
 import { anim, flip, layer, nope, pointOn, settle } from './motion';
@@ -34,6 +34,8 @@ type ItemDrag = {
   bin?: boolean;
   /** over the showcase */
   show?: boolean;
+  /** the cell of the showcase it would land on */
+  spot?: { x: number; y: number };
   /** held over the loupe on the counter */
   loupe?: boolean;
   px?: number;
@@ -88,6 +90,14 @@ function dropCell(d: ItemDrag, x: number, y: number): { x: number; y: number } |
   // a little slack around the board, so the edge cells are easy to hit
   if (x < rect.left - 12 || x > rect.right + 12 || y < rect.top - 12 || y > rect.bottom + 12) return null;
   return { x: Math.floor((x - d.offX + ctx.cell / 2 - rect.left) / ctx.cell), y: Math.floor((y - d.offY + ctx.cell / 2 - rect.top) / ctx.cell) };
+}
+
+/** The cell of the showcase under a held good. */
+function caseCell(d: ItemDrag, board: HTMLElement, x: number, y: number): { x: number; y: number } {
+  const rect = board.getBoundingClientRect();
+  // (a held good is always drawn at the shelf's scale: its grip is scaled down to the showcase's cells)
+  const k = CASE_CELL / ctx.cell;
+  return { x: Math.floor((x - d.offX * k + CASE_CELL / 2 - rect.left) / CASE_CELL), y: Math.floor((y - d.offY * k + CASE_CELL / 2 - rect.top) / CASE_CELL) };
 }
 
 function ringAt(x: number, y: number): HTMLElement {
@@ -221,7 +231,7 @@ function onDown(event: PointerEvent): void {
   if (!cellEl) return;
   const uid = Number(cellEl.dataset.uid);
   if (ui.counter.includes(uid)) return;
-  const grid = (cellEl.closest<HTMLElement>('.grid')?.dataset.grid ?? 'shelf') as G.GridId;
+  const grid = (cellEl.closest<HTMLElement>('[data-grid]')?.dataset.grid ?? 'shelf') as G.GridId;
   const stockNow = G.gridOf(s, cat, grid).items.find((it) => it.uid === uid);
   if (!stockNow) return;
   const rect = cellEl.parentElement!.getBoundingClientRect();
@@ -284,6 +294,8 @@ function lift(d: OfferDrag | ItemDrag): boolean {
   el.classList.remove('pressed');
   el.classList.add('lifted');
   ctx.root.classList.add('dragging', d.kind === 'offer' ? 'drag-offer' : `drag-${d.grid}`);
+  // a good lifted out of the showcase is held at the shelf's scale, like any other
+  if (d.kind === 'item' && d.grid === 'case') reGhost(d, d.startX, d.startY);
   audio.sfx('pick');
   haptic('light');
   return true;
@@ -334,7 +346,7 @@ function onMove(event: PointerEvent): void {
   d.py = event.clientY;
   watchTabs(d, event.clientX, event.clientY);
   const tab = shownTab(s);
-  const counter = d.grid === 'shelf' && !d.slot ? root.querySelector('#near.drop') : null;
+  const counter = (d.grid === 'shelf' || d.grid === 'case') && !d.slot ? root.querySelector('#near.drop') : null;
   const overCounter = !!counter && inside(counter.getBoundingClientRect(), event.clientX, event.clientY);
   counter?.classList.toggle('hot', overCounter);
   // the bin beside the shelf: a good of the shop's can be dropped in it
@@ -342,15 +354,29 @@ function onMove(event: PointerEvent): void {
   const overBin = !!bin && bin.offsetParent !== null && inside(bin.getBoundingClientRect(), event.clientX, event.clientY);
   bin?.classList.toggle('hot', overBin);
   d.bin = overBin;
-  // the showcase on the wall: a good dropped on it is shown there (it stays on the shelf)
+  // the showcase on the wall: a grid of its own; a good is fitted into it by its shape
   const caseEl = root.querySelector<HTMLElement>('#case');
-  const overCase = !overBin && !!caseEl && caseEl.offsetParent !== null && inside(caseEl.getBoundingClientRect(), event.clientX, event.clientY);
+  const board = root.querySelector<HTMLElement>('#case-grid');
+  const casePreview = root.querySelector<HTMLElement>('#case-preview');
+  const overCase = !overBin && !!caseEl && !!board && caseEl.offsetParent !== null && inside(grown(caseEl.getBoundingClientRect(), 6), event.clientX, event.clientY);
   caseEl?.classList.toggle('hot', overCase);
   d.show = overCase;
-  if (overCase) {
-    d.ok = !d.slot && d.uid >= 0;
+  if (casePreview && !overCase) casePreview.style.display = 'none';
+  if (overCase && board) {
+    const spot = caseCell(d, board, event.clientX, event.clientY);
+    d.spot = spot;
+    d.ok = !d.slot && d.uid >= 0 && !ui.counter.includes(d.uid) && G.canPlaceIn(G.gridOf(s, cat, 'case'), cat, d.itemId, spot.x, spot.y, d.rot, d.grid === 'case' ? d.uid : -1);
     d.ghost!.classList.toggle('bad', !d.ok);
+    if (casePreview) {
+      const shape = G.shapeOf(cat, d.itemId, d.rot);
+      casePreview.style.display = 'block';
+      casePreview.className = `preview ${d.ok ? 'ok' : 'ng'}`;
+      casePreview.innerHTML = shape.cells.map(([cx, cy]) => `<i style="left:${(spot.x + cx) * CASE_CELL}px;top:${(spot.y + cy) * CASE_CELL}px"></i>`).join('');
+    }
+    counter?.classList.remove('hot');
     root.querySelector<HTMLElement>('#preview')?.classList.remove('show');
+    const main = root.querySelector<HTMLElement>('#preview');
+    if (main) main.style.display = 'none';
     return;
   }
   if (overBin) {
@@ -400,7 +426,12 @@ function onMove(event: PointerEvent): void {
 
 function cleanup(): void {
   const root = ctx.root;
-  root.classList.remove('dragging', 'drag-offer', 'drag-shelf', 'drag-wallet');
+  root.classList.remove('dragging', 'drag-offer', 'drag-shelf', 'drag-wallet', 'drag-case');
+  const casePreview = root.querySelector<HTMLElement>('#case-preview');
+  if (casePreview) {
+    casePreview.style.display = 'none';
+    casePreview.innerHTML = '';
+  }
   for (const el of root.querySelectorAll('.hot')) el.classList.remove('hot');
   for (const el of root.querySelectorAll('.gslot.can')) el.classList.remove('can');
   for (const el of root.querySelectorAll('.pressed')) el.classList.remove('pressed');
@@ -499,7 +530,7 @@ function onUp(event: PointerEvent): void {
   }
   const v = G.currentVisitor(g);
   const tab = shownTab(g);
-  const counter = d.grid === 'shelf' && !d.slot ? root.querySelector('#near.drop') : null;
+  const counter = (d.grid === 'shelf' || d.grid === 'case') && !d.slot ? root.querySelector('#near.drop') : null;
   const good = (el: HTMLElement | null, sound: 'drop' | 'equip'): void => {
     land(el, from, true);
     audio.sfx(sound);
@@ -518,14 +549,20 @@ function onUp(event: PointerEvent): void {
   root.querySelector('#loupe')?.classList.remove('hot');
   if (d.loupe) {
     // held over the loupe: looked at, and back in its place
-    const known = !!(g.stock.find((x) => x.uid === d.uid) ?? g.wallet.items.find((x) => x.uid === d.uid))?.seen;
+    const known = !!G.gridOf(g, cat, d.grid).items.find((x) => x.uid === d.uid)?.seen;
     examined(G.examineStock(g, d.uid), home, known);
   } else if (d.show) {
-    // dropped on the showcase: shown there, and back in its place on the shelf
-    const shown = d.ok && G.setShown(g, d.uid, true);
+    // dropped on the showcase: fitted in where it was held, turned the way it was held
+    const held = G.gridOf(g, cat, d.grid).items.find((x) => x.uid === d.uid);
+    const turned = !!held && d.rot0 !== undefined && held.rot !== d.rot;
+    if (held && turned) held.rot = d.rot;
+    const spot = d.spot;
+    const shown = !!held && d.ok && !!spot && (d.grid === 'case' ? G.moveStock(g, cat, d.uid, spot.x, spot.y, 'case') : N.transfer(g, cat, d.grid, d.uid, 'case', spot.x, spot.y));
+    if (!shown && held && turned) held.rot = d.rot0!;
+    if (shown) ui.craft = ui.craft.filter((uid) => uid !== d.uid);
     ctx.render();
-    if (shown) good(document.getElementById(`shown-${d.uid}`), 'drop');
-    else bad(home(), d.ok ? 'ショーケースがいっぱいです' : '');
+    if (shown) good(document.getElementById(`item-${d.uid}`), 'drop');
+    else bad(home(), d.slot ? '装備中の品は、外してから飾ってください' : 'ここには入りません（R か右クリックで向きを変えられます）');
   } else if (d.bin) {
     // dropped in the bin: it waits there until the night
     if (d.ok && G.toTrash(g, cat, d.uid, d.grid)) {
@@ -540,7 +577,7 @@ function onUp(event: PointerEvent): void {
       bad(home(), d.slot ? '装備中の品は、外してから捨ててください' : '');
     }
   } else if (counter && v && !v.done && v.kind === 'buy' && inside(counter.getBoundingClientRect(), event.clientX, event.clientY)) {
-    const stock = g.stock.find((x) => x.uid === d.uid);
+    const stock = G.forSale(g).find((x) => x.uid === d.uid);
     if (stock && !G.matches(cat, v.want, stock.itemId)) {
       G.refuseGood(g);
       ui.win.open = true;
@@ -586,7 +623,7 @@ function onUp(event: PointerEvent): void {
       if (ok) uid = G.gridOf(g, cat, tab).items[G.gridOf(g, cat, tab).items.length - 1].uid;
     } else {
       // turned while it was held: it is set down that way, or goes back as it was
-      const held = (d.grid === 'shelf' ? g.stock : g.wallet.items).find((x) => x.uid === d.uid);
+      const held = G.gridOf(g, cat, d.grid).items.find((x) => x.uid === d.uid);
       const turned = !!held && d.rot0 !== undefined && held.rot !== d.rot;
       if (held && turned) held.rot = d.rot;
       if (spot && tab !== d.grid) ok = N.transfer(g, cat, d.grid, d.uid, tab, spot.x, spot.y);
@@ -637,7 +674,7 @@ function openMenuAt(target: HTMLElement): boolean {
   const cell = target.closest<HTMLElement>('.inv-cell[data-uid]');
   if (!cell) return false;
   const uid = Number(cell.dataset.uid);
-  const grid = (cell.closest<HTMLElement>('.grid')?.dataset.grid ?? 'shelf') as G.GridId;
+  const grid = (cell.closest<HTMLElement>('[data-grid]')?.dataset.grid ?? 'shelf') as G.GridId;
   if (ui.counter.includes(uid) || !G.gridOf(s, cat, grid).items.some((it) => it.uid === uid)) return false;
   ui.sel = { grid, uid };
   ui.modal = 'menu';

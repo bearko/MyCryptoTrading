@@ -74,10 +74,12 @@ function keepShop(s: GameState, cat: Catalog, pot: boolean): void {
     if (serviceBlock(s, id, 'trust') === '') buyService(s, id, 'trust');
     else if (serviceBlock(s, id, 'gum') === '' && s.gum - serviceById(id).gum > reserve + serviceById(id).gum * 2) buyService(s, id, 'gum');
   }
-  // the showcase: the rarest goods in the shop
-  for (const uid of [...s.display]) G.setShown(s, uid, false);
+  // the showcase: the rarest goods of the shop, as many as fit (they are sold from there like any other)
   const rarest = [...s.stock].sort((a, b) => cat.itemById.get(b.itemId)!.rarity - cat.itemById.get(a.itemId)!.rarity);
-  for (const x of rarest.slice(0, G.showSlots(s))) G.setShown(s, x.uid, true);
+  for (const x of rarest) {
+    if (G.freeCells(s, cat, 'case') === 0) break;
+    N.transfer(s, cat, 'shelf', x.uid, 'case');
+  }
   // a thin shelf: a lot by telephone, of the line in demand today if there is one
   if (!s.supply && s.stock.length < 5 && s.gum - B.supplies.lot.gum > reserve + 100) {
     G.placeSupply(s, cat, 'lot', s.event.id === 'demand' && s.event.param ? s.event.param : 'phy', 'gum');
@@ -151,7 +153,7 @@ function serveBuyer(s: GameState, cat: Catalog, base: Style): void {
   const style = stance(base, v);
   // sells one good after another while the customer stays and something fits what they have left
   while (!v.done) {
-    const fits = s.stock
+    const fits = G.forSale(s)
       .filter((x) => G.matches(cat, v.want, x.itemId) && G.salePrice(cat, x, 0) <= v.budget)
       .sort((a, b) => G.salePrice(cat, b, 0) - G.salePrice(cat, a, 0));
     if (fits.length === 0) break;

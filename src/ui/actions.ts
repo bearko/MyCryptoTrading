@@ -700,18 +700,16 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       fx.stamp(serviceById(id).name, { x: ctx.root.clientWidth / 2, y: ctx.root.clientHeight * 0.3 }, { size: 30 });
       return;
     }
-    case 'unshow':
-      G.setShown(g, n, false);
-      break;
     case 'show-toggle': {
-      // from a good's menu: into the showcase, or out of it
+      // from a good's menu: into the showcase (wherever it fits), or back onto the shelf
       if (!ui.sel) break;
-      const on = !g.display.includes(ui.sel.uid);
-      if (!G.setShown(g, ui.sel.uid, on)) {
-        note('ショーケースがいっぱいです（電話でギルドに増設を頼めます）');
+      const out = ui.sel.grid === 'case';
+      if (!N.transfer(g, cat, ui.sel.grid, ui.sel.uid, out ? 'shelf' : 'case')) {
+        note(out ? '棚に、置く場所がありません' : 'ショーケースに入りません（形が合う空きがないか、いっぱいです。電話でギルドに増設を頼めます）');
         return;
       }
-      audio.sfx(on ? 'drop' : 'cancel');
+      ui.craft = ui.craft.filter((uid) => uid !== ui.sel!.uid);
+      audio.sfx(out ? 'cancel' : 'drop');
       closeModal();
       break;
     }
