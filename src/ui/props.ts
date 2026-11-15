@@ -24,7 +24,7 @@ export function deckProps(g: GameState): string {
   const worn = SLOT_IDS.filter((slot) => g.equip[slot]).length;
   return `<button class="prop trash ${count ? 'full' : ''}" id="trash" data-act="trash" data-sfx="open" aria-label="ゴミ箱（品をドラッグして捨てる。中身は ${count} 個。クリックで中を見る）">
       ${BIN}<b>ゴミ箱</b>${count ? `<em>${count}</em>` : ''}<small>ここへドラッグ</small></button>
-    <button class="prop rack ${ui.pops.gear.open ? 'open' : ''}" id="rack" data-act="pop" data-arg="gear" data-sfx="none" aria-label="装備棚（クリックで装備の窓を開く・閉じる。身につけている品 ${worn} 個）">
+    <button class="prop rack ${ui.pops.gear.open ? 'open' : ''}" id="rack" data-act="gear" aria-label="装備棚（クリックで装備の窓を開く・閉じる。身につけている品 ${worn} 個）">
       ${RACK}<b>装備棚</b><small>${worn}/6</small></button>
     <button class="prop bed ${night ? 'ready' : ''}" id="bed" data-act="bed" data-sfx="none" aria-label="寝床（店を閉めたあと、クリックで眠って翌日へ）">
       ${BED}<b>寝床</b><small>${night ? 'クリックで眠る' : '夜になったら'}</small></button>`;

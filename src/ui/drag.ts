@@ -5,7 +5,7 @@ import * as N from '../game/night';
 import * as store from '../game/save';
 import type { SlotId } from '../game/state';
 import { audio, haptic } from './audio';
-import { atHome, CASE_CELL, ctx, popsOn, shownTab, ui, type PopId } from './core';
+import { atHome, CASE_CELL, ctx, isWide, popsOn, shownTab, ui, type PopId } from './core';
 import { gridItem } from './grid';
 import { fx } from './fx';
 import { anim, flip, layer, nope, pointOn, settle } from './motion';
@@ -125,7 +125,7 @@ function examined(result: '' | 'real' | 'fake', at: () => HTMLElement | null, kn
   }
 }
 
-type Drag = { kind: 'win'; dx: number; dy: number } | { kind: 'pop'; id: PopId; dx: number; dy: number } | OfferDrag | ItemDrag;
+type Drag = { kind: 'win'; dx: number; dy: number; sx: number; sy: number; moving: boolean } | { kind: 'pop'; id: PopId; dx: number; dy: number } | OfferDrag | ItemDrag;
 let drag: Drag | null = null;
 
 const HOLD_MS = 500;
@@ -306,12 +306,17 @@ function onDown(event: PointerEvent): void {
       return;
     }
   }
-  const bar = target.closest('.win-bar');
-  if (bar && !target.closest('button')) {
+  // (with a mouse the whole slip is a handle, not only its bar; on a phone the slip's body scrolls under the finger)
+  const bar = target.closest(isWide() ? '#win' : '.win-bar');
+  if (bar && !target.closest('input, [data-offer], [data-item]') && (isWide() || !target.closest('button'))) {
     const rect = ctx.root.getBoundingClientRect();
-    drag = { kind: 'win', dx: event.clientX - rect.left - ui.win.x, dy: event.clientY - rect.top - ui.win.y };
-    ctx.root.querySelector('#win')?.classList.add('held');
-    event.preventDefault();
+    // (a press on one of the slip's buttons moves the slip only once the pointer has travelled: a still press is a click)
+    const onButton = !!target.closest('button');
+    drag = { kind: 'win', dx: event.clientX - rect.left - ui.win.x, dy: event.clientY - rect.top - ui.win.y, sx: event.clientX, sy: event.clientY, moving: !onButton };
+    if (!onButton) {
+      ctx.root.querySelector('#win')?.classList.add('held');
+      event.preventDefault();
+    }
     return;
   }
   const offerEl = target.closest<HTMLElement>('.offer[data-offer]');
@@ -419,6 +424,12 @@ function onMove(event: PointerEvent): void {
     return;
   }
   if (drag.kind === 'win') {
+    if (!drag.moving) {
+      if (Math.hypot(event.clientX - drag.sx, event.clientY - drag.sy) < 6) return;
+      drag.moving = true;
+      ctx.swallowClick = true;
+      root.querySelector('#win')?.classList.add('held');
+    }
     const rect = root.getBoundingClientRect();
     ui.win.x = event.clientX - rect.left - drag.dx;
     ui.win.y = event.clientY - rect.top - drag.dy;
@@ -584,7 +595,7 @@ function onUp(event: PointerEvent): void {
     return;
   }
   if (d.kind === 'win') {
-    rememberWindow();
+    if (d.moving) rememberWindow();
     cleanup();
     return;
   }
@@ -637,28 +648,28 @@ function onUp(event: PointerEvent): void {
   cleanup();
   if (!d.active) {
     if (d.slot) return; // a tap on a worn good: the button opens the list
-    // a good with an effect of its own: a second click in quick succession uses it (the first one waits a
-    // moment before it opens the good's window, so that the window does not get in the way)
+    // a good with an effect of its own: one click uses it (the pot's window, the wallet's inside), and a second
+    // click in quick succession opens the good's own window instead, like a click on any other good
+    // (so the first click waits a moment, to see whether a second one follows)
     if (atHome(g) && d.grid === 'shelf' && (cat.itemById.get(d.itemId)?.effect || g.stock.find((x) => x.uid === d.uid)?.bag)) {
-      const open = (): void => {
+      ctx.swallowClick = true;
+      if (tapWait && tapWait.uid === d.uid) {
+        window.clearTimeout(tapWait.timer);
         tapWait = null;
         ui.sel = { grid: d.grid, uid: d.uid };
         ui.confirmDispose = false;
         ui.modal = 'inspect';
         audio.sfx('open');
         ctx.render();
-      };
-      if (tapWait && tapWait.uid === d.uid) {
-        window.clearTimeout(tapWait.timer);
-        tapWait = null;
-        ui.sel = { grid: d.grid, uid: d.uid };
-        ctx.swallowClick = true;
-        ctx.act('use-item', '');
         return;
       }
       if (tapWait) window.clearTimeout(tapWait.timer);
-      tapWait = { uid: d.uid, timer: window.setTimeout(open, 300) };
-      ctx.swallowClick = true;
+      const use = (): void => {
+        tapWait = null;
+        ui.sel = { grid: d.grid, uid: d.uid };
+        ctx.act('use-item', '');
+      };
+      tapWait = { uid: d.uid, timer: window.setTimeout(use, 260) };
       return;
     }
     ui.sel = { grid: d.grid, uid: d.uid };

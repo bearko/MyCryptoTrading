@@ -45,6 +45,12 @@ export function itemTile(item: Item, cls = ''): string {
   return `<span class="tile ${cls}" style="${tone(item)}"><img src="${item.img}" alt="" draggable="false" />${glyphs(item)}</span>`;
 }
 
+/** How much room a good takes: its footprint drawn in small cells, and in words. */
+export function sizeMark(shape: string): string {
+  const [w, h] = shape.split('x').map(Number);
+  return `<span class="item-size" aria-label="大きさ ${w}×${h} マス"><i style="grid-template-columns:repeat(${w},7px)">${'<u></u>'.repeat(w * h)}</i>${w}×${h} マス</span>`;
+}
+
 export function itemCard(itemId: number, cond: number, extra = ''): string {
   const item = G.findItem(cat, itemId);
   return `<div class="item">
@@ -53,7 +59,7 @@ export function itemCard(itemId: number, cond: number, extra = ''): string {
       <div class="item-name">${esc(item.ja)}</div>
       <div class="tags">${labels(item)}</div>
       <div class="tags"><span class="tag rar r${item.rarity}">${item.limited ? 'リミテッド' : RARITY_JA[item.rarity]}</span><span class="tag cond c${cond}">${COND_JA[cond]}</span></div>
-      <div class="item-val">相場 ${gum(G.itemValue(cat, itemId, cond))}</div>
+      <div class="item-val">相場 ${gum(G.itemValue(cat, itemId, cond))}${sizeMark(item.shape)}</div>
       ${item.effect ? `<div class="item-fx"><b>✦ ${EFFECT_JA[item.effect].name}</b>${EFFECT_JA[item.effect].text}</div>` : ''}
       ${extra}
     </div>

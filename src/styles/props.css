@@ -1086,3 +1086,51 @@ html.calm .inv-fx {
   color: var(--sub);
   font-weight: 500;
 }
+
+/* a good's footprint on its card: small cells, and the size in words */
+.item-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  color: var(--sub);
+  font-size: 0.75rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.item-size i {
+  display: inline-grid;
+  gap: 1px;
+}
+.item-size u {
+  width: 7px;
+  height: 7px;
+  background: var(--ink);
+}
+
+/* a round ? on a window: its words of explanation show only while it is pressed in */
+.help-dot {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--f-pixel);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.help-dot::before {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border: 2.5px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  z-index: -1;
+}
+.help-dot.on::before {
+  background: var(--gum);
+}

@@ -33,13 +33,14 @@ export function gearModal(g: GameState): string {
   const size = G.walletSize(g, cat);
   return `<div class="modal" id="modal-gear" data-ui><div class="modal-box gearbox ${ui.departing ? 'departing' : ''}">
     <h2 class="modal-title">${ui.departing ? '<small>QUEST</small>クエストへ出発' : '<small>GEAR</small>装備'}</h2>
+    <button class="help-dot ${ui.gearHelp ? 'on' : ''}" id="gear-help-btn" data-act="gear-help" aria-label="この画面の説明" aria-pressed="${ui.gearHelp}">?</button>
     <div class="gear-stage">
       <div class="gear-col">${slotBtn('head')}${slotBtn('body')}${slotBtn('arm')}</div>
       <div class="gear-me"><i class="gear-spot"></i><img src="${cat.player.img}" alt="${esc(cat.player.ja)}" draggable="false" />${slotBtn('wallet')}</div>
       <div class="gear-col">${slotBtn('special1')}${slotBtn('special2')}${slotBtn('leg')}</div>
     </div>
     <div class="gear-stats" id="gear-stats">${statBox}</div>
-    <p class="hint">場所をタップして、棚の品から選びます。装備した品のスキルを戦闘で使えます。ウォレットは ${size.cols}×${size.rows} マス。</p>
+    ${ui.gearHelp ? `<p class="hint" id="gear-help">場所をクリックして、棚の品から選びます。装備した品のスキルを戦闘で使えます。ウォレットは ${size.cols}×${size.rows} マス。</p>` : ''}
     <div class="actions ${ui.departing ? 'two' : 'one'}">${btn('modal-close', ui.departing ? 'やめる' : '閉じる', { cls: ui.departing ? 'ghost' : '' })}${ui.departing ? btn('depart', '出発する', { cls: 'primary big', sfx: 'none' }) : ''}</div>
   </div></div>`;
 }
