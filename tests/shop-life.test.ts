@@ -7,6 +7,7 @@ import * as N from '../src/game/network';
 import * as N2 from '../src/game/night';
 import { FACTIONS } from '../src/game/factions';
 import type { GameState, Visitor } from '../src/game/state';
+import { seeOff } from './util';
 
 /** Many customers of one day, without playing the day. */
 function visitors(s: GameState, count: number): Visitor[] {
@@ -124,6 +125,34 @@ describe('the showcase', () => {
         if (Math.abs(r - rarity) > 1) expect(count).toBe(0);
       });
       if (rarity > 1) expect(seen[rarity - 1]).toBeGreaterThan(seen[rarity + 1]);
+    }
+  });
+
+  it('on a rent day the dealer calls after the line, and takes anything under the list price as far as his purse goes', () => {
+    const s = G.newGame(84, catalog);
+    s.day = B.rentEvery;
+    G.openShop(s, catalog);
+    const line = s.visitorsToday;
+    for (let n = 0; n < line; n++) {
+      expect(G.currentVisitor(s)!.special === 'dealer').toBe(false);
+      G.pass(s);
+      G.callNext(s, catalog);
+    }
+    const v = G.currentVisitor(s)!;
+    expect(v.special).toBe('dealer');
+    expect(v.budget).toBe(Math.max(B.dealerFloor, Math.round(s.rent * B.dealerPurse)));
+    const x = G.forSale(s)[0];
+    const list = G.salePrice(catalog, x, 0);
+    const gum = s.gum;
+    expect(G.sell(s, catalog, [x.uid], 2)).toBe('sold'); // (whatever is asked, his price is his own)
+    expect(s.gum).toBe(gum + Math.round(list * (1 - B.dealerCut)));
+    // an ordinary day has no such callers
+    const t = G.newGame(84, catalog);
+    G.openShop(t, catalog);
+    while (t.phase === 'open') {
+      expect(G.currentVisitor(t)!.special === 'dealer' || G.currentVisitor(t)!.special === 'landlord').toBe(false);
+      G.pass(t);
+      G.callNext(t, catalog);
     }
   });
 
@@ -266,7 +295,7 @@ describe('the wanted notice', () => {
       G.openShop(s, catalog);
       while (s.phase === 'open') {
         if (G.currentVisitor(s)?.wanted) return s;
-        G.pass(s);
+        seeOff(s);
         G.callNext(s, catalog);
       }
       s.gum = 99999;
@@ -320,7 +349,7 @@ describe('the wanted notice', () => {
     expect(s.favor[w.by]).toBe(favor[w.by] - B.harbourGrudge);
     // the notice comes down that night
     while (s.phase === 'open') {
-      G.pass(s);
+      seeOff(s);
       G.callNext(s, catalog);
       const next = G.currentVisitor(s);
       if (s.phase === 'open' && next && !next.wanted && s.wanted) {
@@ -332,7 +361,7 @@ describe('the wanted notice', () => {
       }
     }
     while (s.phase === 'open') {
-      G.pass(s);
+      seeOff(s);
       G.callNext(s, catalog);
     }
     G.endDay(s);
@@ -491,7 +520,7 @@ describe('a loan from the guild', () => {
     // the deed is out of reach while money is owed
     s.phase = 'evening';
     s.gum = B.deedPrice + 5000;
-    expect(G.buyDeed(s)).toBe(false);
+    expect(G.rentChoices(s).buy).toBe(false);
 
     // the instalment goes out each night
     const before = s.gum;
@@ -516,8 +545,7 @@ describe('a loan from the guild', () => {
     s.gum = s.loan!.left + B.deedPrice;
     expect(N.repayAll(s)).toBe(true);
     expect(s.loan).toBeNull();
-    s.phase = 'evening';
-    expect(G.buyDeed(s)).toBe(true);
+    expect(G.rentChoices(s).buy).toBe(true);
   });
 
   it('is gone after the last night', () => {

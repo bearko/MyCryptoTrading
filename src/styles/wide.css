@@ -655,3 +655,16 @@
     }
   }
 }
+
+/* the door stands at the top left of the bin's corner of the shop; the bin keeps to the bottom */
+@media (min-width: 900px) and (min-height: 520px) {
+  #app > .prop.exit {
+    display: grid;
+    grid-column: 1;
+    grid-row: 3;
+    z-index: 2;
+  }
+  #app > .prop.trash {
+    align-self: end;
+  }
+}

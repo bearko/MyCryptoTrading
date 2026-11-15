@@ -37,6 +37,7 @@ export function load(): GameState | null {
     s.trash ??= [];
     s.trashGum ??= 0;
     // saves from before the clientele: everyone already comes
+    s.callers ??= 0;
     s.handled ??= [0, 0, 0, 0, 0, 0];
     s.clientele ??= 5;
     s.wide ??= false;

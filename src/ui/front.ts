@@ -4,7 +4,7 @@ import { B, WEEKDAYS } from '../game/balance';
 import { PARAM_JA } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState, Visitor } from '../game/state';
-import { ui } from './core';
+import { isWide, ui } from './core';
 import { counterBar, farTray } from './counter';
 import { btn, esc, GLYPH, gum } from './html';
 import { ICON } from './icons';
@@ -68,37 +68,33 @@ function nightCard(g: GameState): string {
   const net = t.revenue - t.spend;
   const cost = G.shelfCost(g);
   const weekday = WEEKDAYS[(g.day - 1) % 7];
-  let rent = '';
-  if (G.isRentDay(g)) {
-    const short = g.gum < g.rent;
-    rent = `<p class="rent-tag ${short ? 'short' : ''}"><b>今夜は家賃の支払日（${gum(g.rent)}）。</b>${
-      short ? (g.graceLeft > 0 ? '足りなければ一度だけ猶予が使えます。' : '足りないと店を失います。品を処分して工面を。') : ''
-    }</p>`;
-  }
-  // the goal of the game: how far along the shop is shows on the button itself
-  const toDeed = Math.max(0, Math.min(100, Math.floor((g.gum / B.deedPrice) * 100)));
-  const deed = g.owned ? '' : `<span class="deed-wrap" style="--p:${toDeed}%">${btn('deed', '権利書を買う', { cls: 'small gold', sub: gum(B.deedPrice), disabled: g.gum < B.deedPrice || !!g.loan, sfx: 'none' })}<i class="deed-bar" aria-label="権利書まで ${toDeed}%"><b></b></i></span>`;
+  // (a wide screen has the door, the telephone, the gear rack and the bed as things of the shop: no buttons here)
+  const wide = isWide();
   const shelfBtn = cost === null ? '' : btn('shelf', '棚を広げる', { cls: 'small', sub: gum(cost), disabled: g.gum < cost, sfx: 'none' });
+  const note = g.nightNote ? `<p class="rent-tag"><b>${esc(g.nightNote)}</b></p>` : '';
   const print = ui.printDay === g.day ? 'print' : '';
   return `<div class="night" id="night-${g.day}">
     <div class="night-top">
-      <button class="door ${g.wentOut ? 'used' : ''}" id="door" data-act="door" data-sfx="none" aria-label="${g.wentOut ? '今夜はもう外出しました' : '外へ出る（ショップ／クエスト）'}">
+      ${wide ? '' : `<button class="door ${g.wentOut ? 'used' : ''}" id="door" data-act="door" data-sfx="none" aria-label="${g.wentOut ? '今夜はもう外出しました' : '外へ出る（ショップ／クエスト）'}">
         <i class="door-glow"></i><span class="door-leaf"><i class="door-win"></i><i class="door-knob"></i></span><b>${g.wentOut ? '外出済み' : '外へ'}</b>
-      </button>
+      </button>`}
       <article class="receipt paper ${print}" id="receipt">
         <header class="rc-head"><b>${g.day}日目の締め</b><span>DAY ${g.day}・${weekday}</span></header>
         <div class="rc-line"><span>売上</span><i></i><b>${gum(t.revenue)}</b></div>
         <div class="rc-line"><span>仕入れ</span><i></i><b>${gum(t.spend)}</b></div>
         <div class="rc-line minor"><span>売った品 ${t.sold}　買った品 ${t.bought}${t.walkouts ? `　怒って帰った客 ${t.walkouts}` : ''}</span></div>
         <div class="rc-total ${net >= 0 ? 'good' : 'bad'}"><span>収支</span><b>${net >= 0 ? '+' : '−'}${gum(Math.abs(net))}</b><em class="stamp ${net >= 0 ? 'ok' : 'ng'}">${net > 0 ? '黒字' : net < 0 ? '赤字' : '±0'}</em></div>
-        ${rent}
+        ${note}
         <i class="teeth" aria-hidden="true"></i>
       </article>
     </div>
-    <p class="night-hint">${g.wentOut ? '今夜はもう外出しました。' : '左のドアから外出できます（一晩に一か所。翌朝は開店が遅れます）。'}</p>
-    <div class="actions three night-acts">${deed}${shelfBtn}${btn('gear', '装備', { cls: 'small', sfx: 'open' })}</div>
-    <div class="cta">${btn('endday', `${ICON.moon}眠って翌日へ`, { cls: 'primary big', sfx: 'none' })}</div>
-    <p class="night-bedhint">右下の寝床をクリックすると、眠って翌日になります。</p>
+    ${
+      wide
+        ? ''
+        : `<p class="night-hint">${g.wentOut ? '今夜はもう外出しました。' : '左のドアから外出できます（一晩に一か所。翌朝は開店が遅れます）。'}</p>
+    <div class="actions two night-acts">${shelfBtn}${btn('gear', '装備', { cls: 'small', sfx: 'open' })}</div>
+    <div class="cta">${btn('endday', `${ICON.moon}眠って翌日へ`, { cls: 'primary big', sfx: 'none' })}</div>`
+    }
   </div>`;
 }
 

@@ -32,7 +32,7 @@ export function scene(v: Visitor | null, opening: boolean, far: { html: string; 
         <div class="walker-bob"><img class="hero" src="${hero.img}" alt="${esc(hero.ja)}" draggable="false" /></div>
       </div>
       <div class="plate kind-${v.kind} ${v.special ? 'special' : ''} ${v.done ? 'out' : ''} ${opening ? 'late' : ''}" id="plate-${ui.custKey}">
-        <span class="plate-kind">${v.special === 'patrol' ? '見回り' : v.kind === 'sell' ? '売りたい!' : '買いたい!'}</span>${v.special ? `<span class="plate-special">${SPECIAL_JA[v.special]}</span>` : ''}
+        <span class="plate-kind">${v.special === 'patrol' ? '見回り' : v.special === 'landlord' ? '家賃' : v.special === 'dealer' ? '引取' : v.kind === 'sell' ? '売りたい!' : '買いたい!'}</span>${v.special ? `<span class="plate-special">${SPECIAL_JA[v.special]}</span>` : ''}
         <b class="plate-name ${long}">${esc(hero.ja)}</b>
         <span class="plate-sub">${v.faction ? `<em class="fac f-${v.faction}">${factionById(v.faction).ja}</em>` : ''}<em class="temper t${v.temper}">${TEMPER_JA[v.temper]}</em><span class="pips" id="pips" aria-label="我慢 ${v.patience}">${pipsHtml(v)}</span></span>
       </div>

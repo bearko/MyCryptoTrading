@@ -86,7 +86,7 @@ export interface Visitor {
   /** deals closed with this customer (a customer who leaves with none breaks the streak) */
   deals: number;
   /** an unusual customer: 大富豪 / 急ぎの旅人 / 収集家 */
-  special?: 'rich' | 'hurry' | 'collector' | 'patrol';
+  special?: 'rich' | 'hurry' | 'collector' | 'patrol' | 'dealer' | 'landlord';
   /** a patrol: the hot goods it took from the shelf, and the fine */
   seized?: number[];
   fine?: number;
@@ -212,6 +212,8 @@ export interface GameState {
   equip: Record<SlotId, LooseItem | null>;
   rent: number;
   graceLeft: number;
+  /** on a rent day, how many of the two callers after the line have come (the dealer, then the landlord) */
+  callers: number;
   owned: boolean;
   /** the day the deed was bought (the score) */
   ownedDay: number;
