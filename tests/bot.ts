@@ -42,7 +42,7 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
     if (cost !== null && G.freeCells(s, cat) < 6 && s.gum - cost > reserve + 150) G.upgradeShelf(s);
     if (G.isRentDay(s) && s.gum < s.rent) {
       // sell stock back to cover the rent
-      for (const item of [...s.stock]) {
+      for (const item of [...s.stock].sort((x, y) => Number(!!cat.itemById.get(x.itemId)!.effect) - Number(!!cat.itemById.get(y.itemId)!.effect))) {
         if (s.gum >= s.rent) break;
         G.dispose(s, cat, item.uid);
       }
@@ -50,7 +50,7 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
     if (G.buyDeed(s)) break;
     // a thin shelf and some money: a night at the shop (tomorrow opens late)
     const spare = s.gum - reserve;
-    if (s.stock.length < 3 && spare > 120 && N.goShop(s, cat)) {
+    if (s.stock.filter((x) => !cat.itemById.get(x.itemId)!.effect).length < 3 && spare > 120 && N.goShop(s, cat)) {
       s.shop!.goods.forEach((g, i) => {
         if (s.gum - g.price < reserve + 40 || cat.itemById.get(g.itemId)!.wallet) return;
         if (N.shopBuy(s, i) && !N.stow(s, cat, s.shop!.tray.length - 1)) s.shop!.tray.pop(); // does not fit: left behind
@@ -75,13 +75,14 @@ function keepShop(s: GameState, cat: Catalog, pot: boolean): void {
     else if (serviceBlock(s, id, 'gum') === '' && s.gum - serviceById(id).gum > reserve + serviceById(id).gum * 2) buyService(s, id, 'gum');
   }
   // the showcase: the rarest goods of the shop, as many as fit (they are sold from there like any other)
-  const rarest = [...s.stock].sort((a, b) => cat.itemById.get(b.itemId)!.rarity - cat.itemById.get(a.itemId)!.rarity);
+  // (the pot stays on the shelf: that is where it works from)
+  const rarest = s.stock.filter((x) => !cat.itemById.get(x.itemId)!.effect).sort((a, b) => cat.itemById.get(b.itemId)!.rarity - cat.itemById.get(a.itemId)!.rarity);
   for (const x of rarest) {
     if (G.freeCells(s, cat, 'case') === 0) break;
     N.transfer(s, cat, 'shelf', x.uid, 'case');
   }
   // a thin shelf: a lot by telephone, of the line in demand today if there is one
-  if (!s.supply && s.stock.length < 5 && s.gum - B.supplies.lot.gum > reserve + 100) {
+  if (!s.supply && s.stock.filter((x) => !cat.itemById.get(x.itemId)!.effect).length < 5 && s.gum - B.supplies.lot.gum > reserve + 100) {
     G.placeSupply(s, cat, 'lot', s.event.id === 'demand' && s.event.param ? s.event.param : 'phy', 'gum');
   }
 }
@@ -93,10 +94,11 @@ function craftAll(s: GameState, cat: Catalog): void {
     let best: { uids: number[]; gain: number } | null = null;
     for (const base of s.stock) {
       const item = cat.itemById.get(base.itemId)!;
+      if (item.effect) continue;
       const next = C.nextOf(cat, item);
       if (!next) continue;
       const need = C.pointsOf(item);
-      const others = s.stock.filter((x) => x !== base).sort((a, b) => worth(a) - worth(b));
+      const others = s.stock.filter((x) => x !== base && !cat.itemById.get(x.itemId)!.effect).sort((a, b) => worth(a) - worth(b));
       const sets: (typeof others)[] = [];
       const single = others.find((x) => C.pointsOf(cat.itemById.get(x.itemId)!) >= need);
       if (single) sets.push([single]);
@@ -153,7 +155,9 @@ function serveBuyer(s: GameState, cat: Catalog, base: Style): void {
   const style = stance(base, v);
   // sells one good after another while the customer stays and something fits what they have left
   while (!v.done) {
+    // (the pot is a good too: a shopkeeper who uses it keeps it; one who does not sells it like anything else)
     const fits = G.forSale(s)
+      .filter((x) => !(base === 'crafty' || base === 'master') || !cat.itemById.get(x.itemId)!.effect)
       .filter((x) => G.matches(cat, v.want, x.itemId) && G.salePrice(cat, x, 0) <= v.budget)
       .sort((a, b) => G.salePrice(cat, b, 0) - G.salePrice(cat, a, 0));
     if (fits.length === 0) break;

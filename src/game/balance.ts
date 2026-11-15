@@ -38,6 +38,8 @@ export const B = {
    */
   caseDepth: 2,
   caseCols: [2, 3, 5],
+  /** a good with an effect of its own is worth this many times a plain good of its rarity */
+  effectValue: { pot: 1.3 },
   /** a showcase packed with no cell left empty counts for this much more appeal */
   showFull: 3,
   /** a buyer is after what is shown this often (base, and more per good shown; at most showPullMax) */

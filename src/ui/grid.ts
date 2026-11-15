@@ -25,6 +25,8 @@ function imageSpot(cells: readonly (readonly [number, number])[], size: number):
 export function gridItem(x: { uid: number; itemId: number; x: number; y: number; rot: number; fake?: boolean; seen?: boolean; hot?: boolean }, cls = ''): string {
   const cell = ctx.cell;
   const item = G.findItem(cat, x.itemId);
+  // (a good with an effect of its own wears a mark: it does something when it is double-clicked)
+  if (item.effect) cls += ' special';
   const shape = G.shapeOf(cat, x.itemId, x.rot);
   const has = new Set(shape.cells.map(([cx, cy]) => `${cx},${cy}`));
   const cells = shape.cells
@@ -37,7 +39,7 @@ export function gridItem(x: { uid: number; itemId: number; x: number; y: number;
   const first = shape.cells.reduce((a, c) => (c[1] < a[1] || (c[1] === a[1] && c[0] < a[0]) ? c : a));
   return `<div class="inv-item ${cls}" id="item-${x.uid}" data-item="${x.uid}" style="${tone(item)};left:${x.x * cell}px;top:${x.y * cell}px;width:${shape.w * cell}px;height:${shape.h * cell}px">
       ${cells}<img src="${item.img}" alt="${esc(item.ja)}" draggable="false" style="width:${size}px;height:${size}px;${imageSpot(shape.cells, size)}${x.rot ? `;transform:rotate(${x.rot * 90}deg)` : ''}" />
-      <span class="inv-glyph" style="left:${first[0] * cell}px;top:${first[1] * cell}px">${glyphs(item)}</span>${x.hot ? `<b class="inv-seen hot" style="left:${first[0] * cell + (x.seen ? 16 : 0)}px;top:${(first[1] + 1) * cell - 15}px">訳</b>` : ''}${x.seen ? `<b class="inv-seen ${x.fake ? 'fake' : 'real'}" style="left:${first[0] * cell}px;top:${(first[1] + 1) * cell - 15}px">${x.fake ? '写' : '真'}</b>` : ''}${cls.split(' ').includes('match') ? `<i class="inv-mark" style="left:${(first[0] + 1) * cell - 17}px;top:${first[1] * cell + 3}px" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
+      <span class="inv-glyph" style="left:${first[0] * cell}px;top:${first[1] * cell}px">${glyphs(item)}</span>${item.effect ? `<b class="inv-fx" style="left:${(first[0] + 1) * cell - 19}px;top:${(first[1] + 1) * cell - 19}px" aria-label="特別な効果のある品（ダブルクリックで使う）">✦</b>` : ''}${x.hot ? `<b class="inv-seen hot" style="left:${first[0] * cell + (x.seen ? 16 : 0)}px;top:${(first[1] + 1) * cell - 15}px">訳</b>` : ''}${x.seen ? `<b class="inv-seen ${x.fake ? 'fake' : 'real'}" style="left:${first[0] * cell}px;top:${(first[1] + 1) * cell - 15}px">${x.fake ? '写' : '真'}</b>` : ''}${cls.split(' ').includes('match') ? `<i class="inv-mark" style="left:${(first[0] + 1) * cell - 17}px;top:${first[1] * cell + 3}px" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
 }
 
 const SLOT_LABEL: Record<SlotId | 'wallet', string> = { head: '頭', body: '胴体', arm: '腕', leg: '足', special1: '特殊1', special2: '特殊2', wallet: 'ウォレット' };
@@ -87,7 +89,7 @@ export function gridSection(g: GameState, side = ''): string {
     const tabBtn = (which: G.GridId | 'gear' | 'craft', label: string, count: string): string =>
       `<button class="tab ${tab === which ? 'on' : ''}" id="tab-${which}" data-act="grid" data-arg="${which}" role="tab" aria-selected="${tab === which}"><span>${label}</span><em>${count}</em></button>`;
     const worn = SLOT_IDS.filter((slot) => g.equip[slot]).length;
-    head = `<div class="tabs" role="tablist">${tabBtn('shelf', '棚', usedOf(g, 'shelf'))}${tabBtn('wallet', 'ウォレット', g.wallet.items.length ? `${g.wallet.items.length}個` : '空')}${tabBtn('gear', '装備', `${worn}/6`)}${tabBtn('craft', '合成', `${craftsLeft(g)}回`)}</div>`;
+    head = `<div class="tabs" role="tablist">${tabBtn('shelf', '棚', usedOf(g, 'shelf'))}${tabBtn('wallet', 'ウォレット', g.wallet.items.length ? `${g.wallet.items.length}個` : '空')}${tabBtn('gear', '装備', `${worn}/6`)}${tab === 'craft' ? `<span class="tab on solo-pot" id="tab-craft"><span>合成</span><em>${craftsLeft(g)}回</em></span>` : ''}</div>`;
   } else {
     head = `<div class="tabs"><span class="tab on solo"><span>ウォレット</span><em>${used}/${total}</em></span><span class="inv-count">${esc(wallet.ja)}</span></div>`;
   }

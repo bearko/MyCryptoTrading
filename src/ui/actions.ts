@@ -81,6 +81,11 @@ function enterGame(g: GameState | null): void {
       G.repackShelf(g, cat);
       store.save(g);
     }
+    // a save from before the pot was a good: the shop is handed its pot, once
+    if (g && !g.potGiven) {
+      G.givePot(g, cat);
+      store.save(g);
+    }
     closeModal();
     resetHud(g);
     resetScene();
@@ -666,6 +671,23 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
     case 'recipes':
       ui.modal = 'recipes';
       break;
+    case 'use-item': {
+      // a good with an effect of its own is used (a double click on it, or the button in its window): the pot opens
+      const used = ui.sel ? G.gridOf(g, cat, ui.sel.grid).items.find((x) => x.uid === ui.sel!.uid) : undefined;
+      const effect = used ? G.findItem(cat, used.itemId).effect : undefined;
+      if (effect !== 'pot' || ui.sel?.grid !== 'shelf') {
+        note('棚に置くと、使えます');
+        return;
+      }
+      ui.gridView = 'craft';
+      closeModal();
+      audio.sfx('open');
+      haptic('medium');
+      render();
+      const pot = document.getElementById('pot');
+      if (pot) fx.burst('stars', pot, { count: 10, color: tok('--gum') });
+      return;
+    }
     case 'to-pot':
       // from a good's menu: it goes into the pot, and the pot's tab opens
       if (ui.sel && ui.craft.length < CRAFT_MAX && !ui.craft.includes(ui.sel.uid)) ui.craft.push(ui.sel.uid);

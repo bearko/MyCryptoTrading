@@ -817,3 +817,72 @@ html.calm .loupe {
 .case.hot {
   transform: none;
 }
+
+/* ---------- a good with an effect of its own: the same fill and frame as any good, and on top of that a
+   mark in its corner and a glint that crosses it now and then — "this one does something when double-clicked" */
+.inv-fx {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid var(--ink);
+  background: var(--gum);
+  color: var(--ink);
+  font-size: 0.6875rem;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  animation: fx-mark 2.6s ease-in-out infinite;
+}
+.inv-item.special {
+  overflow: hidden;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--gum) 70%, transparent));
+}
+.inv-item.special::before {
+  content: '';
+  position: absolute;
+  inset: -20% -60%;
+  z-index: 1;
+  background: linear-gradient(105deg, transparent 42%, color-mix(in srgb, var(--paper) 75%, transparent) 50%, transparent 58%);
+  transform: translateX(-70%);
+  animation: fx-glint 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.inv-item.special:hover {
+  cursor: pointer;
+}
+@keyframes fx-glint {
+  0%,
+  62% {
+    transform: translateX(-70%);
+  }
+  88%,
+  100% {
+    transform: translateX(70%);
+  }
+}
+@keyframes fx-mark {
+  50% {
+    transform: scale(1.18) rotate(12deg);
+  }
+}
+html.calm .inv-item.special::before,
+html.calm .inv-fx {
+  animation: none;
+}
+.item-fx {
+  margin-top: 4px;
+  padding: 5px 7px;
+  border-left: 5px solid var(--gum);
+  background: var(--gum-wash);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+.item-fx b {
+  display: block;
+}
+.tab.solo-pot {
+  cursor: default;
+}

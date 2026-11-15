@@ -3,7 +3,7 @@
  * this is the board, the recipe book, and the show when something is made.
  */
 import { B } from '../game/balance';
-import { catalog as cat, COND_JA, RARITY_JA, type Item } from '../game/catalog';
+import { catalog as cat, POT_ID, COND_JA, RARITY_JA, type Item } from '../game/catalog';
 import * as C from '../game/craft';
 import * as G from '../game/logic';
 import type { GameState, StockItem } from '../game/state';
@@ -11,7 +11,6 @@ import { ctx, ui } from './core';
 import { btn, esc, gum, itemTile, num, tone } from './html';
 
 /** The pot itself: an epic good of the catalogue lends its picture. */
-const POT_ID = 4600;
 const potImg = (): string => cat.itemById.get(POT_ID)?.img ?? '';
 
 const own = (g: GameState, uid: number): StockItem | undefined => g.stock.find((x) => x.uid === uid) ?? g.wallet.items.find((x) => x.uid === uid);
@@ -28,6 +27,8 @@ const WHY: Record<Exclude<C.CraftPlan['block'], ''>, string> = {
   short: '相手の点が足りません',
   spent: '壺は、今日はもう使えません',
   poor: 'お布施の GUM が足りません',
+  nopot: '壺が棚にありません',
+  special: '特別な効果のある品は、壺に入れられません',
 };
 
 const mark = (item: Item): string => (item.limited ? 'リミテッド' : RARITY_JA[item.rarity]);
@@ -64,7 +65,7 @@ export function craftBoard(g: GameState): string {
     : '';
   const used = new Set(ui.craft);
   const mine = [...g.stock, ...g.wallet.items]
-    .filter((x) => !used.has(x.uid) && !ui.counter.includes(x.uid))
+    .filter((x) => !used.has(x.uid) && !ui.counter.includes(x.uid) && !G.findItem(cat, x.itemId).effect)
     .sort((a, b) => G.findItem(cat, b.itemId).rarity - G.findItem(cat, a.itemId).rarity || a.itemId - b.itemId)
     .map((x) => {
       const item = G.findItem(cat, x.itemId);
@@ -83,7 +84,7 @@ export function craftBoard(g: GameState): string {
     ${resultText}
     ${hint}
     <div class="pinfo">${chips}<span class="pchip ${left === 0 ? 'ng' : ''}">今日あと <b>${left}</b> 回</span>${plan.block && plan.result ? `<span class="pwhy">${WHY[plan.block]}</span>` : ''}</div>
-    <div class="pacts">${btn('craft-go', '配合する', { cls: 'primary', disabled: !!plan.block, sfx: 'none' })}${btn('recipes', '配合表', { cls: 'ghost', sfx: 'open' })}</div>
+    <div class="pacts">${btn('craft-go', '配合する', { cls: 'primary', disabled: !!plan.block, sfx: 'none' })}${btn('recipes', '配合表', { cls: 'ghost', sfx: 'open' })}${btn('grid', '棚へ戻る', { arg: 'shelf', cls: 'ghost', sfx: 'close' })}</div>
     <div class="pgoods" id="pgoods" aria-label="持ちもの（タップで壺に入れる）">${mine || '<small class="pnone">入れられる品がありません</small>'}</div>
   </div>`;
 }

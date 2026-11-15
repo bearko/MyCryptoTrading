@@ -37,6 +37,7 @@ export function load(): GameState | null {
     s.trash ??= [];
     s.trashGum ??= 0;
     s.wide ??= false;
+    s.potGiven ??= false;
     // saves from before the pot
     s.made ??= [];
     s.crosses ??= [];

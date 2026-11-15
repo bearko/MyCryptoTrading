@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { B } from '../src/game/balance';
-import { catalog } from '../src/game/catalog';
+import { catalog, POT_ID } from '../src/game/catalog';
 import * as C from '../src/game/craft';
 import * as G from '../src/game/logic';
+import * as N from '../src/game/night';
 
 const item = (id: number) => catalog.itemById.get(id)!;
 
@@ -12,6 +13,8 @@ function shopWith(ids: [number, number][]) {
   s.rows = 8;
   s.gum = 100_000;
   const uids = ids.map(([id, cond]) => G.addTo(s, catalog, 'shelf', id, cond, 10)!);
+  // (the pot stands on the shelf: without it, nothing can be made)
+  G.addTo(s, catalog, 'shelf', POT_ID, 1, 0);
   return { s, uids };
 }
 
@@ -41,11 +44,11 @@ describe('the pot', () => {
     const gum = s.gum;
     const made = C.craft(s, catalog, uids);
     expect(made.ok).toBe(true);
-    expect(s.stock.map((x) => x.itemId)).toEqual([4001]);
+    expect(s.stock.map((x) => x.itemId).filter((id) => id !== POT_ID)).toEqual([4001]);
     expect(s.gum).toBe(gum - plan.fee);
     expect(s.made).toEqual([4001]);
     // what went in and the offering are what the result cost
-    expect(s.stock[0].paid).toBe(30 + plan.fee);
+    expect(s.stock.find((x) => x.itemId === 4001)!.paid).toBe(30 + plan.fee);
   });
 
   it('partners of the base\'s own parameter line keep the result one grade better', () => {
@@ -119,5 +122,33 @@ describe('the pot', () => {
     expect(C.planCraft(plain.s, catalog, plain.uids).result!.id).toBe(2001);
     // an epic never comes out as a limited legendary by the back door
     expect(C.nextOf(catalog, item(4600))).toBeNull();
+  });
+
+  it('the pot is a good of its own: no pot on the shelf, no synthesis; it is worth more, and it does not go into itself', () => {
+    const { s, uids } = shopWith([
+      [1001, 1],
+      [1002, 1],
+    ]);
+    expect(C.planCraft(s, catalog, uids).block).toBe('');
+    const pot = s.stock.find((x) => x.itemId === POT_ID)!;
+    expect(item(POT_ID).effect).toBe('pot');
+    // worth more than a plain good of its rarity
+    const plain = catalog.itemsByRarity[item(POT_ID).rarity].filter((i) => !i.effect).map((i) => G.itemValue(catalog, i.id, 1));
+    expect(G.itemValue(catalog, POT_ID, 1)).toBeGreaterThan(Math.max(...plain));
+    // it is not an ingredient
+    expect(C.planCraft(s, catalog, [uids[0], pot.uid]).block).toBe('special');
+    // in the wallet it does nothing; sold or thrown away, there is no pot
+    expect(N.transfer(s, catalog, 'shelf', pot.uid, 'wallet')).toBe(true);
+    expect(G.hasEffect(s, catalog, 'pot')).toBe(false);
+    expect(C.planCraft(s, catalog, uids).block).toBe('nopot');
+    expect(C.craft(s, catalog, uids).ok).toBe(false);
+    // a new shop starts with one; an old save is handed one, once
+    const fresh = G.newGame(9, catalog);
+    expect(G.hasEffect(fresh, catalog, 'pot')).toBe(true);
+    fresh.stock = fresh.stock.filter((x) => x.itemId !== POT_ID);
+    fresh.potGiven = false;
+    G.givePot(fresh, catalog);
+    G.givePot(fresh, catalog);
+    expect(fresh.stock.filter((x) => x.itemId === POT_ID)).toHaveLength(1);
   });
 });

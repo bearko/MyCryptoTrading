@@ -22,6 +22,8 @@ export function inspectModal(g: GameState): string {
   else if (g.phase === 'quest') action = btn('drop', '捨てる');
   else if (ui.sel.grid === 'wallet') action = btn('unload', '棚へ移す');
   else action = btn('dispose', '処分する', { sub: gum(price) });
+  // a good with an effect of its own is used from here too (the same as a double click on it)
+  const use = item.effect && atHome(g) && ui.sel.grid === 'shelf' ? btn('use-item', '使う：合成をはじめる', { cls: 'primary', sfx: 'open' }) : '';
   // throwing a good away is asked twice, and the second button is not where the first one was:
   // tapping the same spot again backs out instead
   const throwable = g.phase === 'quest' || (g.phase !== 'shop' && ui.sel.grid !== 'wallet');
@@ -29,7 +31,7 @@ export function inspectModal(g: GameState): string {
     ui.confirmDispose && throwable
       ? `<p class="warn-text dispose-ask">${g.phase === 'quest' ? 'この品を捨てます。' : `この品を ${num(price)} GUM で処分します。`}元には戻せません。</p>
       <div class="actions two">${btn('dispose-no', 'やめる', { cls: 'ghost' })}${btn(g.phase === 'quest' ? 'drop' : 'dispose', g.phase === 'quest' ? '本当に捨てる' : '本当に処分', { cls: 'danger', sfx: 'none' })}</div>`
-      : `<div class="actions two">${action}${btn('modal-close', '閉じる', { cls: 'ghost' })}</div>`;
+      : `${use ? `<div class="actions one">${use}</div>` : ''}<div class="actions two">${action}${btn('modal-close', '閉じる', { cls: 'ghost' })}</div>`;
   return `<div class="modal" id="modal-inspect" data-ui><div class="modal-box tall">
     <div class="modal-scroll">
     ${itemCard(x.itemId, x.cond, `<div class="item-note">仕入れ値 ${num(x.paid)}　定価 ${num(G.salePrice(cat, x, 0))}${x.hot ? '　<b class="seen-note hot">訳あり（棚にあると、見回りに没収される）</b>' : ''}${x.seen ? `　<b class="seen-note ${x.fake ? 'fake' : 'real'}">${x.fake ? 'レプリカ（見分け済み）' : '本物（見分け済み）'}</b>` : ''}</div>`)}
@@ -51,7 +53,7 @@ export function menuModal(g: GameState): string {
     <div class="actions one">
       ${btn('turn', '回転させる', { sfx: 'none' })}
       ${btn('equip', '装備する', { disabled: !wearable, sub: wearable ? (item.wallet ? 'ウォレットとして使う' : `${SLOT_JA[item.slot]}に装備`) : '店の棚にある品だけ装備できます', sfx: 'none' })}
-      ${atHome(g) ? btn('to-pot', '合成の壺に入れる', { disabled: ui.counter.includes(x.uid), sfx: 'drop' }) : ''}
+      ${atHome(g) && G.hasEffect(g, cat, 'pot') && !item.effect ? btn('to-pot', '合成の壺に入れる', { disabled: ui.counter.includes(x.uid), sfx: 'drop' }) : ''}
       ${atHome(g) && !ui.counter.includes(x.uid) ? btn('show-toggle', ui.sel.grid === 'case' ? 'ショーケースから棚へ戻す' : 'ショーケースに飾る', { sfx: 'none' }) : ''}
       ${btn('modal-close', 'やめる', { cls: 'ghost' })}
     </div>
@@ -103,7 +105,7 @@ export function helpModal(): string {
       <li>買いに来たお客さんの予算は、値付けで動きます。安くした分だけ増え、高くした分だけ減ります。在庫を早く回したいときは安く、品を残して単価を上げたいときは高く。</li>
       <li>お客さんは 5 つの派閥（朱雀・青龍・玄武・白虎・黄竜）のどれかに属しています。交渉で値引きして売る・色をつけて買うと、その派閥の評価が大きく上がり、評価が貯まると恩恵を受けられます（左上の「評判」をタップで確認）。派閥は 2 つずつ対立していて（朱雀と玄武、青龍と白虎）、片方に気前よくすると相手の評価が下がります。下がりきった派閥は、恩恵が裏返ります。</li>
       <li>買い取りの伝票には、品が棚でしめる形（マス目）が出ます。販売の伝票には、品を置いたあとの「予算の残り」が出ます。</li>
-      <li>「合成」のタブの壺に、品を 2〜3 個入れると、1 つ目（土台）が 1 つ上のレアリティの品になります。相手の点の合計が土台の点に届けば作れます。決まった 2 系列を合わせると別の系列の品になる「変わり配合」もあります（くわしくは壺の「配合表」）。1 日 2 回まで、お布施がかかります。</li>
+      <li>棚にある<b>ぴっぴ教の壺</b>（角に ✦ の印がある品）を<b>ダブルクリック</b>すると、合成ができます。品を 2〜3 個入れると、1 つ上の品になります（1 日 2 回、お布施が要ります）。壺もふつうの品なので売れますが、売ると合成はできなくなります。✦ の印がある品は、棚に置いてダブルクリックすると特別な効果を使えます。</li>
       <li>お客さんの予算は、ヒーローのレアリティで決まります。エピックやレジェンダリーの品は、買える人が限られます。レジェンダリーのヒーローは大富豪です。</li>
       <li>PC では、店の中の物で操作します。<b>寝床</b>をクリック＝眠って翌日へ。<b>ゴミ箱</b>へ品をドラッグ＝捨てる（夜までは戻せます）。<b>ショーケース</b>へ品をドラッグ＝飾る（棚と同じマス目で、形どおりにはめこみます。その系統を欲しがる客が来やすくなり、高い品ほど上客が来ます。すきまなく埋めると、集客が増えます。飾った品は、そのままカウンターへ出して売れます）。<b>電話</b>＝商人ギルド（ずっと効く頼みごとと、系統を選べる品の取り寄せを、GUM か、毎朝貯まる信用で。取り寄せた品は、翌朝、電話の下の箱に届きます。GUM を借りることもできます：利子 2 割、7 晩で返済。返しおえるまで権利書は買えません）。</li>
       <li>5 日目から、売り客の品に<b>レプリカ</b>が混じります（値打ちは本物の 3 割。言い値が少し安いのが手がかり）。カウンターの<b>ルーペ</b>へ品をドラッグすると見分けられます（1 日 3 回）。見抜くと、売り客は安く手放します。知らずに本物として売ると、ばれて評判を落とすことがあります。</li>

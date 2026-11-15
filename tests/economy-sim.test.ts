@@ -38,7 +38,8 @@ describe('economy', () => {
 
   it('haggling pays: careful play finishes clearly sooner than plain play', () => {
     // (a dear price now shrinks the budget, so a markup trades volume for unit price: the edge comes mostly from haggling when buying)
-    expect(careful.median).toBeLessThan(plain.median * 0.95);
+    // (both now sell the pot they start with, which lifts the plain shop about as much as the careful one: the gap is narrower)
+    expect(careful.median).toBeLessThan(plain.median * 0.98);
     // the pot adds value: putting goods through it finishes clearly sooner still, without breaking the game open
     const crafty = measure('crafty');
     expect(crafty.median).toBeLessThan(careful.median * 0.9);

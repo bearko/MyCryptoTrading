@@ -25,7 +25,8 @@ describe('game rules', () => {
   it('starts with stock, money, a common wallet and nothing worn', () => {
     const s = G.newGame(1, catalog);
     expect(s.gum).toBe(B.startGum);
-    expect(s.stock).toHaveLength(B.startStock);
+    // (the starting goods, and the pot)
+    expect(s.stock).toHaveLength(B.startStock + 1);
     expect(G.walletSize(s, catalog)).toEqual({ cols: 4, rows: 5 });
     expect(Object.values(s.equip).every((x) => x === null)).toBe(true);
     expect(s.phase).toBe('morning');

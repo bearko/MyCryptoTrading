@@ -54,6 +54,9 @@ type ItemDrag = {
   ok: boolean;
 };
 type OfferDrag = { kind: 'offer'; loupe?: boolean; index: number; id: string; startX: number; startY: number; active: boolean; ghost: HTMLElement | null; offX: number; offY: number };
+/** A click on a good with an effect, waiting to see whether a second one follows. */
+let tapWait: { uid: number; timer: number } | null = null;
+
 const grown = (r: DOMRect, by: number): DOMRect => new DOMRect(r.x - by, r.y - by, r.width + by * 2, r.height + by * 2);
 
 /** What the loupe showed: a stamp over the good, a sound, and a word when there was nothing to see. */
@@ -518,6 +521,30 @@ function onUp(event: PointerEvent): void {
   cleanup();
   if (!d.active) {
     if (d.slot) return; // a tap on a worn good: the button opens the list
+    // a good with an effect of its own: a second click in quick succession uses it (the first one waits a
+    // moment before it opens the good's window, so that the window does not get in the way)
+    if (atHome(g) && cat.itemById.get(d.itemId)?.effect && d.grid === 'shelf') {
+      const open = (): void => {
+        tapWait = null;
+        ui.sel = { grid: d.grid, uid: d.uid };
+        ui.confirmDispose = false;
+        ui.modal = 'inspect';
+        audio.sfx('open');
+        ctx.render();
+      };
+      if (tapWait && tapWait.uid === d.uid) {
+        window.clearTimeout(tapWait.timer);
+        tapWait = null;
+        ui.sel = { grid: d.grid, uid: d.uid };
+        ctx.swallowClick = true;
+        ctx.act('use-item', '');
+        return;
+      }
+      if (tapWait) window.clearTimeout(tapWait.timer);
+      tapWait = { uid: d.uid, timer: window.setTimeout(open, 300) };
+      ctx.swallowClick = true;
+      return;
+    }
     ui.sel = { grid: d.grid, uid: d.uid };
     ui.confirmDispose = false;
     ui.modal = 'inspect';
