@@ -17,6 +17,16 @@ export type Fx =
   | { t: 'status'; name: string; rate: number; side: 'foe' | 'self' };
 
 /** A tradable good (an extension). */
+/** What a special good does when it is used. `pot`: opens the pot — goods are put in, a better one comes out. */
+export type Effect = 'pot';
+/** The goods that have an effect of their own, by id. */
+export const EFFECTS: Record<number, Effect> = { 4600: 'pot' };
+export const EFFECT_JA: Record<Effect, { name: string; text: string }> = {
+  pot: { name: '合成の壺', text: '棚に置いてダブルクリックすると、合成ができる（品を 2〜3 個入れて、1 つ上の品にする）' },
+};
+/** The pot every shop starts with. */
+export const POT_ID = 4600;
+
 export interface Item {
   id: number;
   ja: string;
@@ -41,6 +51,8 @@ export interface Item {
   img: string;
   /** a limited legendary: the top of a line, above its legendary. Nobody brings one in — it can only be made in the pot */
   limited: boolean;
+  /** a good with an effect of its own, used by a double click while it is on the shelf (most goods have none) */
+  effect?: Effect;
 }
 
 /** A customer (a hero). */
@@ -89,6 +101,7 @@ export function buildCatalog(data: CatalogData): Catalog {
   // (ids run in lines: 1001 → 2001 → … → 5001, and a line's limited legendary is 5501)
   const byId = new Map(data.items.map((item) => [item.id, item]));
   for (const item of data.items) item.limited = item.rarity === 5 && item.id % 1000 >= 500 && byId.get(item.id - 500)?.series === item.series;
+  for (const item of data.items) if (EFFECTS[item.id]) item.effect = EFFECTS[item.id];
   for (const item of data.items) if (!item.wallet && !item.limited) itemsByRarity[item.rarity].push(item);
   const heroesByRarity: Hero[][] = [[], [], [], [], [], []];
   for (const hero of data.heroes) heroesByRarity[hero.rarity].push(hero);

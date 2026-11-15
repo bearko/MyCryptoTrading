@@ -1,4 +1,5 @@
-import type * as G from '../game/logic';
+import { catalog as cat } from '../game/catalog';
+import * as G from '../game/logic';
 import type { GameState, SlotId } from '../game/state';
 
 export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'network' | 'parcel' | 'wanted';
@@ -114,6 +115,7 @@ export const ctx = {
   /** a window was just opened from under the finger: the click that the same touch still sends is not for it */
   swallowClick: false,
   render: (): void => {},
+  act: (_name: string, _arg: string): void => {},
 };
 
 /** At home the shelf or the wallet is shown; out at night, always the wallet. */
@@ -123,7 +125,8 @@ export const CASE_CELL = 40;
 
 export const shownGrid = (g: GameState): G.GridId => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView === 'gear' || ui.gridView === 'craft' ? 'shelf' : ui.gridView);
 /** The tab on screen: a grid, or the gear. */
-export const shownTab = (g: GameState): G.GridId | 'gear' | 'craft' => (g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView);
+export const shownTab = (g: GameState): G.GridId | 'gear' | 'craft' =>
+  g.phase === 'shop' || g.phase === 'quest' ? 'wallet' : ui.gridView === 'craft' && !G.hasEffect(g, cat, 'pot') ? 'shelf' : ui.gridView;
 export const atHome = (g: GameState): boolean => g.phase === 'morning' || g.phase === 'open' || g.phase === 'evening';
 
 export const TEMPER_JA = ['気さく', 'ふつう', '頑固'];

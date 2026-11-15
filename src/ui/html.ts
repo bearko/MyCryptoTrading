@@ -1,5 +1,5 @@
 import { B } from '../game/balance';
-import { catalog as cat, COND_JA, PARAM_JA, RARITY_JA, ROLE_JA, SLOT_JA, type Item, type Param } from '../game/catalog';
+import { catalog as cat, EFFECT_JA, COND_JA, PARAM_JA, RARITY_JA, ROLE_JA, SLOT_JA, type Item, type Param } from '../game/catalog';
 import * as G from '../game/logic';
 
 export const esc = (text: string | number): string =>
@@ -54,6 +54,7 @@ export function itemCard(itemId: number, cond: number, extra = ''): string {
       <div class="tags">${labels(item)}</div>
       <div class="tags"><span class="tag rar r${item.rarity}">${item.limited ? 'リミテッド' : RARITY_JA[item.rarity]}</span><span class="tag cond c${cond}">${COND_JA[cond]}</span></div>
       <div class="item-val">相場 ${gum(G.itemValue(cat, itemId, cond))}</div>
+      ${item.effect ? `<div class="item-fx"><b>✦ ${EFFECT_JA[item.effect].name}</b>${EFFECT_JA[item.effect].text}</div>` : ''}
       ${extra}
     </div>
   </div>`;

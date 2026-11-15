@@ -266,6 +266,8 @@ export interface GameState {
   trashGum: number;
   /** the shelf is laid out wide (saves from before are repacked once) */
   wide: boolean;
+  /** the shop has been handed its pot (saves from before the pot was a good get one, once) */
+  potGiven: boolean;
   /** the special pairings found so far (their keys, see craft.ts) */
   crosses: string[];
 }

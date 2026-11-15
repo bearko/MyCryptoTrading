@@ -1,6 +1,6 @@
 import { B } from './balance';
 import type { Catalog, Item } from './catalog';
-import { addRep, addTo, gridOf, type GridId } from './logic';
+import { addRep, addTo, gridOf, hasEffect, type GridId } from './logic';
 import type { GameState, StockItem } from './state';
 
 /**
@@ -134,7 +134,7 @@ export interface CraftPlan {
   /** a special pairing (its key), or '' for the base's own line */
   cross: string;
   /** why it cannot be made yet: nothing in, at the top of its line, no partner, partners too weak, the pot is spent for today, not enough GUM */
-  block: '' | 'empty' | 'top' | 'alone' | 'short' | 'spent' | 'poor';
+  block: '' | 'empty' | 'top' | 'alone' | 'short' | 'spent' | 'poor' | 'nopot' | 'special';
 }
 
 /** The offering for a result: a share of what it is worth at its rarity (the same for every good of that rarity). */
@@ -162,7 +162,9 @@ export function planCraft(s: GameState, cat: Catalog, uids: readonly number[]): 
   const match = partners.length > 0 && partners.every((p) => p.params.some((param) => base.params.includes(param)));
   const cond = cross ? B.condMult.length - 1 : Math.min(B.condMult.length - 1, inputs[0].cond + (match ? 1 : 0));
   const fee = result ? feeOf(result) : 0;
-  const block = !result ? 'top' : partners.length === 0 ? 'alone' : have < need ? 'short' : craftsLeft(s) === 0 ? 'spent' : s.gum < fee ? 'poor' : '';
+  // (no pot on the shelf, no synthesis; and a good with an effect of its own does not go into the pot)
+  const special = [base, ...partners].some((x) => x.effect);
+  const block = !hasEffect(s, cat, 'pot') ? 'nopot' : special ? 'special' : !result ? 'top' : partners.length === 0 ? 'alone' : have < need ? 'short' : craftsLeft(s) === 0 ? 'spent' : s.gum < fee ? 'poor' : '';
   return { base, result, cond, need, have, match, fee, cross: cross?.key ?? '', block };
 }
 

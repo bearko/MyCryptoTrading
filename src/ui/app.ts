@@ -135,6 +135,7 @@ function pressSound(el: HTMLElement): void {
 export function mount(el: HTMLElement): void {
   ctx.root = el;
   ctx.render = render;
+  ctx.act = (name, arg) => act(name, arg);
   display.init();
   fx.mount(el);
 

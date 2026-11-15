@@ -1,4 +1,5 @@
 import { B } from './balance';
+import { POT_ID, type Effect } from './catalog';
 import type { Param, Catalog, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randInt, randRange } from './rng';
@@ -17,7 +18,8 @@ export function itemValue(cat: Catalog, itemId: number, cond: number): number {
   const item = cat.itemById.get(itemId)!;
   const hash = (Math.imul(item.id, 2654435761) >>> 0) % 1000;
   const spread = 1 + (hash / 999 - 0.5) * 2 * B.itemSpread;
-  return Math.max(1, Math.round((item.limited ? B.limitedValue : B.rarityValue[item.rarity]) * spread * B.condMult[cond]));
+  const special = item.effect ? B.effectValue[item.effect] : 1;
+  return Math.max(1, Math.round((item.limited ? B.limitedValue : B.rarityValue[item.rarity]) * spread * B.condMult[cond] * special));
 }
 
 /** What a customer is asked to pay at a markup tier. */
@@ -370,6 +372,7 @@ export function newGame(seed: number, cat: Catalog): GameState {
     trash: [],
     trashGum: 0,
     wide: true,
+    potGiven: true,
     crosses: [],
   };
   for (let i = 0; i < B.startStock; i++) {
@@ -377,6 +380,9 @@ export function newGame(seed: number, cat: Catalog): GameState {
     addStock(s, cat, item.id, 1, 0);
   }
   startMorning(s);
+  // every shop starts with a pot on the shelf (a good like any other: it can be sold — and then there is no pot)
+  // (an old, well-used one)
+  if (cat.itemById.has(POT_ID)) addTo(s, cat, 'shelf', POT_ID, 0, 0);
   return s;
 }
 
@@ -535,12 +541,14 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
 
   let want: Want;
   const shown = shownGoods(s);
+  // (word of what the shop has does not bring customers after the shop's own tools, such as the pot)
+  const plain = s.stock.filter((x) => !cat.itemById.get(x.itemId)?.effect);
   if (shown.length > 0 && rand(s) < Math.min(B.showPullMax, B.showPull[0] + B.showPull[1] * shown.length)) {
     // drawn in by the showcase: after the kind of good that is shown there
     const item = cat.itemById.get(pick(s, shown).itemId)!;
     want = rand(s) < 0.7 || item.roles.length === 0 ? { type: 'param', param: pick(s, item.params) } : { type: 'role', role: pick(s, item.roles) };
-  } else if (s.stock.length > 0 && rand(s) < B.buyerKnowsStock) {
-    const target = pick(s, s.stock);
+  } else if (plain.length > 0 && rand(s) < B.buyerKnowsStock) {
+    const target = pick(s, plain);
     const item = cat.itemById.get(target.itemId)!;
     const roll = rand(s);
     if (roll < 0.35) want = { type: 'param', param: pick(s, item.params) };
@@ -952,6 +960,19 @@ export function showAppeal(s: GameState, cat: Catalog): number {
     return sum + (item.limited ? 5 : item.rarity - 1);
   }, 0);
   return goods + (caseFull(s, cat) ? B.showFull : 0);
+}
+
+// ---------------------------------------------------------------- goods with an effect of their own
+
+/** True when a good with this effect stands on the shelf (that is where it works from). */
+export const hasEffect = (s: GameState, cat: Catalog, effect: Effect): boolean => s.stock.some((x) => cat.itemById.get(x.itemId)?.effect === effect);
+
+/** A save from before the pot was a good: it is handed one, once (on the shelf, in the wallet, or in a parcel by the telephone). */
+export function givePot(s: GameState, cat: Catalog): void {
+  if (s.potGiven) return;
+  s.potGiven = true;
+  if (!cat.itemById.has(POT_ID)) return;
+  if (addTo(s, cat, 'shelf', POT_ID, 0, 0) === null && addTo(s, cat, 'wallet', POT_ID, 0, 0) === null) s.parcel.push({ itemId: POT_ID, cond: 0, paid: 0 });
 }
 
 // ---------------------------------------------------------------- the bin
