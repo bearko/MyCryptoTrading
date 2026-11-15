@@ -177,6 +177,32 @@ export function customerWindow(g: GameState, v: Visitor): string {
   </div>${negoPanel(g, v)}`;
 }
 
+const WIN_KEY = 'mycryptotrading.win.v1';
+
+/** Puts the slip where the player last left it (kept in the browser, apart from the save). */
+export function restoreWindow(): void {
+  ui.win.moved = false;
+  try {
+    const raw = JSON.parse(localStorage.getItem(WIN_KEY) ?? 'null') as { x?: unknown; y?: unknown } | null;
+    if (raw && typeof raw.x === 'number' && typeof raw.y === 'number') {
+      ui.win.x = raw.x;
+      ui.win.y = raw.y;
+      ui.win.moved = true;
+    }
+  } catch {
+    // (no storage: the slip opens in its usual place)
+  }
+}
+
+/** Remembers where the player left the slip. */
+export function rememberWindow(): void {
+  try {
+    localStorage.setItem(WIN_KEY, JSON.stringify({ x: ui.win.x, y: ui.win.y }));
+  } catch {
+    // (no storage: the place holds until the page is closed)
+  }
+}
+
 /** Keeps the customer window on screen (after a drag, a resize, or a change of its size). */
 export function clampWindow(): void {
   const root = ctx.root;
@@ -199,9 +225,12 @@ export function clampWindow(): void {
   // (on a wide screen the slip opens clear of the showcase on the wall, until it is moved by hand)
   // (the showcase grows sideways with its slots)
   if (isWide() && !ui.win.moved) {
-    const wall = document.getElementById('sprops')?.getBoundingClientRect();
-    const clear = wall && wall.width > 0 ? wall.right - ctx.root.getBoundingClientRect().left + 12 : 160 + Math.max(0, (ctx.s ? G.caseCols(ctx.s) : 2) - 3) * 40;
-    ui.win.x = Math.max(ui.win.x, Math.round(clear));
+    // (the customer stands in the middle: the slip opens to their right, before the right wall; where the
+    // opening is too narrow for that, it lies over the wall, so the customer and their goods stay in view)
+    const wallW = root.querySelector<HTMLElement>('.wall.wr')?.offsetWidth ?? 0;
+    const far = root.querySelector<HTMLElement>('#far')?.getBoundingClientRect();
+    const clear = far && far.width > 0 ? far.right - base.left + 16 : areaW / 2 + 70;
+    ui.win.x = Math.round(Math.max(areaW - wallW - win.offsetWidth - 12, clear));
   }
   ui.win.x = Math.max(0, Math.min(ui.win.x, areaW - win.offsetWidth));
   ui.win.y = Math.max(0, Math.min(ui.win.y, root.clientHeight - 48));

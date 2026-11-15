@@ -11,7 +11,7 @@ import { fx } from './fx';
 import { anim, flip, layer, nope, pointOn, settle } from './motion';
 import { bubbleShake, custShake } from './scene';
 import { note } from './toast';
-import { clampWindow } from './window';
+import { clampWindow, rememberWindow } from './window';
 
 /**
  * Dragging and pressing: goods on a grid (tap = detail, hold = menu, drag = move or put on the counter),
@@ -584,6 +584,7 @@ function onUp(event: PointerEvent): void {
     return;
   }
   if (d.kind === 'win') {
+    rememberWindow();
     cleanup();
     return;
   }
