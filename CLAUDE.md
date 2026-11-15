@@ -31,6 +31,7 @@
 - 目利き（`logic.ts` の `examineOffer`・`examineStock`・`stockValue`）：5 日目から売り客の品にレプリカ（`fake`）が混じる。カウンターのルーペ（`counter.ts` の `#loupe`、落とす処理は `drag.ts`）へ品をドラッグすると見分けられる（`seen`。1 日 3 回）。品を別の入れ物へ移す処理を足すときは、`fake`・`seen` を引きつぐ。くわしくは `docs/GAME_DESIGN.md` の 4.17。
 - 訳ありの品と見回り（`logic.ts` の `patrol`、状態の `patrolDay`・`patrolSlot`、品の `hot`）：6 日目から、安い訳ありの品が持ちこまれる。見回りは棚だけを改めて没収する（ウォレットは見ない）。品を移す処理では `hot` も引きつぐ。くわしくは `docs/GAME_DESIGN.md` の 4.18。
 - 手配書（`logic.ts` の `postWanted`・`report`、状態の `wanted`）：ある派閥が、対立する派閥のヒーローを追う。その客が来たら、通報する（賞金と依頼主の評価）か、取引する（追われる側の評価）かを選ぶ。画面は `props.ts` の `wantedModal`。くわしくは `docs/GAME_DESIGN.md` の 4.16。
+- 客層（`logic.ts` の `handle`・`clienteleScore`・`clienteleDue`・`growClientele`、状態の `handled`・`clientele`、数字は `balance.ts` の `clienteleNeed`・`clienteleShow`）：はじめはノービスのヒーローだけが来る。そのレアリティ以上の品を扱う（買う・売る・合成する）か、ショーケースに飾ると、次の階級のヒーローが来るようになる（開店のときに 1 日 1 段）。朝の紙面（`hooks.ts` の `morningExtras`）と暦（`props.ts` の `calendarModal`）に出す。ヒーローの階級の名前は `catalog.ts` の `HERO_CLASS_JA`。テストで全員を呼びたいときは `s.clientele = 5`。くわしくは `docs/GAME_DESIGN.md` の 4.19。次は、ヒーローごとの好み・高値・限定の持ちこみ品、そのあと品の属性。
 - 客の予算は、在庫ではなくヒーローのレアリティで決まる（`balance.ts` の `heroWealth`・`heroOdds`）。レジェンダリーのヒーローは大富豪。
 - 売り客の持ちこんだ品（`counter.ts` の `farTray`、`#far`）は、PC では客の側のカウンターに並ぶ：客の手前（場面の幅の 66% のあたり）、カウンターの奥の縁に木の台を置いて 1 列に並べる（`wide.css`）。伝票は、PC では客の品の台の右（右の壁の手前。せまいときは壁に重なる）に開く（`window.ts` の `clampWindow`）。プレイヤーが伝票を動かしたら、その位置をブラウザに覚えて次からもそこに開く（`rememberWindow`・`restoreWindow`。セーブとは別）。スマホでは場面の右下の箱のまま。
 - 客は取引が成立してもすぐには帰らない（ベル・品をすべて買い取った・予算を使い切った・我慢が尽きた、のどれかで帰る）。

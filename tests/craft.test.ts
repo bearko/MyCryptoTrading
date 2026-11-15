@@ -75,6 +75,7 @@ describe('the pot', () => {
 
   it('rarer heroes bring more, and a legendary hero is a rich buyer', () => {
     const s = G.newGame(8, catalog);
+    s.clientele = 5;
     s.day = 6;
     G.openShop(s, catalog);
     const byRarity: number[][] = [[], [], [], [], [], []];

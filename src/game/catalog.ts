@@ -117,6 +117,8 @@ export function buildCatalog(data: CatalogData): Catalog {
 
 export const catalog: Catalog = buildCatalog(raw as unknown as CatalogData);
 
+/** The classes of hero, by rarity (a hero of the first class is a novice). */
+export const HERO_CLASS_JA = ['', 'ノービス', 'アンコモン', 'レア', 'エピック', 'レジェンダリー'];
 export const RARITY_JA = ['', 'コモン', 'アンコモン', 'レア', 'エピック', 'レジェンダリー'];
 export const PARAM_JA: Record<Param, string> = { phy: 'PHY系', int: 'INT系', agi: 'AGI系', hp: 'HP系' };
 export const ROLE_JA: Record<Role, string> = { atk: '攻撃', buff: 'バフ', debuff: 'デバフ', heal: '回復', status: '状態異常' };

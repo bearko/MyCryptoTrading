@@ -359,6 +359,8 @@ export function newGame(seed: number, cat: Catalog): GameState {
     last: { bonus: 0, orderReward: 0 },
     totals: { sold: 0, bought: 0, bestSale: 0, deepest: 0, orders: 0, bestCombo: 0, crafts: 0 },
     made: [],
+    handled: [0, 0, 0, 0, 0, 0],
+    clientele: 1,
     showcase: [],
     seek: '',
     trust: 0,
@@ -448,10 +450,12 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
   // settled in, and the third day's second customer is always one
   const nthToday = s.queue.length;
   const forcedRich = s.day === B.specialFromDay && nthToday === 1;
+  // (only the classes of hero the shop has drawn so far; the third day's rich passer-by is the one exception)
+  const comes = (rarity: number): boolean => rarity <= s.clientele;
   // (what is in the showcase, and a word from the guild, draw the rarer — and richer — heroes)
   const appeal = showAppeal(s, cat);
   const draw = (rarity: number): number => (rarity >= 3 ? (1 + B.showAppeal[rarity] * appeal) * (hasService(s, 'vip') ? B.serviceVip : 1) : 1);
-  const odds = B.heroOdds.map((w, rarity) => (rarity === 5 ? (s.day < B.specialFromDay || (s.day === B.specialFromDay && nthToday < 1) ? 0 : w * (hasPerk(s, 'patron') ? 2 : 1)) : w) * draw(rarity));
+  const odds = B.heroOdds.map((w, rarity) => (rarity === 5 ? (s.day < B.specialFromDay || (s.day === B.specialFromDay && nthToday < 1) ? 0 : w * (hasPerk(s, 'patron') ? 2 : 1)) : w) * draw(rarity) * (comes(rarity) ? 1 : 0));
   const hero = pick(s, cat.heroesByRarity[forcedRich ? 5 : pickWeighted(s, odds)]);
   const heroBonus = hero.rarity - 1;
   const temper = pickWeighted(s, B.temperWeights);
@@ -585,6 +589,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
 
 export function openShop(s: GameState, cat: Catalog): void {
   if (s.phase !== 'morning') return;
+  growClientele(s, cat);
   s.phase = 'open';
   s.visitorsToday = visitorsExpected(s);
   s.cursor = -1;
@@ -629,7 +634,7 @@ export function examineStock(s: GameState, uid: number): '' | 'real' | 'fake' {
 function postWanted(s: GameState, cat: Catalog): void {
   const by = pick(s, ['suzaku', 'seiryu', 'genbu', 'byakko'] as const);
   const prey = rivalOf(by)!;
-  const heroes = cat.heroes.filter((h) => factionOfName(h.faction) === prey && h.rarity >= 2 && h.rarity <= 4);
+  const heroes = cat.heroes.filter((h) => factionOfName(h.faction) === prey && h.rarity >= 2 && h.rarity <= Math.min(4, s.clientele));
   if (heroes.length === 0) return;
   const hero = pick(s, heroes);
   s.wanted = { heroId: hero.id, by, bounty: B.wantedBounty[hero.rarity], day: s.day + randInt(s, B.wantedWithin + 1), slot: randInt(s, Math.max(1, s.visitorsToday - 1)), came: false };
@@ -773,6 +778,7 @@ export function buy(s: GameState, cat: Catalog, picks: readonly number[]): boole
   addFavor(s, v, buyFavor(v));
   orderProgress(s, 'buyCount', taken.length);
   s.totals.bought += taken.length;
+  handle(s, cat, taken.map((o) => o.itemId));
   v.offers = v.offers.filter((_, i) => !chosen.has(i));
   v.bundleRate = 0;
   v.mood = 'happy';
@@ -878,6 +884,7 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
     // the streak adds a little on top (the customer's goodwill; it does not come out of their budget)
     const bonus = Math.round(quote.paid * comboRate(s));
     const params = uids.map((uid) => cat.itemById.get(forSale(s).find((x) => x.uid === uid)!.itemId)!.params);
+    const soldIds = uids.map((uid) => forSale(s).find((x) => x.uid === uid)!.itemId);
     s.last = { bonus, orderReward: 0 };
     s.gum += quote.paid + bonus;
     // a replica sold as the real thing: the buyer may find out
@@ -892,6 +899,7 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
     orderProgress(s, 'earn', quote.paid + bonus);
     if (s.order?.kind === 'sellParam') orderProgress(s, 'sellParam', params.filter((ps) => ps.includes(s.order!.param!)).length);
     s.totals.sold += uids.length;
+    handle(s, cat, soldIds);
     s.totals.bestSale = Math.max(s.totals.bestSale, quote.paid);
     const markup = quote.paid / quote.fair - 1;
     addRep(s, markup <= 1e-9 ? B.saleRep[0] : markup <= 0.3 ? B.saleRep[1] : B.saleRep[2]);
@@ -966,6 +974,34 @@ export function showAppeal(s: GameState, cat: Catalog): number {
     return sum + (item.limited ? 5 : item.rarity - 1);
   }, 0);
   return goods + (caseFull(s, cat) ? B.showFull : 0);
+}
+
+// ---------------------------------------------------------------- the clientele
+
+/** Counts goods the shop has bought, sold or made, by rarity. */
+export function handle(s: GameState, cat: Catalog, itemIds: number[]): void {
+  for (const id of itemIds) {
+    const rarity = cat.itemById.get(id)?.rarity;
+    if (rarity) s.handled[rarity] += 1;
+  }
+}
+
+/** How far the shop is toward drawing heroes of this class: goods of that rarity or better handled, and shown. */
+export function clienteleScore(s: GameState, cat: Catalog, rarity: number): number {
+  const handled = s.handled.slice(rarity).reduce((a, n) => a + n, 0);
+  const shown = s.showcase.filter((x) => (cat.itemById.get(x.itemId)?.rarity ?? 0) >= rarity).length;
+  return handled + shown * B.clienteleShow;
+}
+
+/** True when the next class of hero is due (the morning paper says so; they come from the day's opening). */
+export const clienteleDue = (s: GameState, cat: Catalog): boolean => s.clientele < 5 && clienteleScore(s, cat, s.clientele + 1) >= B.clienteleNeed[s.clientele + 1];
+
+/** The next class of hero starts to come when the shop has dealt in enough goods of its rarity (one class a day, as the shop opens). */
+export function growClientele(s: GameState, cat: Catalog): boolean {
+  const next = s.clientele + 1;
+  if (next > 5 || clienteleScore(s, cat, next) < B.clienteleNeed[next]) return false;
+  s.clientele = next;
+  return true;
 }
 
 // ---------------------------------------------------------------- goods with an effect of their own

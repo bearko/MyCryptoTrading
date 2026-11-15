@@ -90,6 +90,29 @@ describe('the showcase', () => {
     }
   });
 
+  it('only novice heroes come at first; dealing in rarer goods, or showing them, draws the next class', () => {
+    const s = G.newGame(81, catalog);
+    expect(s.clientele).toBe(1);
+    // many mornings of first customers: novices only
+    for (let n = 0; n < 40; n++) {
+      G.openShop(s, catalog);
+      const v = G.currentVisitor(s)!;
+      if (v.special !== 'rich') expect(catalog.heroById.get(v.heroId)!.rarity).toBe(1);
+      s.phase = 'morning';
+      s.queue = [];
+    }
+    // uncommon goods through the shop's hands: uncommon heroes are due, and come as the shop next opens
+    expect(G.clienteleDue(s, catalog)).toBe(false);
+    G.handle(s, catalog, Array.from({ length: B.clienteleNeed[2] }, () => catalog.itemsByRarity[2][0].id));
+    expect(G.clienteleDue(s, catalog)).toBe(true);
+    G.openShop(s, catalog);
+    expect(s.clientele).toBe(2);
+    // a rare good in the showcase counts for more than one handled
+    const before = G.clienteleScore(s, catalog, 3);
+    G.addTo(s, catalog, 'case', catalog.itemsByRarity[3][0].id, 1, 0);
+    expect(G.clienteleScore(s, catalog, 3)).toBe(before + B.clienteleShow);
+  });
+
   it('a window with no cell left empty counts for more; what is shown can be sold straight from it', () => {
     const s = G.newGame(54, catalog);
     s.stock = [];
@@ -111,8 +134,10 @@ describe('the showcase', () => {
 
   it('draws buyers after what is shown, and richer heroes the rarer it is', () => {
     const plain = G.newGame(52, catalog);
+    plain.clientele = 5;
     plain.day = 6;
     const shown = G.newGame(52, catalog);
+    shown.clientele = 5;
     shown.day = 6;
     shown.stock = [];
     shown.services.push('case1', 'case2');
@@ -222,6 +247,7 @@ describe('the wanted notice', () => {
   /** Plays mornings (without serving anyone) until a notice is up and its hero is at the counter. */
   function untilWanted(seed: number): GameState {
     const s = G.newGame(seed, catalog);
+    s.clientele = 5;
     for (let day = 0; day < 60; day++) {
       G.openShop(s, catalog);
       while (s.phase === 'open') {

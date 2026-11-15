@@ -1062,3 +1062,27 @@ html.calm .inv-fx {
   background: var(--gum);
   color: var(--ink);
 }
+
+/* the calendar's foot: who comes to the shop, and what draws the next class of hero */
+.cal-crowd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border: 2px solid var(--ink);
+  background: var(--gum-wash);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+.cal-crowd b {
+  padding: 1px 6px;
+  background: var(--ink);
+  color: var(--paper);
+}
+.cal-crowd span {
+  flex: 1 1 100%;
+  color: var(--sub);
+  font-weight: 500;
+}
