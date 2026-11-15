@@ -22,6 +22,7 @@
 - 派閥（朱雀・青龍・玄武・白虎・黄竜）の評価と恩恵は `src/game/factions.ts` と `logic.ts`（`favorRank`・`saleFavor`・`buyFavor`・`sweeten`）、画面は `hooks.ts`（一覧・演出）。数字は `balance.ts`。派閥は 2 つずつ対立する（`factions.ts` の `rival`、`logic.ts` の `rivalFavor`）。評価は負にもなり、段は −2〜3（負の段は恩恵が裏返る）。くわしくは `docs/GAME_DESIGN.md` の 4.13。
 - 合成（壺）は `src/game/craft.ts`（`nextOf`・`planCraft`・`craft`）と `src/ui/craft.ts`・`src/styles/craft.css`。品の系列は id で決まる（+1000 で 1 つ上、レジェンダリー +500 がリミテッド）。リミテッド（`item.limited`）は持ちこまれない。変わり配合（2 系列 → 別の系列）の表は `craft.ts` の `CROSSES`（系列は id の下 3 桁）。足すときは、材料と結果の系列が実在するかをテストが確かめる。くわしくは `docs/GAME_DESIGN.md` の 4.14。壺や相場の数字を変えたら `npm run sim` で遊びかた（`tests/bot.ts` の `Style`：定価・値切り・気前よく・派閥につく・配合・店の物を使う・全部）を比べる。
 - 目利き（`logic.ts` の `examineOffer`・`examineStock`・`stockValue`）：5 日目から売り客の品にレプリカ（`fake`）が混じる。カウンターのルーペ（`counter.ts` の `#loupe`、落とす処理は `drag.ts`）へ品をドラッグすると見分けられる（`seen`。1 日 3 回）。品を別の入れ物へ移す処理を足すときは、`fake`・`seen` を引きつぐ。くわしくは `docs/GAME_DESIGN.md` の 4.17。
+- 訳ありの品と見回り（`logic.ts` の `patrol`、状態の `patrolDay`・`patrolSlot`、品の `hot`）：6 日目から、安い訳ありの品が持ちこまれる。見回りは棚だけを改めて没収する（ウォレットは見ない）。品を移す処理では `hot` も引きつぐ。くわしくは `docs/GAME_DESIGN.md` の 4.18。
 - 手配書（`logic.ts` の `postWanted`・`report`、状態の `wanted`）：ある派閥が、対立する派閥のヒーローを追う。その客が来たら、通報する（賞金と依頼主の評価）か、取引する（追われる側の評価）かを選ぶ。画面は `props.ts` の `wantedModal`。くわしくは `docs/GAME_DESIGN.md` の 4.16。
 - 客の予算は、在庫ではなくヒーローのレアリティで決まる（`balance.ts` の `heroWealth`・`heroOdds`）。レジェンダリーのヒーローは大富豪。
 - 客は取引が成立してもすぐには帰らない（ベル・品をすべて買い取った・予算を使い切った・我慢が尽きた、のどれかで帰る）。

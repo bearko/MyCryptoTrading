@@ -36,7 +36,7 @@ function sellerBody(g: GameState, v: Visitor): string {
       const price = struck && struck[i] !== o.ask ? `<s>${num(struck[i])}</s><b class="ask new">${num(o.ask)}</b>` : `<b class="ask">${num(o.ask)}</b>`;
       return `<button class="line ${on ? 'on' : ''}" id="line-${offerKey(v, i)}" data-act="pick-line" data-arg="${i}" data-sfx="none" aria-pressed="${on}">
           ${itemTile(item, 'sm')}
-          <span class="line-main"><b class="pix">${esc(item.ja)}</b><small>${RARITY_JA[item.rarity]}・${COND_JA[o.cond]}・相場 ${num(G.stockValue(cat, o))}${o.seen ? `<b class="seen-note ${o.fake ? 'fake' : 'real'}">${o.fake ? '　レプリカ' : '　本物'}</b>` : ''}</small><span class="tags">${labels(item)}</span></span>
+          <span class="line-main"><b class="pix">${esc(item.ja)}</b><small>${RARITY_JA[item.rarity]}・${COND_JA[o.cond]}・相場 ${num(G.stockValue(cat, o))}${o.seen ? `<b class="seen-note ${o.fake ? 'fake' : 'real'}">${o.fake ? '　レプリカ' : '　本物'}</b>` : ''}${o.hot ? '<b class="seen-note hot">　訳あり</b>' : ''}</small><span class="tags">${labels(item)}</span></span>
           <span class="line-shape">${shapeIcon(o.itemId)}<small>${G.shapeOf(cat, o.itemId, 0).cells.length}マス</small></span>
           <span class="line-price">${price}</span></button>`;
     })
@@ -150,6 +150,19 @@ function negoPanel(g: GameState, v: Visitor): string {
 export function customerWindow(g: GameState, v: Visitor): string {
   if (!ui.win.open || v.done) return '';
   const hero = cat.heroById.get(v.heroId)!;
+  if (v.special === 'patrol') {
+    // a patrol's slip: what it found on the shelf, and what that cost
+    const seized = v.seized ?? [];
+    const rows = seized.map((id) => `<div class="line">${itemTile(G.findItem(cat, id), 'sm')}<span class="line-main"><b class="pix">${esc(G.findItem(cat, id).ja)}</b><small class="bad">没収</small></span></div>`).join('');
+    return `<div class="win paper small kind-buy" id="win" data-ui style="left:${ui.win.x}px;top:${ui.win.y}px">
+    <div class="win-bar"><span class="win-kind"><span>見回り</span><span class="wide">の調べ</span></span><i class="win-grip" aria-hidden="true"></i>
+      <button class="win-btn" data-act="win-close" data-sfx="close" aria-label="閉じる">${ICON.close}</button></div>
+    <div class="win-who"><b>${esc(hero.ja)}</b>${v.faction ? `<span class="fac f-${v.faction}">${factionById(v.faction).ja}</span>` : ''}</div>
+    <div class="win-body patrol-body">${seized.length ? `${rows}<div class="sum"><span>罰金</span><b class="bad">−${num(v.fine ?? 0)}</b></div><p class="hint">訳ありの品は、棚にあると見つかります。ウォレットの中は調べられません。</p>` : '<p class="hint">棚に、訳ありの品はありませんでした。</p>'}
+      <p class="hint">ベルを鳴らして、見送ります。</p></div>
+    <i class="teeth" aria-hidden="true"></i>
+  </div>`;
+  }
   const pips = Array.from({ length: B.temperPatience[v.temper] }, (_, i) => `<i class="${i < v.patience ? 'on' : ''}"></i>`).join('');
   const spent = v.kind === 'sell' && v.haggled;
   return `<div class="win paper ${ui.win.size === 'l' ? 'big' : ui.win.size === 's' ? 'small mini' : 'small'} kind-${v.kind} ${ui.beat ? 'beating' : ''}" id="win" data-ui style="left:${ui.win.x}px;top:${ui.win.y}px">

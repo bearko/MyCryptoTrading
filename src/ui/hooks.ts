@@ -2,6 +2,7 @@ import { B } from '../game/balance';
 import { catalog as cat, PARAM_JA } from '../game/catalog';
 import { FACTIONS, factionById, rankName, rankOf } from '../game/factions';
 import * as G from '../game/logic';
+import { hasService } from '../game/network';
 import { perkById } from '../game/perks';
 import type { DayOrder, GameState } from '../game/state';
 import { audio, haptic } from './audio';
@@ -14,8 +15,8 @@ import { btn, esc, num } from './html';
  * unusual customers (the routine broken), and 商才 (the shop growing its own way).
  */
 
-export const SPECIAL_JA = { rich: '大富豪', hurry: '急ぎの旅人', collector: '収集家' } as const;
-const SPECIAL_SUB = { rich: '予算は桁ちがい。売れるだけ売ろう', hurry: '破格の言い値。値切りは聞いてくれない', collector: 'レア以上の品に大金を出す' } as const;
+export const SPECIAL_JA = { rich: '大富豪', hurry: '急ぎの旅人', collector: '収集家', patrol: '見回り' } as const;
+const SPECIAL_SUB = { rich: '予算は桁ちがい。売れるだけ売ろう', hurry: '破格の言い値。値切りは聞いてくれない', collector: 'レア以上の品に大金を出す', patrol: '棚の品を改めていく' } as const;
 
 export function orderText(o: DayOrder): string {
   if (o.kind === 'sellParam') return `${PARAM_JA[o.param ?? 'phy']}の品を ${o.need} 個売る`;
@@ -66,10 +67,12 @@ export function morningExtras(g: GameState): string {
     2: isWide() ? ['手引き', '棚の品を、壁の<b>ショーケース</b>へドラッグすると、その系統を欲しがる客が来やすくなります'] : undefined,
     3: isWide() ? ['手引き', '壁の<b>電話</b>で、商人ギルドに頼みごとや取り寄せができます（信用は毎朝貯まります）'] : undefined,
     [B.wantedFromDay]: isWide() ? ['手引き', '壁に<b>手配書</b>が貼られることがあります。その客が来たら、通報するか取引するかを選べます'] : undefined,
+    [B.hotFromDay]: ['うわさ', '<b>訳あり</b>の品が、安く出回っています。<b>見回り</b>に棚で見つかると没収されます（ウォレットの中は見られません）'],
     [B.fakeFromDay]: ['うわさ', '<b>レプリカ</b>が出回りはじめました。品をカウンターの<b>ルーペ</b>へドラッグすると見分けられます（1 日 3 回）'],
   };
   const tip = tips[g.day] ? `<p class="news-order news-tip"><span>${tips[g.day]![0]}</span><b>${tips[g.day]![1]}</b></p>` : '';
-  return order + tip + wanted + parcel + perks + houses;
+  const patrol = g.patrolDay && hasService(g, 'tip') ? '<p class="news-order news-patrol"><span>知らせ</span><b>今日は、見回りが来ます</b><em>訳ありの品はウォレットへ</em></p>' : '';
+  return order + patrol + tip + wanted + parcel + perks + houses;
 }
 
 // ---------------------------------------------------------------- the houses

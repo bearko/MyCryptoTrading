@@ -722,3 +722,32 @@ html.calm .loupe {
 .seen-note.real {
   color: color-mix(in srgb, var(--leaf) 60%, var(--ink));
 }
+
+/* hot goods: a tag on the counter, a mark on the shelf */
+.offer .hot-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  padding: 0 3px;
+  background: var(--ink);
+  color: var(--amber);
+  font-size: 0.5625rem;
+  font-weight: 900;
+  line-height: 1.4;
+  pointer-events: none;
+}
+.inv-seen.hot {
+  background: var(--ink);
+  color: var(--amber);
+}
+.seen-note.hot {
+  color: color-mix(in srgb, var(--amber) 70%, var(--ink));
+}
+.patrol-body {
+  padding: 2px 8px 6px;
+}
+.patrol-body .sum b.bad,
+.patrol-body small.bad {
+  color: var(--hot);
+}

@@ -303,3 +303,63 @@ describe('replicas and the loupe', () => {
     expect(found).toBeLessThan(32);
   });
 });
+
+describe('hot goods and the patrol', () => {
+  it('hot goods come cheap from a certain day; a patrol takes those on the shelf and leaves the wallet alone', () => {
+    const early = G.newGame(81, catalog);
+    early.day = B.hotFromDay - 1;
+    expect(visitors(early, 600).flatMap((v) => v.offers).some((o) => o.hot)).toBe(false);
+    const s = G.newGame(81, catalog);
+    s.day = B.hotFromDay;
+    const offers = visitors(s, 2000).flatMap((v) => v.offers);
+    const share = offers.filter((o) => o.hot).length / offers.length;
+    expect(share).toBeGreaterThan(B.hotOdds * 0.6);
+    expect(share).toBeLessThan(B.hotOdds * 1.4);
+    expect(offers.some((o) => o.hot && o.fake)).toBe(false);
+
+    // one hot good on the shelf, one in the wallet; a patrol is first in line today
+    const t = G.newGame(82, catalog);
+    t.day = B.hotFromDay;
+    t.gum = 500;
+    t.rep = 50;
+    const onShelf = t.stock[0];
+    onShelf.hot = true;
+    G.setShown(t, onShelf.uid, true);
+    const hidden = G.addTo(t, catalog, 'wallet', catalog.itemsByRarity[1].find((i) => i.shape === 's1')!.id, 1, 0)!;
+    t.wallet.items.find((x) => x.uid === hidden)!.hot = true;
+    const before = t.stock.length;
+    t.patrolDay = true;
+    G.openShop(t, catalog);
+    t.queue = [];
+    t.cursor = -1;
+    t.patrolSlot = 0;
+    G.callNext(t, catalog);
+    const v = G.currentVisitor(t)!;
+    expect(v.special).toBe('patrol');
+    expect(v.seized).toEqual([onShelf.itemId]);
+    expect(t.stock).toHaveLength(before - 1);
+    expect(t.display).toEqual([]);
+    expect(t.gum).toBe(500 - B.patrolFine);
+    expect(t.rep).toBe(50 - B.patrolRep);
+    expect(t.wallet.items.some((x) => x.uid === hidden && x.hot)).toBe(true);
+    // nothing can be sold to a patrol, and seeing it off does not break the streak
+    t.combo = 3;
+    expect(G.sell(t, catalog, [t.stock[0].uid], 0)).not.toBe('sold');
+    G.pass(t);
+    expect(t.combo).toBe(3);
+
+    // a clean shelf: nothing is taken, nothing is paid
+    const c = G.newGame(83, catalog);
+    c.day = B.hotFromDay;
+    c.patrolDay = true;
+    const gum = c.gum;
+    G.openShop(c, catalog);
+    c.queue = [];
+    c.cursor = -1;
+    c.patrolSlot = 0;
+    G.callNext(c, catalog);
+    expect(G.currentVisitor(c)!.special).toBe('patrol');
+    expect(G.currentVisitor(c)!.seized).toEqual([]);
+    expect(c.gum).toBe(gum);
+  });
+});

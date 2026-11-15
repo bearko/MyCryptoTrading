@@ -20,6 +20,8 @@ export interface StockItem {
   /** a replica, and whether the shop knows what it is (looked at through the loupe) */
   fake?: boolean;
   seen?: boolean;
+  /** a hot good (see Offer) */
+  hot?: boolean;
   /** top-left cell of its footprint on the grid it lies on */
   x: number;
   y: number;
@@ -32,9 +34,10 @@ export interface LooseItem {
   itemId: number;
   cond: number;
   paid: number;
-  /** (a replica stays one wherever it is carried or worn) */
+  /** (a replica stays one wherever it is carried or worn; so does a hot good) */
   fake?: boolean;
   seen?: boolean;
+  hot?: boolean;
 }
 
 export type Want = { type: 'param'; param: Param } | { type: 'role'; role: Role } | { type: 'rarity'; min: number } | { type: 'any' };
@@ -49,6 +52,8 @@ export interface Offer {
   fake?: boolean;
   /** looked at through the loupe: the shop knows what it is */
   seen?: boolean;
+  /** a hot good: cheap, and taken away if a patrol finds it on the shelf */
+  hot?: boolean;
 }
 
 export interface Visitor {
@@ -79,7 +84,10 @@ export interface Visitor {
   /** deals closed with this customer (a customer who leaves with none breaks the streak) */
   deals: number;
   /** an unusual customer: 大富豪 / 急ぎの旅人 / 収集家 */
-  special?: 'rich' | 'hurry' | 'collector';
+  special?: 'rich' | 'hurry' | 'collector' | 'patrol';
+  /** a patrol: the hot goods it took from the shelf, and the fine */
+  seized?: number[];
+  fine?: number;
   /** the hero on the wanted notice */
   wanted?: boolean;
 }
@@ -244,6 +252,9 @@ export interface GameState {
   supply: { id: SupplyId; param: Param; goods: Parcel[] } | null;
   /** the last sale ended with the buyer finding a replica (the screen makes a show of it, then clears it) */
   lastFake?: boolean;
+  /** a patrol comes by today, and at which place in the line */
+  patrolDay: boolean;
+  patrolSlot: number;
   /** the wanted notice on the wall, if one is up */
   wanted: Wanted | null;
   parcel: Parcel[];
