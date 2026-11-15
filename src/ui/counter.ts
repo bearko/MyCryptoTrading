@@ -21,7 +21,7 @@ function offerTile(v: Visitor, index: number): string {
   const o = v.offers[index];
   const item = G.findItem(cat, o.itemId);
   return `<div class="offer" id="offer-${offerKey(v, index)}" style="${tone(item)}" data-offer="${index}" role="button" aria-label="${esc(item.ja)} ${o.ask} GUM">
-    <img src="${item.img}" alt="" draggable="false" />${glyphs(item)}${o.seen ? `<span class="seen ${o.fake ? 'fake' : 'real'}">${o.fake ? 'レプリカ' : '本物'}</span>` : ''}<span class="ptag">${num(o.ask)}</span></div>`;
+    <img src="${item.img}" alt="" draggable="false" />${glyphs(item)}${o.hot ? '<span class="hot-tag">訳あり</span>' : ''}${o.seen ? `<span class="seen ${o.fake ? 'fake' : 'real'}">${o.fake ? 'レプリカ' : '本物'}</span>` : ''}<span class="ptag">${num(o.ask)}</span></div>`;
 }
 
 /** True when the bell is the next thing to do: the customer is done, or the shop has nothing for them. */
@@ -62,7 +62,7 @@ export function counterBar(g: GameState, v: Visitor | null): string {
     nearLabel = '買い取る品';
     nearCls = 'take';
   } else if (ui.counter.length === 0) {
-    near = '<div class="counter-note hint-drop">売る品を、棚からここへ<small>ドラッグして置く</small></div>';
+    near = v.special === 'patrol' ? '<div class="counter-note call">ベルを鳴らして、<b>見回りを見送る</b></div>' : '<div class="counter-note hint-drop">売る品を、棚からここへ<small>ドラッグして置く</small></div>';
     nearLabel = '売る品';
     nearCls = 'drop';
   } else {

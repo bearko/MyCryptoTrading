@@ -7,7 +7,7 @@ import type { GameState } from './state';
  * Each can be paid for in GUM, or with the guild's trust — which grows a little every day.
  * Waiting costs nothing but days; paying is quicker and costs GUM.
  */
-export type ServiceId = 'guest1' | 'guest2' | 'vip' | 'case1' | 'case2' | 'sign' | 'pot' | 'eye';
+export type ServiceId = 'guest1' | 'guest2' | 'vip' | 'case1' | 'case2' | 'sign' | 'pot' | 'eye' | 'tip';
 
 export interface Service {
   id: ServiceId;
@@ -29,6 +29,7 @@ export const SERVICES: Service[] = [
   { id: 'case1', group: 'shop', name: 'ショーケースの増設', text: '飾れる品 2 → 4 個', gum: 350, trust: 50 },
   { id: 'case2', group: 'shop', name: 'ショーケースの増設 II', text: '飾れる品 4 → 6 個', gum: 1200, trust: 140, needs: 'case1' },
   { id: 'sign', group: 'shop', name: '「求む」の看板', text: 'ショーケースに、買いたい系統を出せる', gum: 250, trust: 40 },
+  { id: 'tip', group: 'shop', name: '見回りの知らせ', text: '見回りの来る日が、朝の紙面に出る', gum: 400, trust: 55 },
   { id: 'pot', group: 'craft', name: '壺の薪', text: '壺を 1 日にもう 1 回使える', gum: 800, trust: 100 },
   { id: 'eye', group: 'craft', name: '相場の手ほどき', text: `売り客の言い値 −${Math.round(B.serviceAsk * 100)}%`, gum: 700, trust: 90 },
 ];

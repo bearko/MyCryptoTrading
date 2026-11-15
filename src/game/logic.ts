@@ -232,6 +232,8 @@ function startMorning(s: GameState): void {
     s.parcel.push(...s.supply.goods);
     s.supply = null;
   }
+  // some days a patrol makes its round
+  s.patrolDay = s.day >= B.hotFromDay && rand(s) < B.patrolChance;
   s.phase = 'morning';
   s.today = emptySummary();
   s.queue = [];
@@ -354,6 +356,8 @@ export function newGame(seed: number, cat: Catalog): GameState {
     supply: null,
     parcel: [],
     wanted: null,
+    patrolDay: false,
+    patrolSlot: 0,
     trash: [],
     trashGum: 0,
     wide: true,
@@ -373,6 +377,7 @@ export function newGame(seed: number, cat: Catalog): GameState {
 function makeVisitor(s: GameState, cat: Catalog): Visitor {
   const nth = s.queue.length;
   const v = rollVisitor(s, cat);
+  if (s.patrolDay && nth === s.patrolSlot && !v.special && s.day > 1) return patrol(s, cat, v);
   const w = s.wanted;
   if (w && !w.came && w.day <= s.day && nth >= w.slot && !v.special && s.day > 1) {
     const hero = cat.heroById.get(w.heroId)!;
@@ -387,6 +392,37 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
     v.line = lines.wantedOpen(s);
   }
   return v;
+}
+
+/**
+ * The patrol steps up in a customer's place and goes through the shelf (the wallet is the shopkeeper's own
+ * bag, and is left alone): hot goods are taken away, with a fine for each.
+ */
+function patrol(s: GameState, cat: Catalog, v: Visitor): Visitor {
+  const hot = s.stock.filter((x) => x.hot);
+  const fine = Math.min(s.gum, hot.length * B.patrolFine);
+  if (hot.length > 0) {
+    s.stock = s.stock.filter((x) => !x.hot);
+    s.display = s.display.filter((uid) => s.stock.some((x) => x.uid === uid));
+    s.gum -= fine;
+    s.today.spend += fine;
+    addRep(s, -B.patrolRep);
+  }
+  void cat;
+  return {
+    ...v,
+    kind: 'buy',
+    special: 'patrol',
+    offers: [],
+    bundleRate: 0,
+    // (nothing in the shop is what a patrol is after)
+    want: { type: 'rarity', min: 9 },
+    budget: 0,
+    seized: hot.map((x) => x.itemId),
+    fine,
+    mood: hot.length > 0 ? 'annoyed' : 'neutral',
+    line: hot.length > 0 ? `見回りだ。……訳ありの品が ${hot.length} 個あるな。没収する。` : '見回りだ。……問題なし。商売に励みたまえ。',
+  };
 }
 
 function rollVisitor(s: GameState, cat: Catalog): Visitor {
@@ -476,6 +512,14 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
         o.ask = Math.max(1, Math.round(o.ask * B.fakeAsk));
       }
     }
+    // … and some of it is hot: cheap, and no questions asked
+    if (s.day >= B.hotFromDay) {
+      for (const o of offers) {
+        if (o.fake || rand(s) >= B.hotOdds) continue;
+        o.hot = true;
+        o.ask = Math.max(1, Math.round(o.ask * B.hotAsk));
+      }
+    }
     const bundleRate = count >= 2 ? B.bundleRates[pickWeighted(s, B.bundleWeights)] : 0;
     return { ...base, kind: 'sell', offers, bundleRate, want: { type: 'any' }, budget: 0, line: lines.sellOpen(s, temper) };
   }
@@ -521,6 +565,7 @@ export function openShop(s: GameState, cat: Catalog): void {
   s.phase = 'open';
   s.visitorsToday = visitorsExpected(s);
   s.cursor = -1;
+  if (s.patrolDay) s.patrolSlot = randInt(s, s.visitorsToday);
   if (!s.wanted && s.day >= B.wantedFromDay && rand(s) < B.wantedChance) postWanted(s, cat);
   callNext(s, cat);
 }
@@ -695,6 +740,7 @@ export function buy(s: GameState, cat: Catalog, picks: readonly number[]): boole
     const got = uid === null ? undefined : s.stock.find((x) => x.uid === uid);
     if (got && o.fake) got.fake = true;
     if (got && o.seen) got.seen = true;
+    if (got && o.hot) got.hot = true;
   });
   s.gum -= quote.price;
   s.today.spend += quote.price;
@@ -858,6 +904,11 @@ export function pass(s: GameState): void {
   const v = currentVisitor(s);
   if (!v || v.done) return;
   v.done = true;
+  if (v.special === 'patrol') {
+    // (a patrol is not a customer lost)
+    v.line = 'では、失礼する。';
+    return;
+  }
   v.line = lines.pass(v.temper);
   leftEmpty(s, v);
 }

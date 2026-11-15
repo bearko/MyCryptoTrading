@@ -212,6 +212,17 @@ export const B = {
   fakeFound: 0.5,
   fakeRep: 3,
   fakeFavor: 5,
+  /**
+   * Hot goods (no questions asked): from this day, the share of what sellers bring, and how cheap it goes.
+   * A patrol comes by on some days and goes through the shelf — not the wallet: every hot good it finds is
+   * taken away, with a fine each, and the shop's name suffers.
+   */
+  hotFromDay: 6,
+  hotOdds: 0.07,
+  hotAsk: 0.55,
+  patrolChance: 0.22,
+  patrolFine: 40,
+  patrolRep: 2,
   wantedFromDay: 4,
   wantedChance: 0.35,
   wantedWithin: 2,

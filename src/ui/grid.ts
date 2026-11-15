@@ -22,7 +22,7 @@ function imageSpot(cells: readonly (readonly [number, number])[], size: number):
 }
 
 /** One good on a grid: a tile for each cell of its footprint (outlined along the outer edge), and its picture. */
-export function gridItem(x: { uid: number; itemId: number; x: number; y: number; rot: number; fake?: boolean; seen?: boolean }, cls = ''): string {
+export function gridItem(x: { uid: number; itemId: number; x: number; y: number; rot: number; fake?: boolean; seen?: boolean; hot?: boolean }, cls = ''): string {
   const cell = ctx.cell;
   const item = G.findItem(cat, x.itemId);
   const shape = G.shapeOf(cat, x.itemId, x.rot);
@@ -39,7 +39,7 @@ export function gridItem(x: { uid: number; itemId: number; x: number; y: number;
   if (ctx.s?.display.includes(x.uid)) cls += ' shown';
   return `<div class="inv-item ${cls}" id="item-${x.uid}" data-item="${x.uid}" style="${tone(item)};left:${x.x * cell}px;top:${x.y * cell}px;width:${shape.w * cell}px;height:${shape.h * cell}px">
       ${cells}<img src="${item.img}" alt="${esc(item.ja)}" draggable="false" style="width:${size}px;height:${size}px;${imageSpot(shape.cells, size)}${x.rot ? `;transform:rotate(${x.rot * 90}deg)` : ''}" />
-      <span class="inv-glyph" style="left:${first[0] * cell}px;top:${first[1] * cell}px">${glyphs(item)}</span>${x.seen ? `<b class="inv-seen ${x.fake ? 'fake' : 'real'}" style="left:${first[0] * cell}px;top:${(first[1] + 1) * cell - 15}px">${x.fake ? '写' : '真'}</b>` : ''}${cls.split(' ').includes('match') ? `<i class="inv-mark" style="left:${(first[0] + 1) * cell - 17}px;top:${first[1] * cell + 3}px" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
+      <span class="inv-glyph" style="left:${first[0] * cell}px;top:${first[1] * cell}px">${glyphs(item)}</span>${x.hot ? `<b class="inv-seen hot" style="left:${first[0] * cell + (x.seen ? 16 : 0)}px;top:${(first[1] + 1) * cell - 15}px">訳</b>` : ''}${x.seen ? `<b class="inv-seen ${x.fake ? 'fake' : 'real'}" style="left:${first[0] * cell}px;top:${(first[1] + 1) * cell - 15}px">${x.fake ? '写' : '真'}</b>` : ''}${cls.split(' ').includes('match') ? `<i class="inv-mark" style="left:${(first[0] + 1) * cell - 17}px;top:${first[1] * cell + 3}px" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
 }
 
 const SLOT_LABEL: Record<SlotId | 'wallet', string> = { head: '頭', body: '胴体', arm: '腕', leg: '足', special1: '特殊1', special2: '特殊2', wallet: 'ウォレット' };
