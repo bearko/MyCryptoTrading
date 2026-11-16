@@ -11,7 +11,7 @@ import { gearEffects, gearModal, pickModal } from './gear';
 import { gridSection, measure, popups } from './grid';
 import { hud, hudEffects } from './hud';
 import { recipesModal } from './craft';
-import { caseToldModal, deckProps, forecastModal, networkModal, calendarModal, parcelModal, trashModal, wantedModal } from './props';
+import { spillModal, caseToldModal, deckProps, forecastModal, networkModal, calendarModal, parcelModal, trashModal, wantedModal } from './props';
 import { mountDesk } from './desk';
 import { hookEffects, housesModal, perkModal } from './hooks';
 import { destModal, ending, helpModal, inspectModal, leaveModal, menuModal, overModal, settingsModal } from './modals';
@@ -61,6 +61,7 @@ function screenHtml(): string {
   if (ui.modal === 'calendar' && ctx.s) html += calendarModal(ctx.s);
   if (ui.modal === 'forecast' && ctx.s) html += forecastModal(ctx.s);
   if (ui.modal === 'casetold') html += caseToldModal();
+  if (ui.modal === 'spill') html += spillModal();
   if (ui.modal === 'help') html += helpModal();
   if (ui.modal === 'settings') html += settingsModal();
   return html;

@@ -388,7 +388,7 @@ html.calm .pot img {
 }
 .lin.here {
   border-color: var(--ink);
-  background: var(--gum-wash);
+  background: color-mix(in srgb, var(--gum) 28%, transparent);
 }
 .lin small {
   font-size: 0.5625rem;
@@ -429,7 +429,7 @@ html.calm .pot img {
 }
 .lim.made {
   border: 2px solid var(--ink);
-  background: var(--gum-wash);
+  background: color-mix(in srgb, var(--gum) 28%, transparent);
 }
 .lim b {
   display: grid;
@@ -519,7 +519,7 @@ html.calm .pot img {
 }
 .cx.known {
   border: 2px solid var(--ink);
-  background: var(--gum-wash);
+  background: color-mix(in srgb, var(--gum) 28%, transparent);
 }
 .cx.mine {
   box-shadow: inset 4px 0 0 var(--gum);
@@ -657,7 +657,7 @@ html.calm .pot img {
 }
 @keyframes cand-glow {
   50% {
-    box-shadow: 0 0 0 4px var(--gum-wash);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--gum) 28%, transparent);
   }
 }
 html.calm .pcand.secret {

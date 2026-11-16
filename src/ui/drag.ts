@@ -134,7 +134,26 @@ interface PickDrag {
   from: HTMLElement;
   ghost: HTMLElement | null;
 }
-type Drag = PickDrag | { kind: 'win'; dx: number; dy: number; sx: number; sy: number; moving: boolean } | { kind: 'pop'; id: PopId; dx: number; dy: number } | OfferDrag | ItemDrag;
+/** A box drawn over a grid from an empty cell: the goods it touches are picked out together. */
+interface BoxDrag {
+  kind: 'box';
+  grid: G.GridId;
+  board: HTMLElement;
+  sx: number;
+  sy: number;
+  box: HTMLElement | null;
+}
+/** The goods picked out together, carried as one. */
+interface GroupDrag {
+  kind: 'group';
+  grid: G.GridId;
+  uids: number[];
+  sx: number;
+  sy: number;
+  from: HTMLElement;
+  ghost: HTMLElement | null;
+}
+type Drag = BoxDrag | GroupDrag | PickDrag | { kind: 'win'; dx: number; dy: number; sx: number; sy: number; moving: boolean } | { kind: 'pop'; id: PopId; dx: number; dy: number } | OfferDrag | ItemDrag;
 let drag: Drag | null = null;
 
 const HOLD_MS = 500;
@@ -213,7 +232,7 @@ function tabAt(g: NonNullable<typeof ctx.s>, x: number, y: number): G.GridId | '
   if (!popsOn(g)) return shownTab(g);
   const pop = document.elementFromPoint(x, y)?.closest<HTMLElement>('.pop');
   const id = pop?.id.replace('pop-', '');
-  return id === 'wallet' ? 'wallet' : id === 'gear' ? 'gear' : id === 'craft' ? 'craft' : 'shelf';
+  return id === 'wallet' ? 'wallet' : id === 'trash' ? 'trash' : id === 'gear' ? 'gear' : id === 'craft' ? 'craft' : 'shelf';
 }
 
 /** The preview of a board (each board has its own), and all of them put away. */
@@ -229,7 +248,7 @@ function hidePreviews(except?: HTMLElement | null): void {
 /** Keeps a window inside the game and puts it where its state says. */
 export function placePops(): void {
   const root = ctx.root;
-  for (const id of ['craft', 'wallet', 'gear'] as const) {
+  for (const id of ['craft', 'wallet', 'gear', 'trash'] as const) {
     const el = root.querySelector<HTMLElement>(`#pop-${id}`);
     if (!el) continue;
     const p = ui.pops[id];
@@ -352,12 +371,28 @@ function onDown(event: PointerEvent): void {
     return;
   }
   const cellEl = target.closest<HTMLElement>('.inv-cell');
-  if (!cellEl) return;
+  if (!cellEl) {
+    // an empty cell of a grid, with a mouse: a box is drawn from here, and the goods it touches are picked out together
+    const board = target.closest<HTMLElement>('[data-grid]');
+    if (ui.marked && !board) unmark();
+    if (!board || event.pointerType === 'touch') return;
+    unmark();
+    drag = { kind: 'box', grid: board.dataset.grid as G.GridId, board, sx: event.clientX, sy: event.clientY, box: null };
+    event.preventDefault();
+    return;
+  }
   const uid = Number(cellEl.dataset.uid);
   if (ui.counter.includes(uid)) return;
   const grid = (cellEl.closest<HTMLElement>('[data-grid]')?.dataset.grid ?? 'shelf') as G.GridId;
   const stockNow = G.gridOf(s, cat, grid).items.find((it) => it.uid === uid);
   if (!stockNow) return;
+  // one of the goods picked out together: they are all carried
+  if (ui.marked && ui.marked.grid === grid && ui.marked.uids.includes(uid) && ui.marked.uids.length > 1 && !(event.altKey || event.shiftKey || event.ctrlKey || event.metaKey)) {
+    drag = { kind: 'group', grid, uids: ui.marked.uids.slice(), sx: event.clientX, sy: event.clientY, from: cellEl.parentElement!, ghost: null };
+    event.preventDefault();
+    return;
+  }
+  unmark();
   // a click with a key held sends the good straight to the shelf, the showcase or the counter
   if (quickMove(s, grid, uid, event)) return;
   const rect = cellEl.parentElement!.getBoundingClientRect();
@@ -431,6 +466,45 @@ function onMove(event: PointerEvent): void {
   const s = ctx.s;
   if (!drag || !s) return;
   const root = ctx.root;
+  if (drag.kind === 'box') {
+    const d = drag;
+    if (!d.box) {
+      if (Math.hypot(event.clientX - d.sx, event.clientY - d.sy) < 6) return;
+      d.box = document.createElement('div');
+      d.box.className = 'mark-box';
+      document.body.appendChild(d.box);
+      ctx.swallowClick = true;
+    }
+    const left = Math.min(d.sx, event.clientX);
+    const top = Math.min(d.sy, event.clientY);
+    const box = new DOMRect(left, top, Math.abs(event.clientX - d.sx), Math.abs(event.clientY - d.sy));
+    Object.assign(d.box.style, { left: `${left}px`, top: `${top}px`, width: `${box.width}px`, height: `${box.height}px` });
+    for (const el of d.board.querySelectorAll<HTMLElement>('.inv-item')) el.classList.toggle('picked', touched(el, box));
+    event.preventDefault();
+    return;
+  }
+  if (drag.kind === 'group') {
+    const d = drag;
+    if (!d.ghost) {
+      if (Math.hypot(event.clientX - d.sx, event.clientY - d.sy) < 6) return;
+      const ghost = document.createElement('div');
+      ghost.className = 'group-ghost';
+      const tile = d.from.cloneNode(true) as HTMLElement;
+      tile.removeAttribute('id');
+      tile.style.left = '0';
+      tile.style.top = '0';
+      ghost.appendChild(tile);
+      ghost.insertAdjacentHTML('beforeend', `<b>${d.uids.length} 個</b>`);
+      document.body.appendChild(ghost);
+      d.ghost = ghost;
+      for (const uid of d.uids) document.getElementById(`item-${uid}`)?.classList.add('lifted');
+      ctx.swallowClick = true;
+    }
+    d.ghost.style.transform = `translate(${event.clientX + 10}px, ${event.clientY + 10}px)`;
+    root.querySelector('#trash')?.classList.toggle('hot', groupTarget(event.clientX, event.clientY) === 'trash' && !document.elementFromPoint(event.clientX, event.clientY)?.closest('.pop'));
+    event.preventDefault();
+    return;
+  }
   if (drag.kind === 'pick') {
     if (!drag.ghost) {
       if (Math.hypot(event.clientX - drag.sx, event.clientY - drag.sy) < 6) return;
@@ -580,6 +654,83 @@ function onMove(event: PointerEvent): void {
   d.ok = ok;
 }
 
+/** True when a good on a grid is touched by the box being drawn. */
+const touched = (el: HTMLElement, box: DOMRect): boolean => {
+  const r = el.getBoundingClientRect();
+  return r.left < box.right - 2 && r.right > box.left + 2 && r.top < box.bottom - 2 && r.bottom > box.top + 2;
+};
+
+/** Lets go of the goods picked out together. */
+export function unmark(): void {
+  if (!ui.marked) return;
+  ui.marked = null;
+  for (const el of document.querySelectorAll('.inv-item.picked')) el.classList.remove('picked');
+}
+
+/** Where goods carried together would go from this point: a grid, the bin, the counter — or nowhere. */
+function groupTarget(x: number, y: number): G.GridId | 'counter' | '' {
+  const under = document.elementFromPoint(x, y);
+  const board = under?.closest<HTMLElement>('.pop, #inv, #case')?.querySelector<HTMLElement>('[data-grid]') ?? under?.closest<HTMLElement>('[data-grid]');
+  if (board) return board.dataset.grid as G.GridId;
+  const bin = ctx.root.querySelector<HTMLElement>('#trash');
+  if (bin && inside(grown(bin.getBoundingClientRect(), 8), x, y)) return 'trash';
+  const counter = ctx.root.querySelector<HTMLElement>('#near.drop') ?? ctx.root.querySelector<HTMLElement>('#near');
+  if (counter && inside(counter.getBoundingClientRect(), x, y)) return 'counter';
+  return '';
+}
+
+/** Sets down the goods carried together: each takes the first free spot from the top-left of where they were dropped. */
+function dropGroup(g: NonNullable<typeof ctx.s>, d: GroupDrag, x: number, y: number): void {
+  const to = groupTarget(x, y);
+  const fail = (why: string): void => {
+    ctx.render();
+    audio.sfx('dropBad');
+    haptic('double');
+    if (why) note(why, 'info');
+  };
+  if (!to) return fail('');
+  if (to === 'counter') {
+    const v = G.currentVisitor(g);
+    if (!v || v.done || v.kind !== 'buy' || g.phase !== 'open') return fail('いまは、売る相手がいません');
+    const sale = G.forSale(g);
+    const fits = d.uids.filter((uid) => !ui.counter.includes(uid) && sale.some((it) => it.uid === uid && G.matches(cat, v.want, it.itemId)));
+    if (fits.length === 0) return fail(d.grid === 'shelf' || d.grid === 'case' ? '希望と違う品です' : '棚かショーケースの品だけ、カウンターに出せます');
+    ui.counter.push(...fits);
+    ui.win.open = true;
+    ui.marked = null;
+    ctx.render();
+    audio.sfx('drop');
+    haptic('light');
+    if (fits.length < d.uids.length) note(`希望に合う ${fits.length} 個を出しました`, 'info');
+    return;
+  }
+  const done = N.moveMany(g, cat, d.grid, d.uids, to);
+  if (!done.ok) {
+    if (done.fit.length === 0) return fail(to === 'trash' ? 'ゴミ箱に、置くスペースがありません' : '置くスペースがありません');
+    // some of them would fit if the rest stayed: the player decides
+    ui.spill = { from: d.grid, to, fit: done.fit, left: done.left };
+    ui.modal = 'spill';
+    ctx.swallowClick = true;
+    audio.sfx('dropBad');
+    ctx.render();
+    return;
+  }
+  ui.craft = ui.craft.filter((uid) => !done.moved.includes(uid));
+  ui.marked = to === d.grid ? ui.marked : null;
+  if (to === 'case' && d.grid !== 'case' && g.phase === 'open' && !g.caseTold) {
+    g.caseTold = true;
+    ui.modal = 'casetold';
+  }
+  store.save(g);
+  ctx.render();
+  audio.sfx('drop');
+  haptic('light');
+  for (const uid of done.moved.slice(0, 6)) {
+    const el = document.getElementById(`item-${uid}`);
+    if (el) fx.burst('dust', pointOn(el, 0.5, 0.9), { count: 4 });
+  }
+}
+
 /** True over the pot's board, above its list of goods. */
 function overPot(x: number, y: number): boolean {
   const board = ctx.root.querySelector<HTMLElement>('#craft');
@@ -630,6 +781,27 @@ function onUp(event: PointerEvent): void {
   drag = null;
   if (d.kind === 'pop') {
     root.querySelector(`#pop-${d.id}`)?.classList.remove('held');
+    return;
+  }
+  if (d.kind === 'box') {
+    if (!d.box) return;
+    const box = d.box.getBoundingClientRect();
+    d.box.remove();
+    const uids = [...d.board.querySelectorAll<HTMLElement>('.inv-item')].filter((el) => touched(el, box)).map((el) => Number(el.dataset.item)).filter((uid) => !ui.counter.includes(uid) && !G.itemsOf(g, d.grid).find((x) => x.uid === uid)?.bag);
+    ui.marked = uids.length > 0 ? { grid: d.grid, uids } : null;
+    if (uids.length > 0) audio.sfx('tap');
+    ctx.render();
+    return;
+  }
+  if (d.kind === 'group') {
+    if (!d.ghost) {
+      // (a still click on one of them: the picking is let go)
+      unmark();
+      return;
+    }
+    d.ghost.remove();
+    root.querySelector('#trash')?.classList.remove('hot');
+    dropGroup(g, d, event.clientX, event.clientY);
     return;
   }
   if (d.kind === 'pick') {
@@ -786,7 +958,7 @@ function onUp(event: PointerEvent): void {
       if (el) fx.burst('dust', pointOn(el, 0.5, 0.3), { count: 10 });
     } else {
       ctx.render();
-      bad(home(), d.slot ? '装備中の品は、外してから捨ててください' : '');
+      bad(home(), d.slot ? '装備中の品は、外してから捨ててください' : d.ok ? 'ゴミ箱に、置くスペースがありません' : '');
     }
   } else if (counter && v && !v.done && v.kind === 'buy' && inside(counter.getBoundingClientRect(), event.clientX, event.clientY)) {
     const stock = G.forSale(g).find((x) => x.uid === d.uid);
@@ -852,7 +1024,8 @@ function onUp(event: PointerEvent): void {
 
 function onCancel(): void {
   if (!drag) return;
-  if (drag.kind !== 'win' && drag.kind !== 'pop') drag.ghost?.remove();
+  if (drag.kind === 'box') drag.box?.remove();
+  else if (drag.kind !== 'win' && drag.kind !== 'pop') drag.ghost?.remove();
   if (drag.kind === 'item') {
     endItemTimers(drag);
     endDwell(drag);
@@ -863,7 +1036,7 @@ function onCancel(): void {
 }
 
 /** True while something is being dragged (the screen must not be redrawn under it). */
-export const dragging = (): boolean => !!drag && drag.kind !== 'win' && drag.kind !== 'pop' && (drag.kind === 'pick' ? !!drag.ghost : drag.active);
+export const dragging = (): boolean => !!drag && drag.kind !== 'win' && drag.kind !== 'pop' && (drag.kind === 'pick' || drag.kind === 'group' ? !!drag.ghost : drag.kind === 'box' ? !!drag.box : drag.active);
 
 /** Turns the good being dragged a quarter (R, or the right button). True when something was turned. */
 export function rotateDragged(dir: 1 | -1 = 1): boolean {

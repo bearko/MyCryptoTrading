@@ -1,3 +1,4 @@
+import { moveMany } from '../game/night';
 import { potCandidates } from './craft';
 import { B } from '../game/balance';
 import { perkById } from '../game/perks';
@@ -81,6 +82,7 @@ function enterGame(g: GameState | null): void {
     // a save from before the wide shelf: its goods are laid out again, once
     if (g && !g.big) {
       G.enlarge(g, cat);
+      G.tidyBin(g, cat);
       store.save(g);
     } else if (g && (!g.wide || G.shelfSpills(g, cat))) {
       G.repackShelf(g, cat);
@@ -758,8 +760,30 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       note(g.phase === 'open' ? '眠るのは、店を閉めてから' : 'いまは朝です');
       return;
     case 'trash':
+      // (a wide screen: the bin opens as a window with its own grid; a phone keeps the list)
+      if (g && popsOn(g)) {
+        togglePop('trash');
+        return;
+      }
       ui.modal = 'trash';
       break;
+    case 'spill-go': {
+      // the goods that fit go; the rest stay where they were
+      const sp = ui.spill;
+      ui.spill = null;
+      closeModal();
+      if (g && sp) {
+        const done = moveMany(g, cat, sp.from, sp.fit, sp.to);
+        if (done.ok) {
+          ui.craft = ui.craft.filter((uid) => !done.moved.includes(uid));
+          ui.marked = { grid: sp.from, uids: sp.left };
+          store.save(g);
+          audio.sfx('drop');
+        }
+      }
+      render();
+      return;
+    }
     case 'phone':
       ui.modal = 'network';
       break;
@@ -1128,7 +1152,7 @@ function openPop(id: PopId): void {
     const w = ctx.root.clientWidth;
     // (side by side, clear of the things on the wall, as far as the screen allows)
     const wall = Math.round((document.getElementById('sprops')?.getBoundingClientRect().right ?? 150) - ctx.root.getBoundingClientRect().left) + 14;
-    const at: Record<PopId, [number, number]> = { craft: [wall, 96], gear: [wall + 440, 96], wallet: [w - 270, 96] };
+    const at: Record<PopId, [number, number]> = { craft: [wall, 96], gear: [wall + 440, 96], wallet: [w - 270, 96], trash: [8, Math.max(96, ctx.root.clientHeight - 480)] };
     [p.x, p.y] = at[id];
     p.placed = true;
   }
