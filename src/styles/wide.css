@@ -750,3 +750,71 @@
     border-color: var(--gum);
   }
 }
+
+/*
+ * The door, the bin and the bedding are things of the room, at the size of things in a room: the door stands
+ * on the floor at the far left, a door a keeper could walk out of; the bin beside it; the bedding folded and
+ * put away on the right. (Placeholders: their pictures are to be drawn.)
+ */
+@media (min-width: 900px) and (min-height: 520px) {
+  #app > .prop.exit {
+    align-self: end;
+    justify-self: start;
+    margin: 0 0 6px 14px;
+  }
+  #app > .prop.exit .exit-leaf {
+    width: min(11.5vh, 112px);
+    height: min(25vh, 250px);
+    border-width: 4px;
+  }
+  #app > .prop.exit .exit-win {
+    left: 16%;
+    top: 7%;
+    width: 68%;
+    height: 34%;
+  }
+  #app > .prop.exit .exit-knob {
+    right: 9%;
+    top: 56%;
+    width: 9px;
+    height: 9px;
+  }
+  /* (beside the door, in the room left of the shelf) */
+  #app > .prop.trash {
+    grid-column: 1 / span 2;
+    justify-self: start;
+    align-self: end;
+    margin: 0 0 6px calc(min(11.5vh, 112px) + 40px);
+    /* (over the shelf's panel, which fills the room between the door and the rack) */
+    z-index: 11;
+  }
+  #app > .prop.trash svg {
+    width: clamp(64px, 10vh, 112px);
+  }
+  #app > .prop.bed svg {
+    width: clamp(104px, 13vh, 124px);
+  }
+  #app > .prop.bed {
+    align-self: end;
+    margin-bottom: 6px;
+  }
+}
+/* (a narrow screen has no room beside the shelf: the bin goes back under a shorter door) */
+@media (min-width: 900px) and (min-height: 520px) and (max-width: 1239px) {
+  #app > .prop.exit {
+    align-self: start;
+    margin-top: 8px;
+  }
+  #app > .prop.exit .exit-leaf {
+    width: 62px;
+    height: min(17vh, 130px);
+  }
+  #app > .prop.trash {
+    grid-column: 1;
+    justify-self: center;
+    margin: 0 0 6px;
+  }
+  #app > .prop.trash svg {
+    width: clamp(56px, 8vh, 72px);
+  }
+}
