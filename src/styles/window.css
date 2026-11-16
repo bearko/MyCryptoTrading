@@ -646,22 +646,24 @@ html.calm .beat-bar b {
   line-height: 1.45;
   white-space: nowrap;
 }
-.f-suzaku {
-  --fc: var(--c-suzaku);
+.f-haou {
+  --fc: var(--c-haou);
 }
-.f-seiryu {
-  --fc: var(--c-seiryu);
+.f-buyu {
+  --fc: var(--c-buyu);
 }
-.f-genbu {
-  --fc: var(--c-genbu);
+.f-muhou {
+  --fc: var(--c-muhou);
 }
-.f-byakko {
-  --fc: var(--c-byakko);
+.f-eichi {
+  --fc: var(--c-eichi);
 }
-.f-koryu {
-  --fc: var(--c-koryu);
+.f-fuga {
+  --fc: var(--c-fuga);
 }
-.fac.f-genbu {
+.fac.f-muhou,
+.fac.f-buyu,
+.fac.f-eichi {
   color: var(--paper);
 }
 

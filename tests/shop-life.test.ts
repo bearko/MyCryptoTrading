@@ -5,7 +5,7 @@ import * as C from '../src/game/craft';
 import * as G from '../src/game/logic';
 import * as N from '../src/game/network';
 import * as N2 from '../src/game/night';
-import { FACTIONS } from '../src/game/factions';
+import { FACTIONS, factionOfName } from '../src/game/factions';
 import type { GameState, Visitor } from '../src/game/state';
 import { seeOff } from './util';
 
@@ -308,6 +308,48 @@ describe('the guild', () => {
   });
 });
 
+describe('the five houses', () => {
+  const house = (v: Visitor) => factionOfName(catalog.heroById.get(v.heroId)!.ja);
+
+  it('every hero has a house', () => {
+    for (const h of catalog.heroes) expect(factionOfName(h.ja), h.ja).not.toBeNull();
+    expect(FACTIONS.map((f) => f.ja)).toEqual(['覇王', '武勇', '叡智', '風雅', '無法']);
+  });
+
+  it('rulers above the novice come only to a window that shows goods fit for them', () => {
+    const bare = G.newGame(91, catalog);
+    bare.clientele = 5;
+    bare.day = 6;
+    for (const v of visitors(bare, 1200)) if (house(v) === 'haou') expect(catalog.heroById.get(v.heroId)!.rarity).toBe(1);
+    const fine = G.newGame(91, catalog);
+    fine.clientele = 5;
+    fine.day = 6;
+    G.addTo(fine, catalog, 'case', catalog.itemsByRarity[4][0].id, 1, 0);
+    const kings = visitors(fine, 1200).filter((v) => house(v) === 'haou' && catalog.heroById.get(v.heroId)!.rarity >= 2);
+    expect(kings.length).toBeGreaterThan(20);
+    // … and they seldom sell
+    expect(kings.filter((v) => v.kind === 'sell').length / kings.length).toBeLessThan(0.25);
+  });
+
+  it('captains, scholars and artists are after their own line of goods, and bring it', () => {
+    const s = G.newGame(92, catalog);
+    s.clientele = 5;
+    s.day = 6;
+    const vs = visitors(s, 3000).filter((v) => !v.special);
+    for (const [id, param] of [['buyu', 'phy'], ['eichi', 'int'], ['fuga', 'agi']] as const) {
+      const buyers = vs.filter((v) => house(v) === id && v.kind === 'buy');
+      expect(buyers.filter((v) => v.want.type === 'param' && v.want.param === param).length / buyers.length).toBeGreaterThan(0.45);
+      const offers = vs.filter((v) => house(v) === id && v.kind === 'sell').flatMap((v) => v.offers);
+      expect(offers.filter((o) => catalog.itemById.get(o.itemId)!.params.includes(param)).length / offers.length).toBeGreaterThan(0.6);
+    }
+    // a scholar brings no replica; an outlaw brings hot goods far more often than the rest
+    const offersOf = (id: string) => vs.filter((v) => house(v) === id && v.kind === 'sell').flatMap((v) => v.offers);
+    expect(offersOf('eichi').some((o) => o.fake)).toBe(false);
+    const hot = (id: string) => offersOf(id).filter((o) => o.hot).length / offersOf(id).length;
+    expect(hot('muhou')).toBeGreaterThan(hot('buyu') * 2);
+  });
+});
+
 describe('the wanted notice', () => {
   /** Plays mornings (without serving anyone) until a notice is up and its hero is at the counter. */
   function untilWanted(seed: number): GameState {
@@ -449,16 +491,16 @@ describe('replicas and the loupe', () => {
       expect(x.seen).toBeFalsy();
       // unknown to the shop: priced like the real thing
       expect(G.stockValue(catalog, x)).toBe(G.itemValue(catalog, x.itemId, x.cond));
-      const buyer: Visitor = { ...v, kind: 'buy', offers: [], want: { type: 'any' }, budget: 999999, done: false, deals: 0, faction: 'suzaku', temper: 0 };
+      const buyer: Visitor = { ...v, kind: 'buy', offers: [], want: { type: 'any' }, budget: 999999, done: false, deals: 0, faction: 'haou', temper: 0 };
       s.queue = [buyer];
       s.cursor = 0;
       s.rep = 50;
-      const favor = s.favor.suzaku;
+      const favor = s.favor.haou;
       expect(G.sell(s, catalog, [x.uid], 0)).toBe('sold');
       if (s.lastFake) {
         found += 1;
         expect(s.rep).toBeLessThan(50);
-        expect(s.favor.suzaku).toBe(favor + B.favorDeal - B.fakeFavor);
+        expect(s.favor.haou).toBe(favor + B.favorDeal - B.fakeFavor);
       }
     }
     expect(found).toBeGreaterThan(8);

@@ -12,8 +12,8 @@ import type { GameState } from '../src/game/state';
 export type Style = 'plain' | 'careful' | 'kind' | 'crafty' | 'partisan' | 'keeper' | 'master';
 
 /** partisan: sides with two houses (kind to them), and drives hard bargains with their rivals. */
-const FRIENDS = ['suzaku', 'seiryu'];
-const FOES = ['genbu', 'byakko'];
+const FRIENDS = ['buyu', 'fuga'];
+const FOES = ['eichi', 'muhou'];
 /** The way a customer is treated: a style, seen through the customer's house. */
 function stance(style: Style, v: { faction: string | null }): Style {
   if (style === 'keeper') return 'careful';

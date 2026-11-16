@@ -52,7 +52,13 @@ export function load(): GameState | null {
     s.today.looks ??= 0;
     s.totals.crafts ??= 0;
     // saves from before the houses
-    s.favor = { ...noFavor(), ...(s.favor ?? {}) };
+    // (a save from when the houses were other houses: regard starts again, and nobody in the shop keeps an old house)
+    if (!s.favor || !('haou' in s.favor)) {
+      s.favor = noFavor();
+      s.wanted = null;
+      for (const v of s.queue ?? []) v.faction = null;
+    }
+    s.favor = { ...noFavor(), ...s.favor };
     for (const v of s.queue) {
       v.nego ??= 0;
       v.faction ??= null;

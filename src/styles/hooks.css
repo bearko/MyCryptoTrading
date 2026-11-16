@@ -397,3 +397,16 @@ button.hud-rep {
   background: var(--gum-wash);
   padding: 0 2px;
 }
+
+/* how a house's heroes trade, under its regard */
+.house-trait {
+  display: block;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--rule);
+  color: var(--sub);
+}
+.house-trait b {
+  margin-right: 6px;
+  color: var(--ink);
+}

@@ -509,7 +509,7 @@ describe('game rules', () => {
     G.openShop(s, catalog);
     until(s, 'sell');
     const v = G.currentVisitor(s)!;
-    v.faction = 'suzaku';
+    v.faction = 'haou';
     const asks = v.offers.map((o) => o.ask);
     expect(G.sweeten(s, 1)).toBe(true);
     v.offers.forEach((o, i) => expect(o.ask).toBeGreaterThan(asks[i]));
@@ -518,7 +518,7 @@ describe('game rules', () => {
     expect(G.sweeten(s, 0)).toBe(false);
     s.gum = 99999;
     expect(G.buy(s, catalog, [0])).toBe(true);
-    expect(s.favor.suzaku).toBe(B.favorGenerous[1]);
+    expect(s.favor.haou).toBe(B.favorGenerous[1]);
 
     // selling under the fair price: always accepted, and worth more regard than a plain deal
     const t = G.newGame(22, catalog);
@@ -529,14 +529,14 @@ describe('game rules', () => {
       const b = G.currentVisitor(t)!;
       const item = t.stock.find((x) => G.matches(catalog, b.want, x.itemId));
       if (item) {
-        b.faction = 'seiryu';
+        b.faction = 'buyu';
         b.temper = 2;
         b.budget = 99999;
         const kind = G.quoteSale(t, catalog, b, [item.uid], -1);
         expect(kind.chance).toBe(1);
         expect(kind.asked).toBeLessThan(G.quoteSale(t, catalog, b, [item.uid], 0).asked);
         expect(G.sell(t, catalog, [item.uid], -1)).toBe('sold');
-        expect(t.favor.seiryu).toBe(B.favorGenerous[0]);
+        expect(t.favor.buyu).toBe(B.favorGenerous[0]);
         expect(G.saleFavor(0)).toBe(B.favorDeal);
         expect(G.saleFavor(3)).toBe(B.favorHard);
         return;
@@ -550,20 +550,20 @@ describe('game rules', () => {
   it('a house grants more with each rank, and an angry customer costs its regard', () => {
     const s = G.newGame(23, catalog);
     const before = G.visitorsExpected(s);
-    s.favor.suzaku = B.favorRanks[0];
-    expect(G.favorRank(s, 'suzaku')).toBe(1);
+    s.favor.fuga = B.favorRanks[0];
+    expect(G.favorRank(s, 'fuga')).toBe(1);
     expect(G.visitorsExpected(s)).toBe(before + B.boonVisitors);
-    s.favor.suzaku = B.favorRanks[2];
+    s.favor.fuga = B.favorRanks[2];
     expect(G.visitorsExpected(s)).toBe(before + B.boonVisitors * 3);
 
     s.day = 2;
     G.openShop(s, catalog);
     until(s, 'sell');
     const v = G.currentVisitor(s)!;
-    v.faction = 'genbu';
+    v.faction = 'muhou';
     v.haggled = false;
     v.patience = 1;
-    s.favor.genbu = 5;
+    s.favor.muhou = 5;
     // the hardest bargain against a stubborn seller, until it fails once
     v.temper = 2;
     s.rep = 0;
@@ -576,7 +576,7 @@ describe('game rules', () => {
     }
     expect(failed).toBe(true);
     expect(v.done).toBe(true);
-    expect(s.favor.genbu).toBe(5 - B.favorAngry);
+    expect(s.favor.muhou).toBe(5 - B.favorAngry);
   });
   it('the houses are at odds: a kind price sours the rival, and a slight cheers it', () => {
     const s = G.newGame(24, catalog);
@@ -584,38 +584,38 @@ describe('game rules', () => {
     G.openShop(s, catalog);
     until(s, 'sell');
     const v = G.currentVisitor(s)!;
-    v.faction = 'suzaku';
+    v.faction = 'haou';
     s.gum = 99999;
     expect(G.sweeten(s, 1)).toBe(true);
     expect(G.buy(s, catalog, [0])).toBe(true);
-    expect(s.favor.suzaku).toBe(B.favorGenerous[1]);
-    expect(s.favor.genbu).toBe(-Math.round(B.favorGenerous[1] * B.rivalShare));
+    expect(s.favor.haou).toBe(B.favorGenerous[1]);
+    expect(s.favor.muhou).toBe(-Math.round(B.favorGenerous[1] * B.rivalShare));
     // a plain deal moves nobody else; a grudge cheers the rival a little; the house in the middle has no rival
     expect(G.rivalFavor(B.favorDeal)).toBe(0);
     expect(G.rivalFavor(B.favorHard)).toBe(B.rivalGlee);
     expect(G.rivalFavor(-B.favorAngry)).toBe(B.rivalGlee);
-    expect(FACTIONS.filter((f) => f.rival === null).map((f) => f.id)).toEqual(['koryu']);
+    expect(FACTIONS.filter((f) => f.rival === null).map((f) => f.id)).toEqual(['fuga']);
     for (const f of FACTIONS) if (f.rival) expect(FACTIONS.find((x) => x.id === f.rival)!.rival).toBe(f.id);
   });
   it('a house that has turned against the shop turns its boon around', () => {
     const s = G.newGame(25, catalog);
     const before = G.visitorsExpected(s);
-    s.favor.suzaku = B.favorLow[0];
-    expect(G.favorRank(s, 'suzaku')).toBe(-1);
+    s.favor.fuga = B.favorLow[0];
+    expect(G.favorRank(s, 'fuga')).toBe(-1);
     expect(G.visitorsExpected(s)).toBe(before - B.boonVisitors);
-    s.favor.suzaku = B.favorLow[1];
-    expect(G.favorRank(s, 'suzaku')).toBe(-2);
+    s.favor.fuga = B.favorLow[1];
+    expect(G.favorRank(s, 'fuga')).toBe(-2);
     // every rank, good and bad, has a name and says what it does
     for (const f of FACTIONS) for (let rank = -2; rank <= 3; rank++) if (rank !== 0) expect(f.text(rank).length).toBeGreaterThan(3);
     expect([-2, -1, 0, 1, 2, 3].map(rankName)).toEqual(['険悪', '不仲', '—', '顔なじみ', 'お得意さま', '盟友']);
     // regard stops at the floor
     const t = G.newGame(26, catalog);
     t.day = 2;
-    t.favor.genbu = B.favorFloor;
+    t.favor.muhou = B.favorFloor;
     G.openShop(t, catalog);
     until(t, 'sell');
     const v = G.currentVisitor(t)!;
-    v.faction = 'genbu';
+    v.faction = 'muhou';
     v.temper = 2;
     t.rep = 0;
     for (let n = 0; n < 50 && !v.done; n++) {
@@ -623,7 +623,7 @@ describe('game rules', () => {
       v.patience = 1;
       G.haggle(t, 2);
     }
-    expect(t.favor.genbu).toBe(B.favorFloor);
+    expect(t.favor.muhou).toBe(B.favorFloor);
   });
   it('the budget follows the price: more to spend at a kind price, less at a dear one', () => {
     const s = G.newGame(31, catalog);

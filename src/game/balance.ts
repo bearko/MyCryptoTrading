@@ -36,6 +36,26 @@ export const B = {
    */
   clienteleNeed: [0, 0, 3, 4, 3, 2],
   clienteleShow: 2,
+  /**
+   * How each house trades. The rulers: a fuller purse, after goods of at least their own standing (2–4), seldom
+   * selling, and coming only when the window shows a good of `haouShown` steps below their own rarity or better.
+   * The captains: a fuller purse, less patience. The scholars: no replicas among what they bring, harder to
+   * bargain with. The artists: what they bring is in better condition, and they buy one good more. The outlaws:
+   * a thinner purse, lower asks, and hot goods and replicas this many times as often.
+   * `houseWant`: how often a buyer is after the house's own line of goods; `houseBring`: how often a seller brings it.
+   */
+  house: {
+    houseWant: 0.6,
+    houseBring: 0.65,
+    haouPurse: 1.6,
+    haouShown: 1,
+    haouSells: 0.25,
+    buyuPurse: 1.15,
+    eichiChance: -0.1,
+    muhouPurse: 0.8,
+    muhouAsk: 0.85,
+    muhouShady: 4,
+  },
   /** which heroes come: weights for rarities 1–5 (a legendary hero is always a rich buyer, and comes from the third day) */
   heroOdds: [0, 30, 30, 22, 14, 2.5],
   /** what a buyer brings, by the hero's rarity (index 1–4; a legendary hero is rich, see richFloor): the purse decides what can be sold to whom */
