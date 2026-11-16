@@ -1469,17 +1469,12 @@ html.calm .inv-fx {
   pointer-events: none;
 }
 .group-ghost .inv-item {
-  position: relative;
-  box-shadow:
-    6px 6px 0 var(--paper),
-    8px 8px 0 var(--ink),
-    12px 12px 0 var(--paper),
-    14px 14px 0 var(--ink);
+  position: absolute;
+  opacity: 0.9;
+  box-shadow: 4px 4px 0 var(--ink);
 }
 .group-ghost b {
   position: absolute;
-  right: -22px;
-  top: -12px;
   padding: 1px 7px;
   border: 2px solid var(--ink);
   background: var(--gum);

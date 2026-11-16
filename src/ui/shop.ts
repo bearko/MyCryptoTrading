@@ -1,3 +1,4 @@
+import { B } from '../game/balance';
 import { catalog as cat, COND_JA, RARITY_JA } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState } from '../game/state';
@@ -35,11 +36,20 @@ export function shopScreen(g: GameState): { top: string; side: string } {
       return `<button class="offer on-counter" id="tray-${i}-${x.itemId}" style="${tone(item)}" data-act="stow" data-arg="${i}" data-sfx="none" aria-label="${esc(item.ja)}をウォレットに入れる"><img src="${item.img}" alt="" draggable="false" />${glyphs(item)}</button>`;
     })
     .join('');
+  // the keeper of the shop (a wide screen: he stands on the right, above the wallet)
+  const keeper = cat.heroById.get(B.dealerHero);
+  const left = G.freeCells(g, cat, 'wallet');
+  const line = shop.tray.length > 0 ? 'ウォレットに入らない品は、持ち帰れないよ。' : left === 0 ? 'ウォレットがいっぱいだね。大きいのに替えれば、もっと運べる。' : 'いらっしゃい。持ち帰れるのは、ウォレットに入るぶんだけだ。';
   const stage = `<main class="shop" id="shop" data-ui>
       <header class="shop-sign"><b>NIGHT SHOP</b><span>夜のショップ</span></header>
       <p class="shop-hint">支払いは電子決済。手持ちの GUM をすべて使えます。買った品は、<b>ウォレットに入れた分だけ</b>持ち帰れます。</p>
       <div class="shop-list">${goods}</div>
-    </main>`;
+    </main>
+    <aside class="keeper" id="keeper" data-ui>
+      <p class="keeper-say" id="keeper-say">${line}</p>
+      ${keeper ? `<img class="keeper-img" src="${keeper.img}" alt="" draggable="false" />` : ''}
+      <b class="keeper-name"><small>店主</small>${esc(keeper?.ja ?? '')}</b>
+    </aside>`;
   const trayHtml = `<div class="tray ${shop.tray.length ? 'has' : ''}" id="tray" ${sideFits(g) ? '' : 'data-ui'}>
       <div class="counter-mat"><span class="zone-label">${shop.tray.length ? '未収納（タップで入れる）' : '買った品'}</span>
         <div class="zone-goods">${tray || '<div class="counter-note">入りきらない品が<br />ここに並びます</div>'}</div></div>

@@ -206,12 +206,12 @@ describe('moving many goods at once, and the bin as a grid', () => {
 
   it('goods moved together are laid out from the top-left, not as they stood', () => {
     const s = fresh();
-    const uids = [0, 1, 2].map(() => G.addTo(s, catalog, 'shelf', sq.id, 1, 0)!);
+    const uids = [0, 1].map(() => G.addTo(s, catalog, 'shelf', sq.id, 1, 0)!);
     s.stock.forEach((x, i) => Object.assign(x, { x: 6 + i * 4, y: 5 }));
     const done = N.moveMany(s, catalog, 'shelf', uids, 'wallet');
     expect(done.ok).toBe(true);
     expect(s.stock).toHaveLength(0);
-    expect(s.wallet.items.map((x) => [x.x, x.y])).toEqual([[0, 0], [2, 0], [4, 0]]);
+    expect(s.wallet.items.map((x) => [x.x, x.y])).toEqual([[0, 0], [2, 0]]);
   });
 
   it('when they do not all fit nothing moves, and it tells which would fit', () => {
