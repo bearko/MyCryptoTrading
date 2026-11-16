@@ -145,7 +145,7 @@
   position: absolute;
   width: var(--cell);
   height: var(--cell);
-  background: linear-gradient(135deg, var(--fa) 50%, var(--fb) 50%);
+  background: linear-gradient(135deg, var(--fa) var(--s1, 50%), var(--fb) var(--s1, 50%) var(--s2, 100%), var(--fc) var(--s2, 100%));
   border: 0 solid var(--ink);
 }
 .inv-cell.et {
@@ -324,7 +324,7 @@
 }
 .gslot.full {
   border: var(--edge) solid var(--ink);
-  background: linear-gradient(135deg, var(--ta) 50%, var(--tb) 50%);
+  background: linear-gradient(135deg, var(--ta) var(--s1, 50%), var(--tb) var(--s1, 50%) var(--s2, 100%), var(--tc, var(--tb)) var(--s2, 100%));
   color: var(--ink);
   box-shadow: var(--shadow-sm);
 }

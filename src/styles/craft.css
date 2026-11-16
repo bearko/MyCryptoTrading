@@ -63,7 +63,7 @@
   height: 56px;
   padding: 0;
   border: 2.5px solid var(--paper);
-  background: linear-gradient(135deg, var(--ta, var(--ink-3)) 50%, var(--tb, var(--ink-3)) 50%);
+  background: linear-gradient(135deg, var(--ta, var(--ink-3)) var(--s1, 50%), var(--tb, var(--ink-3)) var(--s1, 50%) var(--s2, 100%), var(--tc, var(--tb, var(--ink-3))) var(--s2, 100%));
   color: var(--ink);
   cursor: pointer;
 }
@@ -154,7 +154,7 @@ html.calm .pot img {
   width: 56px;
   height: 56px;
   border: 2.5px solid var(--paper);
-  background: linear-gradient(135deg, var(--ta, var(--ink-3)) 50%, var(--tb, var(--ink-3)) 50%);
+  background: linear-gradient(135deg, var(--ta, var(--ink-3)) var(--s1, 50%), var(--tb, var(--ink-3)) var(--s1, 50%) var(--s2, 100%), var(--tc, var(--tb, var(--ink-3))) var(--s2, 100%));
 }
 .pout.dim {
   opacity: 0.55;
@@ -257,7 +257,7 @@ html.calm .pot img {
   height: 46px;
   padding: 0;
   border: 2px solid var(--ink);
-  background: linear-gradient(135deg, var(--ta, var(--ink-3)) 50%, var(--tb, var(--ink-3)) 50%);
+  background: linear-gradient(135deg, var(--ta, var(--ink-3)) var(--s1, 50%), var(--tb, var(--ink-3)) var(--s1, 50%) var(--s2, 100%), var(--tc, var(--tb, var(--ink-3))) var(--s2, 100%));
   cursor: pointer;
 }
 .pgood:active {

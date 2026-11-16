@@ -818,3 +818,84 @@
     width: clamp(56px, 8vh, 72px);
   }
 }
+
+/*
+ * The night shop on a wide screen: the goods down the left, the keeper at the top right, the wallet (and what
+ * is bought but not put away) at the bottom right.
+ */
+@media (min-width: 900px) and (min-height: 520px) {
+  #app[data-phase='shop'] {
+    grid-template-columns: minmax(0, 1fr) minmax(440px, 38%);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  #app[data-phase='shop'] > .shop {
+    grid-column: 1;
+    grid-row: 2 / 4;
+  }
+  #app[data-phase='shop'] > .shop .shop-hint {
+    display: none;
+  }
+  #app[data-phase='shop'] > .shop .shop-list {
+    margin-top: 12px;
+  }
+  #app[data-phase='shop'] > .keeper {
+    grid-column: 2;
+    grid-row: 2;
+    position: relative;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    justify-items: center;
+    min-height: 0;
+    padding: 14px 16px 0;
+    border-left: 3px solid var(--violet);
+    background:
+      linear-gradient(to bottom, color-mix(in srgb, var(--violet) 46%, transparent), transparent 70%),
+      var(--night);
+    overflow: hidden;
+  }
+  .keeper-say {
+    position: relative;
+    justify-self: start;
+    max-width: 100%;
+    margin: 0 0 8px;
+    padding: 8px 12px;
+    border: 3px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.5;
+    box-shadow: var(--shadow-sm);
+  }
+  .keeper-img {
+    align-self: end;
+    height: 100%;
+    max-height: 340px;
+    min-height: 0;
+    aspect-ratio: 1;
+    object-fit: contain;
+    object-position: bottom;
+    image-rendering: pixelated;
+  }
+  .keeper-name {
+    position: absolute;
+    right: 12px;
+    bottom: 10px;
+    padding: 2px 10px;
+    border: 3px solid var(--ink);
+    background: var(--gum);
+    color: var(--ink);
+    font-family: var(--f-display);
+    font-size: 0.875rem;
+  }
+  .keeper-name small {
+    margin-right: 6px;
+    font-size: 0.6875rem;
+  }
+  #app[data-phase='shop'] > .inv {
+    grid-column: 2;
+    grid-row: 3;
+    border-left: 3px solid var(--violet);
+    border-top: 3px solid var(--ink-3);
+  }
+}

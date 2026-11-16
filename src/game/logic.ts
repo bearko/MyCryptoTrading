@@ -1340,6 +1340,38 @@ export function givePot(s: GameState, cat: Catalog): void {
 
 // ---------------------------------------------------------------- the bin
 
+/**
+ * A save whose goods no longer sit right (goods changed size, the wallet became smaller): each grid where goods
+ * overlap or hang over the edge is laid out again. What finds no room goes to the shelf, and from there to the
+ * parcel by the telephone.
+ */
+export function refit(s: GameState, cat: Catalog): void {
+  const spare: StockItem[] = [];
+  for (const id of ['wallet', 'case', 'trash', 'shelf'] as const) {
+    const g = gridOf(s, cat, id);
+    const taken = new Set<string>();
+    let wrong = false;
+    for (const x of g.items) {
+      for (const [cx, cy] of shapeOf(cat, x.itemId, x.rot).cells) {
+        const key = `${x.x + cx},${x.y + cy}`;
+        if (x.x + cx >= g.cols || y(x, cy) >= g.rows || taken.has(key)) wrong = true;
+        taken.add(key);
+      }
+    }
+    if (!wrong && !(id === 'shelf' && spare.length > 0)) continue;
+    // (the wallet in use and the pot keep their room first)
+    const goods = [...g.items, ...(id === 'shelf' ? spare.splice(0) : [])].sort((a, b) => Number(!!b.bag) - Number(!!a.bag));
+    const { spots, left } = packInto({ cols: g.cols, rows: g.rows, items: [] }, cat, goods);
+    g.items.length = 0;
+    for (const x of goods) {
+      if (!left.includes(x.uid)) g.items.push({ ...x, ...spots.get(x.uid)! });
+      else if (id === 'shelf') s.parcel.push({ itemId: x.itemId, cond: x.cond, paid: x.paid });
+      else if (id !== 'trash') spare.push(x);
+    }
+  }
+}
+const y = (x: StockItem, cy: number): number => x.y + cy;
+
 /** A save from before the bin was a grid: what lay in it loose is laid out (what does not fit stays in a corner until the night). */
 export function tidyBin(s: GameState, cat: Catalog): void {
   if (!s.trash.some((x) => typeof x.x !== 'number' || s.trash.some((y) => y !== x && y.x === x.x && y.y === x.y))) return;

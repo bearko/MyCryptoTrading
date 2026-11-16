@@ -522,7 +522,7 @@
   width: 52px;
   height: 52px;
   padding: 0;
-  background: linear-gradient(135deg, var(--fa) 50%, var(--fb) 50%);
+  background: linear-gradient(135deg, var(--fa) var(--s1, 50%), var(--fb) var(--s1, 50%) var(--s2, 100%), var(--fc) var(--s2, 100%));
   border: 2.5px solid var(--ink);
   box-shadow: 3px 3px 0 var(--ink);
   color: var(--ink);

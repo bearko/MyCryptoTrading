@@ -59,6 +59,8 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
     if (s.stock.filter((x) => !x.bag && !cat.itemById.get(x.itemId)!.effect).length < 3 && spare > 120 && N.goShop(s, cat)) {
       s.shop!.goods.forEach((g, i) => {
         if (s.gum - g.price < reserve + 40 || cat.itemById.get(g.itemId)!.wallet) return;
+        // (nothing is bought that the wallet cannot carry home)
+        if (!G.findSlotIn(G.gridOf(s, cat, 'wallet'), cat, g.itemId)) return;
         if (N.shopBuy(s, i) && !N.stow(s, cat, s.shop!.tray.length - 1)) s.shop!.tray.pop(); // does not fit: left behind
       });
       N.goHome(s, cat);

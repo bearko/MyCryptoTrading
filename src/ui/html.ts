@@ -27,7 +27,9 @@ export function tone(item: Item): string {
   const a = item.params[0];
   const b = item.params[1] ?? a;
   // (the fill says the parameter line; the frame says the rarity)
-  return `--ta:var(--c-${a});--tb:var(--c-${b});--rar:var(--r${item.rarity})`;
+  // (three lines: the fill is cut in three)
+  const c = item.params[2];
+  return `--ta:var(--c-${a});--tb:var(--c-${b});${c ? `--tc:var(--c-${c});--s1:36%;--s2:64%;` : ''}--rar:var(--r${item.rarity})`;
 }
 
 /** A shape for each parameter line, so the lines can be told apart without colour. */

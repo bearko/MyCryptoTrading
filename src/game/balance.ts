@@ -212,7 +212,8 @@ export const B = {
   disposeRate: 0.5,
 
   /** the wallet is the bag: [columns, rows] by the wallet's rarity (index 1–5) */
-  walletSizes: [[8, 10], [8, 10], [10, 10], [10, 12], [12, 12], [12, 14]],
+  // (the first wallet is small on purpose: a night at the shop cannot bring back much until a larger one is found)
+  walletSizes: [[4, 3], [4, 3], [5, 4], [6, 5], [8, 6], [10, 8]],
   /** the night shop: how many goods, and their price against market value */
   shopCount: 6,
   shopRate: [0.8, 0.96],

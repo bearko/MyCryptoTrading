@@ -152,6 +152,8 @@ interface GroupDrag {
   sy: number;
   from: HTMLElement;
   ghost: HTMLElement | null;
+  offX: number;
+  offY: number;
 }
 type Drag = BoxDrag | GroupDrag | PickDrag | { kind: 'win'; dx: number; dy: number; sx: number; sy: number; moving: boolean } | { kind: 'pop'; id: PopId; dx: number; dy: number } | OfferDrag | ItemDrag;
 let drag: Drag | null = null;
@@ -388,7 +390,7 @@ function onDown(event: PointerEvent): void {
   if (!stockNow) return;
   // one of the goods picked out together: they are all carried
   if (ui.marked && ui.marked.grid === grid && ui.marked.uids.includes(uid) && ui.marked.uids.length > 1 && !(event.altKey || event.shiftKey || event.ctrlKey || event.metaKey)) {
-    drag = { kind: 'group', grid, uids: ui.marked.uids.slice(), sx: event.clientX, sy: event.clientY, from: cellEl.parentElement!, ghost: null };
+    drag = { kind: 'group', grid, uids: ui.marked.uids.slice(), sx: event.clientX, sy: event.clientY, from: cellEl.parentElement!, ghost: null, offX: 0, offY: 0 };
     event.preventDefault();
     return;
   }
@@ -487,20 +489,31 @@ function onMove(event: PointerEvent): void {
     const d = drag;
     if (!d.ghost) {
       if (Math.hypot(event.clientX - d.sx, event.clientY - d.sy) < 6) return;
+      // (the goods are lifted as they stand, so it is plain which of them are being carried)
       const ghost = document.createElement('div');
       ghost.className = 'group-ghost';
-      const tile = d.from.cloneNode(true) as HTMLElement;
-      tile.removeAttribute('id');
-      tile.style.left = '0';
-      tile.style.top = '0';
-      ghost.appendChild(tile);
-      ghost.insertAdjacentHTML('beforeend', `<b>${d.uids.length} 個</b>`);
+      ghost.style.setProperty('--cell', `${d.grid === 'case' ? ctx.caseCell : ctx.cell}px`);
+      const els = d.uids.map((uid) => document.getElementById(`item-${uid}`)).filter((el): el is HTMLElement => !!el);
+      const rects = els.map((el) => el.getBoundingClientRect());
+      const left = Math.min(...rects.map((r) => r.left));
+      const top = Math.min(...rects.map((r) => r.top));
+      els.forEach((el, n) => {
+        const tile = el.cloneNode(true) as HTMLElement;
+        tile.removeAttribute('id');
+        tile.classList.remove('picked');
+        tile.style.left = `${rects[n].left - left}px`;
+        tile.style.top = `${rects[n].top - top}px`;
+        ghost.appendChild(tile);
+      });
+      ghost.insertAdjacentHTML('beforeend', `<b style="left:${d.sx - left + 12}px;top:${d.sy - top - 26}px">${d.uids.length} 個</b>`);
+      d.offX = d.sx - left;
+      d.offY = d.sy - top;
       document.body.appendChild(ghost);
       d.ghost = ghost;
       for (const uid of d.uids) document.getElementById(`item-${uid}`)?.classList.add('lifted');
       ctx.swallowClick = true;
     }
-    d.ghost.style.transform = `translate(${event.clientX + 10}px, ${event.clientY + 10}px)`;
+    d.ghost.style.transform = `translate(${event.clientX - d.offX}px, ${event.clientY - d.offY}px)`;
     root.querySelector('#trash')?.classList.toggle('hot', groupTarget(event.clientX, event.clientY) === 'trash' && !document.elementFromPoint(event.clientX, event.clientY)?.closest('.pop'));
     event.preventDefault();
     return;

@@ -6,7 +6,7 @@ import { SLOT_IDS, type SlotId } from '../game/state';
 import { craftsLeft } from '../game/craft';
 import { craftBoard } from './craft';
 import { atHome, ctx, deckWidth, hasMouse, isWide, popsOn, shownGrid, shownTab, ui, type PopId } from './core';
-import { esc, glyphs, tone } from './html';
+import { esc, tone } from './html';
 import { ICON } from './icons';
 
 /** Where the picture sits on an odd-shaped footprint: over its heaviest part. */
@@ -43,7 +43,7 @@ export function gridItem(x: { uid: number; itemId: number; x: number; y: number;
   const mark = (left: number, top: number): string => `left:${left}px;top:${top}px${k < 1 ? `;scale:${k.toFixed(2)};transform-origin:0 0` : ''}`;
   return `<div class="inv-item ${cls}${k < 1 ? ' fine' : ''}" id="item-${x.uid}" data-item="${x.uid}" style="${tone(item)};left:${x.x * cell}px;top:${x.y * cell}px;width:${shape.w * cell}px;height:${shape.h * cell}px">
       ${cells}<img src="${item.img}" alt="${esc(item.ja)}" draggable="false" style="width:${size}px;height:${size}px;${imageSpot(shape.cells, size)}${x.rot ? `;transform:rotate(${x.rot * 90}deg)` : ''}" />
-      <span class="inv-glyph" style="${mark(first[0] * cell, first[1] * cell)}">${glyphs(item)}</span>${item.effect || x.bag ? `<b class="inv-fx" style="${mark((first[0] + 1) * cell - 19 * k, (first[1] + 1) * cell - 19 * k)}" aria-label="特別な効果のある品（クリックで使う）">✦</b>` : ''}${x.hot ? `<b class="inv-seen hot" style="${mark(first[0] * cell + (x.seen ? 16 * k : 0), (first[1] + 1) * cell - 15 * k)}">訳</b>` : ''}${x.seen ? `<b class="inv-seen ${x.fake ? 'fake' : 'real'}" style="${mark(first[0] * cell, (first[1] + 1) * cell - 15 * k)}">${x.fake ? '写' : '真'}</b>` : ''}${cls.split(' ').includes('match') ? `<i class="inv-mark" style="${mark((first[0] + 1) * cell - 17 * k, first[1] * cell + 3 * k)}" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
+      ${item.effect || x.bag ? `<b class="inv-fx" style="${mark((first[0] + 1) * cell - 19 * k, (first[1] + 1) * cell - 19 * k)}" aria-label="特別な効果のある品（クリックで使う）">✦</b>` : ''}${x.hot ? `<b class="inv-seen hot" style="${mark(first[0] * cell + (x.seen ? 16 * k : 0), (first[1] + 1) * cell - 15 * k)}">訳</b>` : ''}${x.seen ? `<b class="inv-seen ${x.fake ? 'fake' : 'real'}" style="${mark(first[0] * cell, (first[1] + 1) * cell - 15 * k)}">${x.fake ? '写' : '真'}</b>` : ''}${cls.split(' ').includes('match') ? `<i class="inv-mark" style="${mark((first[0] + 1) * cell - 17 * k, first[1] * cell + 3 * k)}" aria-label="お客さんの希望に合う品"></i>` : ''}</div>`;
 }
 
 const SLOT_LABEL: Record<SlotId | 'wallet', string> = { head: '頭', body: '胴体', arm: '腕', leg: '足', special1: '特殊1', special2: '特殊2', wallet: 'ウォレット' };
@@ -190,7 +190,14 @@ export function measure(g: GameState): void {
       ctx.cell = grid === shelf || shownGrid(g) === 'shelf' ? shelfCell : fit(grid.cols, grid.rows);
       return;
     }
-    ctx.cell = g.phase === 'shop' && sideFits(g) ? Math.min(52, fit(grid.cols + 3, grid.rows)) : fit(grid.cols, grid.rows);
+    if (g.phase === 'shop') {
+      // (the night shop: the wallet has the right-hand column, under the keeper)
+      const room = Math.max(440, w * 0.38) - 40;
+      const inShop = (cols: number): number => Math.floor(Math.max(22, Math.min(room / cols, 52, (h * 0.4) / grid.rows)));
+      ctx.cell = sideFits(g) ? inShop(grid.cols + 3.4) : inShop(grid.cols);
+      return;
+    }
+    ctx.cell = fit(grid.cols, grid.rows);
     return;
   }
   if (atHome(g)) {

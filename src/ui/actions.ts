@@ -83,6 +83,7 @@ function enterGame(g: GameState | null): void {
     if (g && !g.big) {
       G.enlarge(g, cat);
       G.tidyBin(g, cat);
+      G.refit(g, cat);
       store.save(g);
     } else if (g && (!g.wide || G.shelfSpills(g, cat))) {
       G.repackShelf(g, cat);

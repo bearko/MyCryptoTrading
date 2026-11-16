@@ -265,7 +265,7 @@
   border: 2.5px dashed var(--sub);
 }
 .slot.full .slot-face {
-  background: linear-gradient(135deg, var(--fa) 50%, var(--fb) 50%);
+  background: linear-gradient(135deg, var(--fa) var(--s1, 50%), var(--fb) var(--s1, 50%) var(--s2, 100%), var(--fc) var(--s2, 100%));
   border: 2.5px solid var(--ink);
   box-shadow: 3px 3px 0 var(--ink);
 }
@@ -401,4 +401,9 @@
   .shop-sign b {
     font-size: 1.5rem;
   }
+}
+
+/* the keeper of the night shop: only on a wide screen (a phone keeps the line of text under the sign) */
+.keeper {
+  display: none;
 }

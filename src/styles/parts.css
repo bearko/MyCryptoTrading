@@ -375,6 +375,7 @@ small.bad {
 .slot.full {
   --fa: color-mix(in srgb, var(--ta) 72%, var(--paper));
   --fb: color-mix(in srgb, var(--tb) 72%, var(--paper));
+  --fc: color-mix(in srgb, var(--tc, var(--tb)) 72%, var(--paper));
 }
 .tile {
   position: relative;
@@ -383,7 +384,7 @@ small.bad {
   place-items: center;
   width: 44px;
   height: 44px;
-  background: linear-gradient(135deg, var(--fa) 50%, var(--fb) 50%);
+  background: linear-gradient(135deg, var(--fa) var(--s1, 50%), var(--fb) var(--s1, 50%) var(--s2, 100%), var(--fc) var(--s2, 100%));
   border: 2.5px solid var(--ink);
   box-shadow: 2px 2px 0 var(--ink);
 }
