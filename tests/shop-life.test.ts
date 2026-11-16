@@ -6,7 +6,7 @@ import * as G from '../src/game/logic';
 import * as N from '../src/game/network';
 import * as N2 from '../src/game/night';
 import { FACTIONS, factionOfName } from '../src/game/factions';
-import { favourites, HOUSE_LINES } from '../src/game/kinds';
+import { favourites } from '../src/game/kinds';
 import type { GameState, Visitor } from '../src/game/state';
 import { seeOff } from './util';
 
@@ -382,12 +382,12 @@ describe('the lines of goods', () => {
     for (const o of now) expect(catalog.itemById.get(o.itemId)!.marks).toContain('east');
   });
 
-  it('a house\'s regard opens a line with each rank, overnight', () => {
+  it('a house\'s regard opens lines of goods as it climbs, overnight', () => {
     const s = G.newGame(96, catalog);
-    s.favor.buyu = B.favorRanks[1];
+    s.favor.buyu = B.favorStep * 3; // +60: the first rung and the third each open a line
     s.phase = 'evening';
     G.endDay(s);
-    expect(s.lines).toEqual(HOUSE_LINES.buyu.slice(0, 2));
+    expect([...s.lines].sort()).toEqual(['ancient', 'west']);
     expect(s.linesNew).toEqual(s.lines);
     // (had once, kept: regard lost does not close a line)
     s.favor.buyu = 0;

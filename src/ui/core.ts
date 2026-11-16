@@ -1,3 +1,4 @@
+import type { FactionId } from '../game/factions';
 import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState, SlotId } from '../game/state';
@@ -53,6 +54,9 @@ export interface Ui {
   gearFlash: string | null;
   /** the gear window's words of explanation are shown (the ? button) */
   gearHelp: boolean;
+  /** the regard window: the rung picked out, and whether its words of explanation are shown */
+  rung: { house: FactionId; at: number } | null;
+  housesHelp: boolean;
   /** the customer who came while the shutter was still rising (they wait for it) */
   lateKey: number;
 }
@@ -84,6 +88,8 @@ export const ui: Ui = {
   gearBefore: null,
   gearFlash: null,
   gearHelp: false,
+  rung: null,
+  housesHelp: false,
   lateKey: -1,
 };
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { B } from '../src/game/balance';
 import { catalog } from '../src/game/catalog';
-import { FACTIONS, rankName } from '../src/game/factions';
+import { FACTIONS, factionById, holds, shown, standing } from '../src/game/factions';
 import * as G from '../src/game/logic';
 import { seeOff, untilLandlord } from './util';
 import * as N from '../src/game/night';
@@ -440,6 +440,7 @@ describe('game rules', () => {
     until(s, 'buy');
     s.combo = 3;
     const v = G.currentVisitor(s)!;
+    v.faction = null;
     v.want = { type: 'any' };
     v.budget = 100000;
     const item = s.stock[0];
@@ -549,14 +550,39 @@ describe('game rules', () => {
     throw new Error('no buyer found a good');
   });
 
-  it('a house grants more with each rank, and an angry customer costs its regard', () => {
+  it('a house grants more with each rung of its ladder, and an angry customer costs its regard', () => {
     const s = G.newGame(23, catalog);
     const before = G.visitorsExpected(s);
-    s.favor.fuga = B.favorRanks[0];
+    s.favor.fuga = B.favorStep; // shown as +20
+    expect(shown(s.favor.fuga)).toBe(20);
     expect(G.favorRank(s, 'fuga')).toBe(1);
-    expect(G.visitorsExpected(s)).toBe(before + B.boonVisitors);
-    s.favor.fuga = B.favorRanks[2];
-    expect(G.visitorsExpected(s)).toBe(before + B.boonVisitors * 3);
+    expect(G.visitorsExpected(s)).toBe(before + 1);
+    s.favor.fuga = B.favorStep * 4; // +80: one customer more
+    expect(G.visitorsExpected(s)).toBe(before + 2);
+    expect(standing(factionById('fuga'), s.favor.fuga)).toBe('人だかり');
+    // a rung holds from its own regard upward (downward, below zero), and every rung says what it does
+    for (const f of FACTIONS) {
+      for (const rung of f.rungs) {
+        expect(Math.abs(rung.at) % 20).toBe(0);
+        expect(rung.at).not.toBe(0);
+        expect(holds(rung, rung.at * 2)).toBe(true);
+        expect(holds(rung, rung.at * 2 - Math.sign(rung.at))).toBe(false);
+        expect(rung.name.length).toBeGreaterThan(1);
+        expect(rung.text.length).toBeGreaterThan(3);
+      }
+      expect(f.rungs.filter((rung) => rung.at > 0).map((rung) => rung.at)).toEqual([100, 80, 60, 40, 20]);
+    }
+    // each house's own lever
+    s.favor.haou = B.favorStep;
+    expect(G.rungOf(s, 'haou', 'tip')).toBe(B.rung.tip);
+    s.favor.buyu = B.favorStep * 5;
+    expect(G.rungs(s, 'chance')).toBeCloseTo(B.rung.chance[0] + B.rung.chance[1], 5);
+    s.favor.eichi = B.favorStep * 4;
+    expect(G.looksLeft(s)).toBe(B.looksPerDay + B.rung.looks);
+    expect(G.knowsPatrol(s)).toBe(true);
+    s.favor.muhou = B.favorStep * 2 - 1;
+    expect(G.rungs(s, 'ask')).toBe(-B.rung.ask);
+    s.favor = { haou: 0, buyu: 0, eichi: 0, fuga: 0, muhou: 0 };
 
     s.day = 2;
     G.openShop(s, catalog);
@@ -599,33 +625,36 @@ describe('game rules', () => {
     expect(FACTIONS.filter((f) => f.rival === null).map((f) => f.id)).toEqual(['fuga']);
     for (const f of FACTIONS) if (f.rival) expect(FACTIONS.find((x) => x.id === f.rival)!.rival).toBe(f.id);
   });
-  it('a house that has turned against the shop turns its boon around', () => {
+  it('a house that has turned against the shop takes things away, and three of them end it at the foot of the ladder', () => {
     const s = G.newGame(25, catalog);
     const before = G.visitorsExpected(s);
-    s.favor.fuga = B.favorLow[0];
+    s.favor.fuga = -B.favorStep;
     expect(G.favorRank(s, 'fuga')).toBe(-1);
-    expect(G.visitorsExpected(s)).toBe(before - B.boonVisitors);
-    s.favor.fuga = B.favorLow[1];
-    expect(G.favorRank(s, 'fuga')).toBe(-2);
-    // every rank, good and bad, has a name and says what it does
-    for (const f of FACTIONS) for (let rank = -2; rank <= 3; rank++) if (rank !== 0) expect(f.text(rank).length).toBeGreaterThan(3);
-    expect([-2, -1, 0, 1, 2, 3].map(rankName)).toEqual(['険悪', '不仲', '—', '顔なじみ', 'お得意さま', '盟友']);
-    // regard stops at the floor
+    expect(G.visitorsExpected(s)).toBe(before - 1);
+    s.favor.fuga = -B.favorStep * 3;
+    expect(G.visitorsExpected(s)).toBe(Math.max(B.visitorsMin, before - 2));
+    s.favor.muhou = -B.favorStep * 3;
+    expect(G.rungs(s, 'theft')).toBe(B.rung.theft);
+    expect(G.rungs(s, 'noHot')).toBe(1);
+    // the artists and the scholars never end the shop; the others do, at −100
+    expect(FACTIONS.filter((f) => f.rungs.some((rung) => rung.effect.dead)).map((f) => f.id)).toEqual(['haou', 'buyu', 'muhou']);
     const t = G.newGame(26, catalog);
     t.day = 2;
-    t.favor.muhou = B.favorFloor;
+    t.favor.muhou = B.favorFloor + 1;
     G.openShop(t, catalog);
     until(t, 'sell');
     const v = G.currentVisitor(t)!;
     v.faction = 'muhou';
     v.temper = 2;
     t.rep = 0;
-    for (let n = 0; n < 50 && !v.done; n++) {
+    for (let n = 0; n < 50 && !v.done && t.phase === 'open'; n++) {
       v.haggled = false;
       v.patience = 1;
       G.haggle(t, 2);
     }
     expect(t.favor.muhou).toBe(B.favorFloor);
+    expect(t.phase).toBe('lost');
+    expect(t.lostTo).toBe('muhou');
   });
   it('the budget follows the price: more to spend at a kind price, less at a dear one', () => {
     const s = G.newGame(31, catalog);

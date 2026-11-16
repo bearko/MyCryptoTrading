@@ -239,7 +239,9 @@ export interface GameState {
   /** 商才 owned, and the three on offer after a rent payment (pick one) */
   perks: PerkId[];
   perkOffer: PerkId[] | null;
-  /** each house's regard for the shop, in points (ranks at B.favorRanks) */
+  /** the house that ended the shop, when one did */
+  lostTo?: FactionId;
+  /** each house's regard for the shop, in points (−200 … 200; a rung of its ladder every B.favorStep) */
   favor: Record<FactionId, number>;
   /** what the last sale added on top: the streak bonus, and an order's reward (for the screen; 0 when none) */
   last: { bonus: number; orderReward: number };

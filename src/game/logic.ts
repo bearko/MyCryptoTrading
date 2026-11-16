@@ -4,8 +4,8 @@ import type { Param, Catalog, Hero, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randInt, randRange } from './rng';
 import { ROTATED, sameCells, type Shape } from './shapes';
-import { factionOfName, noFavor, rankOf, rivalOf, FACTIONS, type FactionId } from './factions';
-import { favourites, HOUSE_KINDS, HOUSE_LINES, HOUSE_MARKS, type Kind, type Mark } from './kinds';
+import { factionById, factionOfName, holds, noFavor, rankOf, rivalOf, FACTIONS, type RungEffect, type FactionId } from './factions';
+import { favourites, HOUSE_KINDS, HOUSE_MARKS, type Kind, type Mark } from './kinds';
 import { hasService, repayNightly, supplyBlock, trustDaily, type SupplyId } from './network';
 import { PERKS, type PerkId } from './perks';
 import { emptySummary, type DayEvent, type DayOrder, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
@@ -42,7 +42,7 @@ function chance(s: GameState, base: number, v: Visitor): number {
   if (base >= 1) return 1;
   // (a scholar is harder to bargain with)
   const house = v.faction === 'eichi' ? B.house.eichiChance : 0;
-  return clamp(base + B.temperMod[v.temper] + (s.rep - 50) / B.repDivisor + B.boonChance * favorRank(s, 'buyu') + house, 0.05, 0.95);
+  return clamp(base + B.temperMod[v.temper] + (s.rep - 50) / B.repDivisor + rungs(s, 'chance') + house, 0.05, 0.95);
 }
 
 /** How often this customer accepts a price tier, before the budget comes into it. */
@@ -54,6 +54,12 @@ export const tierChance = (s: GameState, v: Visitor, tier: number): number =>
 /** A house's rank with the shop: 0–3, or −1 and −2 once it has turned against the shop. */
 export const favorRank = (s: GameState, id: FactionId): number => rankOf(s.favor[id]);
 
+type Amount = Exclude<keyof RungEffect, 'line'>;
+/** What the rungs a house's regard has reached add up to, for one kind of effect. */
+export const rungOf = (s: GameState, id: FactionId, key: Amount): number => factionById(id).rungs.reduce((sum, rung) => sum + (holds(rung, s.favor[id]) ? (rung.effect[key] ?? 0) : 0), 0);
+/** … over all five houses. */
+export const rungs = (s: GameState, key: Amount): number => FACTIONS.reduce((sum, f) => sum + rungOf(s, f.id, key), 0);
+
 /** What a house thinks of a deal: more for a kind price, a grudge after a hard bargain. */
 export const saleFavor = (tier: number): number => (tier < 0 ? B.favorGenerous[-tier - 1] : tier >= 2 ? B.favorHard : B.favorDeal);
 export const buyFavor = (v: Visitor): number => (v.nego > 0 ? B.favorGenerous[v.nego - 1] : v.nego <= -2 ? B.favorHard : B.favorDeal);
@@ -63,14 +69,25 @@ export const rivalFavor = (delta: number): number => (delta >= 2 ? -Math.round(d
 
 function moveFavor(s: GameState, id: FactionId, delta: number): void {
   s.favor[id] = clamp(s.favor[id] + delta, B.favorFloor, B.favorCap);
+  // (a house that has had enough of the shop ends it)
+  if (rungOf(s, id, 'dead') > 0 && s.phase !== 'won') {
+    s.phase = 'lost';
+    s.lostTo = id;
+  }
 }
 function addFavor(s: GameState, v: Visitor, delta: number): void {
   if (!v.faction || delta === 0) return;
   moveFavor(s, v.faction, delta);
   const rival = rivalOf(v.faction);
-  if (rival) moveFavor(s, rival, rivalFavor(delta));
+  // (a rival's ill will at kindness shown to the other side goes only so far: it never ends the shop by itself)
+  if (rival) {
+    const sour = rivalFavor(delta);
+    moveFavor(s, rival, sour < 0 ? Math.min(0, Math.max(sour, B.rivalFloor - s.favor[rival])) : sour);
+  }
 }
 export const hasPerk = (s: GameState, id: PerkId): boolean => s.perks.includes(id);
+/** The patrol's day is known in the morning: by the guild's word, or by the scholars'. */
+export const knowsPatrol = (s: GameState): boolean => hasService(s, 'tip') || rungs(s, 'news') > 0;
 export const discountChance = (s: GameState, v: Visitor, tier: number): number => chance(s, B.discountChance[tier] + (hasPerk(s, 'talker') ? B.perkTalker : 0), v);
 
 /** How often a customer accepts paying `markup` over the fair price (0.15 = +15%). */
@@ -215,7 +232,7 @@ export const visitorsFor = (rep: number): number => B.visitorsBase + Math.floor(
 export function visitorsExpected(s: GameState): number {
   const event = s.event.id === 'caravan' ? B.caravanVisitors : s.event.id === 'rain' ? B.rainVisitors : 0;
   const late = s.lateOpen && !hasPerk(s, 'nightowl') ? B.lateOpenLoss : 0;
-  return Math.max(B.visitorsMin, visitorsFor(s.rep) + event + (hasPerk(s, 'regular') ? 1 : 0) + B.boonVisitors * favorRank(s, 'fuga') + (hasService(s, 'guest1') ? 1 : 0) + (hasService(s, 'guest2') ? 1 : 0) - late);
+  return Math.max(B.visitorsMin, visitorsFor(s.rep) + event + (hasPerk(s, 'regular') ? 1 : 0) + rungs(s, 'visitors') + (hasService(s, 'guest1') ? 1 : 0) + (hasService(s, 'guest2') ? 1 : 0) - late);
 }
 export const shelfCost = (s: GameState): number | null => B.shelfCost[s.shelfLevel] ?? null;
 
@@ -225,7 +242,7 @@ export function addRep(s: GameState, delta: number): void {
 
 /** The rarity of a good a hero brings in to sell: the hero's own, sometimes one below, seldom one above. */
 export function broughtRarity(s: GameState, heroRarity: number): number {
-  const up = B.broughtUp + 0.03 * B.boonRarity * favorRank(s, 'eichi');
+  const up = B.broughtUp + 0.03 * rungs(s, 'rarity');
   const roll = rand(s);
   const step = roll < up ? 1 : roll < up + B.broughtDown ? -1 : 0;
   return clamp(heroRarity + step, 1, 5);
@@ -252,7 +269,7 @@ export function openLine(s: GameState, mark: Mark): boolean {
 
 /** A house's regard opens lines of goods: one with each rank reached (kept once had). */
 function houseLines(s: GameState): void {
-  for (const f of FACTIONS) for (let rank = 1; rank <= favorRank(s, f.id); rank++) openLine(s, HOUSE_LINES[f.id][rank - 1]);
+  for (const f of FACTIONS) for (const rung of f.rungs) if (rung.effect.line && holds(rung, s.favor[f.id])) openLine(s, rung.effect.line);
 }
 
 /** How much more (or less) a house's buyer pays for this good than its list price: a rate around 0. */
@@ -269,7 +286,7 @@ export function taste(house: FactionId | null, item: Item): number {
 // ---------------------------------------------------------------- new game and mornings
 
 export function rollRarity(s: GameState, heroBonus: number): number {
-  heroBonus += B.boonRarity * favorRank(s, 'eichi');
+  heroBonus += rungs(s, 'rarity');
   return 1 + pickWeighted(s, B.rarityOdds.map(([base, rep, hero]) => Math.max(0, base + s.rep * rep + heroBonus * hero)));
 }
 
@@ -290,7 +307,7 @@ function startMorning(s: GameState): void {
     s.supply = null;
   }
   // some days a patrol makes its round
-  s.patrolDay = s.day >= B.hotFromDay && rand(s) < B.patrolChance;
+  s.patrolDay = s.day >= B.hotFromDay && rand(s) < B.patrolChance * (1 + rungs(s, 'patrol'));
   s.phase = 'morning';
   s.today = emptySummary();
   s.queue = [];
@@ -472,7 +489,7 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
  */
 function patrol(s: GameState, cat: Catalog, v: Visitor): Visitor {
   const hot = forSale(s).filter((x) => x.hot);
-  const fine = Math.min(s.gum, hot.length * B.patrolFine);
+  const fine = rungs(s, 'lenient') > 0 ? 0 : Math.min(s.gum, hot.length * B.patrolFine);
   if (hot.length > 0) {
     s.stock = s.stock.filter((x) => !x.hot);
     s.showcase = s.showcase.filter((x) => !x.hot);
@@ -512,7 +529,12 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
   const best = shownGoods(s).reduce((top, x) => Math.max(top, cat.itemById.get(x.itemId)!.rarity), 0);
   const fit = (h: Hero): boolean => factionOfName(h.ja) !== 'haou' || (!forcedRich && (h.rarity === 1 || best >= Math.min(4, h.rarity - B.house.haouShown)));
   const drawn = cat.heroesByRarity[forcedRich ? 5 : pickWeighted(s, odds)];
-  const welcome = drawn.filter(fit);
+  // (a house that has turned cold comes half as often)
+  const cold = rand(s);
+  const welcome = drawn.filter(fit).filter((h) => {
+    const id = factionOfName(h.ja);
+    return !id || cold >= rungOf(s, id, 'shun');
+  });
   const hero = pick(s, welcome.length > 0 ? welcome : drawn.filter((h) => factionOfName(h.ja) !== 'haou'));
   const house = factionOfName(hero.ja);
   // (the kinds of goods the house is very fond of)
@@ -528,7 +550,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
   const base = {
     heroId: hero.id,
     temper,
-    patience: Math.max(1, B.temperPatience[temper] - (house === 'buyu' ? 1 : 0)),
+    patience: Math.max(1, B.temperPatience[temper] - (house === 'buyu' ? 1 : 0) + rungs(s, 'patience')),
     haggled: false,
     nego: 0,
     faction: house,
@@ -593,13 +615,13 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
       const cond = Math.min(B.condWeights.length - 1, pickWeighted(s, B.condWeights) + (house === 'fuga' ? 1 : 0));
       const hurry = (s.event.id === 'bargain' ? B.bargainAsk : 1) * (house === 'muhou' ? B.house.muhouAsk : 1);
       const guild = hasService(s, 'eye') ? 1 - B.serviceAsk : 1;
-      offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi) * hurry * guild * (1 - B.boonAsk * favorRank(s, 'muhou')))) });
+      offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi) * hurry * guild * (1 + rungs(s, 'ask')))) });
     }
     const shady = house === 'muhou' ? B.house.muhouShady : 1;
     // some of it is not what it seems: a replica, priced a little low
     if (s.day >= B.fakeFromDay) {
       for (const o of offers) {
-        if (house === 'eichi' || rand(s) >= B.fakeOdds[cat.itemById.get(o.itemId)!.rarity] * shady) continue;
+        if (house === 'eichi' || rand(s) >= B.fakeOdds[cat.itemById.get(o.itemId)!.rarity] * shady * (1 + rungs(s, 'fakes'))) continue;
         o.fake = true;
         o.ask = Math.max(1, Math.round(o.ask * B.fakeAsk));
       }
@@ -607,7 +629,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
     // … and some of it is hot: cheap, and no questions asked
     if (s.day >= B.hotFromDay) {
       for (const o of offers) {
-        if (o.fake || rand(s) >= B.hotOdds * shady) continue;
+        if (o.fake || rungs(s, 'noHot') > 0 || rand(s) >= B.hotOdds * shady) continue;
         o.hot = true;
         o.ask = Math.max(1, Math.round(o.ask * B.hotAsk));
       }
@@ -663,7 +685,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
   // the purse is the hero's own (rarer heroes are richer): it does not follow what the shop happens to hold
   const purse = B.heroWealth[Math.min(hero.rarity, 4)] * randRange(s, B.wealthSpread[0], B.wealthSpread[1]) * (1 + s.rep * B.wealthPerRep);
   const housePurse = house === 'haou' ? B.house.haouPurse : house === 'buyu' ? B.house.buyuPurse : house === 'muhou' ? B.house.muhouPurse : 1;
-  const budget = Math.round(purse * goods * demand * housePurse * (1 + B.boonBudget * favorRank(s, 'haou')));
+  const budget = Math.round(purse * goods * demand * housePurse * (1 + (house ? rungOf(s, house, 'purse') : 0)));
   return { ...base, kind: 'buy', want, budget, line: lines.buyOpen(s, want) };
 }
 
@@ -674,7 +696,9 @@ export function openShop(s: GameState, cat: Catalog): void {
   // (the window as it stands now is what the day's customers have heard of)
   s.display = { goods: s.showcase.map((x) => ({ ...x })), full: caseFull(s, cat) };
   s.phase = 'open';
-  s.visitorsToday = visitorsExpected(s);
+  s.visitorsToday = visitorsExpected(s) + (rand(s) < rungs(s, 'extra') ? 1 : 0);
+  // a patron's gift, now and then: a good of some standing, left at the door
+  if (rand(s) < rungs(s, 'gift')) s.parcel.push({ itemId: pick(s, goodsOf(s, cat, 3)).id, cond: 1, paid: 0 });
   s.nightNote = '';
   s.callers = 0;
   s.cursor = -1;
@@ -685,7 +709,7 @@ export function openShop(s: GameState, cat: Catalog): void {
 
 // ---------------------------------------------------------------- the loupe
 
-export const looksLeft = (s: GameState): number => Math.max(0, B.looksPerDay - s.today.looks);
+export const looksLeft = (s: GameState): number => Math.max(0, Math.max(1, B.looksPerDay + rungs(s, 'looks')) - s.today.looks);
 
 /**
  * Looks at a seller's good through the loupe: the real thing, or a replica. A seller found out takes
@@ -1017,7 +1041,7 @@ export function quoteSale(s: GameState, cat: Catalog, v: Visitor, uids: readonly
   const asked = goods.reduce((sum, x) => sum + Math.round(salePrice(cat, x, tier) * liking(x)), 0);
   if (v.special === 'dealer') {
     // (the dealer's price is his own: so much off the list, whatever is asked, and no refusing)
-    const offer = Math.round(fair * (1 - B.dealerCut));
+    const offer = Math.round(fair * (1 - Math.max(0, B.dealerCut - rungs(s, 'dealer'))));
     return { fair, asked: offer, paid: Math.min(offer, v.budget), budget: v.budget, over: Math.max(0, offer - v.budget), chance: 1, matches: goods.length > 0 };
   }
   const budget = budgetAt(v, tier);
@@ -1067,7 +1091,8 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
   }
   if (rand(s) < quote.chance) {
     // the streak adds a little on top (the customer's goodwill; it does not come out of their budget)
-    const bonus = Math.round(quote.paid * comboRate(s));
+    // … and a house that thinks well of the shop tips
+    const bonus = Math.round(quote.paid * (comboRate(s) + (v.faction ? rungOf(s, v.faction, 'tip') : 0)));
     const params = uids.map((uid) => cat.itemById.get(forSale(s).find((x) => x.uid === uid)!.itemId)!.params);
     const soldIds = uids.map((uid) => forSale(s).find((x) => x.uid === uid)!.itemId);
     s.last = { bonus, orderReward: 0 };
@@ -1447,6 +1472,14 @@ export function continueAfterWin(s: GameState): void {
 export function endDay(s: GameState): void {
   if (s.phase !== 'evening') return;
   houseLines(s);
+  if (rungs(s, 'fame') > 0) addRep(s, rungs(s, 'fame'));
+  // a shop the outlaws have marked is robbed in the night, now and then
+  const plain = s.stock.filter((x) => !x.bag);
+  if (plain.length > 0 && rand(s) < rungs(s, 'theft')) {
+    const gone = pick(s, plain);
+    s.stock = s.stock.filter((x) => x.uid !== gone.uid);
+    s.nightNote = '夜のうちに、棚の品が 1 つ盗まれました。';
+  }
   emptyTrash(s);
   // the guild's instalment comes before the rent
   const loanNote = repayNightly(s);

@@ -226,14 +226,5 @@ export const HOUSE_MARKS: Record<FactionId, Partial<Record<Mark, 1 | 2>>> = {
   muhou: { cursed: 2, occult: 2, nature: 1, luxury: 1 },
 };
 
-/** The lines of goods a house's regard opens to the shop, one with each rank (1, 2, 3). */
-export const HOUSE_LINES: Record<FactionId, [Mark, Mark, Mark]> = {
-  haou: ['royal', 'luxury', 'holy'],
-  buyu: ['ancient', 'west', 'east'],
-  eichi: ['book', 'science', 'occult'],
-  fuga: ['music', 'nature', 'east'],
-  muhou: ['cursed', 'occult', 'ride'],
-};
-
 /** The kinds a house is very fond of. */
 export const favourites = (house: FactionId): Kind[] => KINDS.filter((kind) => HOUSE_KINDS[house][kind] === 2);

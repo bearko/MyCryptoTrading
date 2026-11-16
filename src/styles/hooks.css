@@ -410,3 +410,184 @@ button.hud-rep {
   margin-right: 6px;
   color: var(--ink);
 }
+
+/*
+ * The houses' regard: five ladders side by side, +100 at the top and −100 at the foot. A mark with a small
+ * picture stands at every rung that does something; picking one says below what it does.
+ */
+.modal-box.houses-box {
+  width: min(880px, calc(100vw - 24px));
+  max-width: none;
+}
+.ladders {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 6px 0 10px;
+}
+.ladder {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  border: 2px solid var(--ink);
+  background: var(--paper-2);
+}
+.ladder-n {
+  font-family: var(--f-pixel);
+  font-size: 1.125rem;
+}
+.ladder-n small {
+  margin-left: 2px;
+  font-size: 0.625rem;
+  color: var(--sub);
+}
+.ladder-bar {
+  position: relative;
+  width: 100%;
+  height: min(46vh, 380px);
+  margin: 10px 0;
+}
+/* the stem */
+.ladder-bar::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--ink);
+}
+.ladder-bar .tick {
+  position: absolute;
+  left: 50%;
+  width: 14px;
+  height: 2px;
+  margin: -1px 0 0 -7px;
+  background: var(--ink);
+}
+.ladder-bar .tick.zero {
+  width: 62%;
+  margin-left: -31%;
+  height: 3px;
+}
+.ladder-fill {
+  position: absolute;
+  left: 50%;
+  width: 22px;
+  margin-left: 6px;
+  background: var(--leaf);
+  border: 2px solid var(--ink);
+  box-sizing: border-box;
+}
+.ladder-fill.low {
+  background: var(--hot);
+}
+.ladder-now {
+  position: absolute;
+  left: 50%;
+  width: 40px;
+  height: 3px;
+  margin: -1.5px 0 0 0;
+  background: var(--ink);
+}
+.rung {
+  position: absolute;
+  right: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 8px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.rung-ico {
+  width: 24px;
+  height: 24px;
+  padding: 3px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  fill: var(--ink-50);
+  box-sizing: border-box;
+}
+.rung-ico .cut {
+  fill: var(--paper);
+  stroke: var(--paper);
+}
+.rung.on .rung-ico {
+  background: var(--gum);
+  fill: var(--ink);
+}
+.rung.on .rung-ico .cut {
+  fill: var(--gum);
+  stroke: var(--gum);
+}
+.rung.down.on .rung-ico {
+  background: var(--hot);
+}
+.rung.down.on .rung-ico .cut {
+  fill: var(--hot);
+  stroke: var(--hot);
+}
+.rung.dead .rung-ico {
+  border-color: var(--hot);
+}
+.rung.picked .rung-ico,
+.rung:hover .rung-ico {
+  outline: 3px solid var(--ink);
+  outline-offset: 1px;
+}
+.ladder-stand {
+  font-weight: 700;
+}
+.ladder-rival {
+  color: var(--sub);
+}
+.rung-detail {
+  min-height: 96px;
+  padding: 10px 12px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+}
+.rung-detail.empty {
+  display: grid;
+  place-items: center;
+  color: var(--sub);
+}
+.rung-detail > b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+.rung-detail > b em {
+  padding: 1px 6px;
+  border: 2px solid var(--ink);
+  font-size: 0.6875rem;
+  font-style: normal;
+}
+.rung-detail.on > b em {
+  background: var(--gum);
+}
+.rung-detail > b small {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--sub);
+}
+.rung-detail p {
+  margin: 6px 0 0;
+}
+.rung-who {
+  padding-top: 6px;
+  border-top: 1px dashed var(--rule);
+  font-size: 0.75rem;
+  color: var(--sub);
+}
+.rung-who b {
+  margin-right: 6px;
+  color: var(--ink);
+}

@@ -134,7 +134,7 @@ function serveSeller(s: GameState, cat: Catalog, base: Style): void {
   const reserve = G.daysToRent(s) <= 1 && !s.owned ? s.rent : 0;
   if ((style === 'careful' || style === 'crafty') && v.temper < 2) {
     const tier = v.temper === 0 ? 1 : 0;
-    while (!v.done && !v.haggled && v.patience > 1) G.haggle(s, tier);
+    while (s.phase === 'open' && !v.done && !v.haggled && v.patience > 1) G.haggle(s, tier);
   }
   if (style === 'kind' && !v.haggled && s.gum > 400) G.sweeten(s, 0);
   if (v.done) return;
@@ -160,7 +160,7 @@ function serveBuyer(s: GameState, cat: Catalog, base: Style): void {
   const v = G.currentVisitor(s)!;
   const style = stance(base, v);
   // sells one good after another while the customer stays and something fits what they have left
-  while (!v.done) {
+  while (!v.done && s.phase === 'open') {
     // (the pot is a good too: a shopkeeper who uses it keeps it; one who does not sells it like anything else)
     const fits = G.forSale(s)
       .filter((x) => !(base === 'crafty' || base === 'master') || !cat.itemById.get(x.itemId)!.effect)
