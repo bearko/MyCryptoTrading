@@ -1,3 +1,4 @@
+import { KIND_JA, MARK_JA } from '../game/kinds';
 import { B } from '../game/balance';
 import { catalog as cat, EFFECT_JA, COND_JA, PARAM_JA, RARITY_JA, ROLE_JA, SLOT_JA, type Item, type Param } from '../game/catalog';
 import * as G from '../game/logic';
@@ -58,6 +59,7 @@ export function itemCard(itemId: number, cond: number, extra = ''): string {
     <div class="item-body">
       <div class="item-name">${esc(item.ja)}</div>
       <div class="tags">${labels(item)}</div>
+      <div class="tags kinds"><span class="tag kind">${KIND_JA[item.kind]}</span>${item.also.map((kind) => `<span class="tag kind also">${KIND_JA[kind]}</span>`).join('')}${item.marks.map((mark) => `<span class="tag mark">${MARK_JA[mark]}</span>`).join('')}</div>
       <div class="tags"><span class="tag rar r${item.rarity}">${item.limited ? 'リミテッド' : RARITY_JA[item.rarity]}</span><span class="tag cond c${cond}">${COND_JA[cond]}</span></div>
       <div class="item-val">相場 ${gum(G.itemValue(cat, itemId, cond))}${sizeMark(item.shape)}</div>
       ${item.effect ? `<div class="item-fx"><b>✦ ${EFFECT_JA[item.effect].name}</b>${EFFECT_JA[item.effect].text}</div>` : ''}

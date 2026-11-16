@@ -1248,3 +1248,17 @@ html.calm .inv-fx {
 .fc-bar[class*='f-'] u {
   background: var(--fc, var(--ink));
 }
+
+/* what kind of thing a good is, and its marks of character */
+.tag.kind {
+  background: var(--ink);
+  color: var(--paper);
+}
+.tag.kind.also {
+  background: none;
+  color: var(--ink);
+  border-style: dashed;
+}
+.tag.mark {
+  background: var(--gum-wash);
+}

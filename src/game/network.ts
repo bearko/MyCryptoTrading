@@ -1,4 +1,5 @@
 import { B } from './balance';
+import { MARK_JA, MARKS, SERIES_KIND, type Mark } from './kinds';
 import type { GameState } from './state';
 
 
@@ -7,11 +8,11 @@ import type { GameState } from './state';
  * Each can be paid for in GUM, or with the guild's trust — which grows a little every day.
  * Waiting costs nothing but days; paying is quicker and costs GUM.
  */
-export type ServiceId = 'guest1' | 'guest2' | 'vip' | 'case1' | 'case2' | 'sign' | 'pot' | 'eye' | 'tip' | 'waiver';
+export type ServiceId = 'guest1' | 'guest2' | 'vip' | 'case1' | 'case2' | 'sign' | 'pot' | 'eye' | 'tip' | 'waiver' | `line-${Mark}`;
 
 export interface Service {
   id: ServiceId;
-  group: 'intro' | 'shop' | 'craft';
+  group: 'intro' | 'shop' | 'craft' | 'lines';
   name: string;
   text: string;
   gum: number;
@@ -20,7 +21,23 @@ export interface Service {
   needs?: ServiceId;
 }
 
-export const GROUP_JA = { intro: '紹介', shop: '店構え', craft: '手ほどき' } as const;
+export const GROUP_JA = { intro: '紹介', shop: '店構え', craft: '手ほどき', lines: '取り扱いの拡張' } as const;
+
+/** The mark a favour opens as a line of goods, if it is one of those. */
+export const lineOf = (id: ServiceId): Mark | null => (id.startsWith('line-') ? (id.slice(5) as Mark) : null);
+const seriesWith = (mark: Mark): string[] => Object.keys(SERIES_KIND).filter((name) => SERIES_KIND[name].marks.includes(mark));
+/** One favour for each line of goods: the guild finds the shop sellers of goods with that mark. */
+const LINES: Service[] = MARKS.map((mark) => {
+  const series = seriesWith(mark);
+  return {
+    id: `line-${mark}` as ServiceId,
+    group: 'lines',
+    name: `${MARK_JA[mark]}の品`,
+    text: `${series.slice(0, 4).join('・')}${series.length > 4 ? ` など ${series.length} 種` : ''}を扱えるようになる`,
+    gum: B.lineGum[0] + B.lineGum[1] * series.length,
+    trust: Math.round(B.lineTrust[0] + B.lineTrust[1] * series.length),
+  };
+});
 
 export const SERVICES: Service[] = [
   { id: 'guest1', group: 'intro', name: '客の紹介', text: '毎日の客 +1 人', gum: 450, trust: 60 },
@@ -33,10 +50,15 @@ export const SERVICES: Service[] = [
   { id: 'waiver', group: 'shop', name: '大家への口添え', text: '家賃を 1 回だけ待ってもらえる（払わなかった分は次回に上乗せ）', gum: 600, trust: 80 },
   { id: 'pot', group: 'craft', name: '壺の薪', text: '壺を 1 日にもう 1 回使える', gum: 800, trust: 100 },
   { id: 'eye', group: 'craft', name: '相場の手ほどき', text: `売り客の言い値 −${Math.round(B.serviceAsk * 100)}%`, gum: 700, trust: 90 },
+  ...LINES,
 ];
 
 export const serviceById = (id: ServiceId): Service => SERVICES.find((x) => x.id === id)!;
-export const hasService = (s: GameState, id: ServiceId): boolean => s.services.includes(id);
+/** (a line of goods is had however it was taken up: by the guild, or by a house's regard) */
+export const hasService = (s: GameState, id: ServiceId): boolean => {
+  const mark = lineOf(id);
+  return mark ? s.lines.includes(mark) : s.services.includes(id);
+};
 
 /** Why a favour cannot be had this way right now ('' when it can). */
 export function serviceBlock(s: GameState, id: ServiceId, pay: 'gum' | 'trust'): '' | 'owned' | 'needs' | 'short' {
@@ -55,6 +77,11 @@ export function buyService(s: GameState, id: ServiceId, pay: 'gum' | 'trust'): b
   } else s.trust -= service.trust;
   s.services.push(id);
   if (id === 'waiver') s.graceLeft += 1;
+  const mark = lineOf(id);
+  if (mark) {
+    s.lines.push(mark);
+    s.linesNew.push(mark);
+  }
   return true;
 }
 

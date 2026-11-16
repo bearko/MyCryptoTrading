@@ -1,6 +1,6 @@
 import { B } from './balance';
 import type { Catalog, Item } from './catalog';
-import { addTo, canPlaceIn, findSlotIn, gridOf, hasPerk, itemsOf, itemValue, rollRarity, walletSize, type GridId } from './logic';
+import { addTo, canPlaceIn, findSlotIn, gridOf, hasPerk, itemsOf, goodsOf, itemValue, rollRarity, walletSize, type GridId } from './logic';
 import { pick, pickWeighted, rand, randRange } from './rng';
 import { SLOT_IDS, type GameState, type LooseItem, type SlotId } from './state';
 
@@ -16,7 +16,7 @@ export function goShop(s: GameState, cat: Catalog): boolean {
   s.phase = 'shop';
   const goods = [];
   for (let i = 0; i < B.shopCount; i++) {
-    const item = pick(s, cat.itemsByRarity[rollRarity(s, 0)]);
+    const item = pick(s, goodsOf(s, cat, rollRarity(s, 0)));
     const cond = pickWeighted(s, B.condWeights);
     goods.push({ itemId: item.id, cond, price: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, B.shopRate[0], B.shopRate[1]) * (hasPerk(s, 'eye') ? B.perkEye : 1))), sold: false });
   }

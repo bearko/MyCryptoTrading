@@ -2,6 +2,7 @@
  * The things of the shop that are used by hand rather than through a menu (a wide screen shows them
  * beside the shelf): the bin — goods are dragged into it — and the bed — a click on it at night ends the day.
  */
+import { MARKS } from '../game/kinds';
 import { catalog as cat, HERO_CLASS_JA, PARAM_JA, RARITY_JA } from '../game/catalog';
 import * as G from '../game/logic';
 import { SLOT_IDS, type GameState } from '../game/state';
@@ -246,7 +247,7 @@ function shelfRow(g: GameState): string {
 
 /** The telephone: the guild's favours, each for GUM or for trust. */
 export function networkModal(g: GameState): string {
-  const groups = (['intro', 'shop', 'craft'] as const)
+  const groups = (['lines', 'intro', 'shop', 'craft'] as const)
     .map((group) => {
       const rows = SERVICES.filter((x) => x.group === group)
         .map((x) => {
@@ -260,7 +261,7 @@ export function networkModal(g: GameState): string {
           </div>`;
         })
         .join('');
-      return `<h3 class="rc-sub">${GROUP_JA[group]}</h3>${group === 'shop' ? shelfRow(g) : ''}${rows}`;
+      return `<h3 class="rc-sub">${GROUP_JA[group]}${group === 'lines' ? `<small>いま ${g.lines.length}/${MARKS.length}。派閥の評価でも増える</small>` : ''}</h3>${group === 'shop' ? shelfRow(g) : ''}${rows}`;
     })
     .join('');
   return `<div class="modal" id="modal-network" data-ui><div class="modal-box tall">

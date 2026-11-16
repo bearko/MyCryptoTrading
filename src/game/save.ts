@@ -1,4 +1,5 @@
 import { noFavor } from './factions';
+import { MARKS } from './kinds';
 import type { GameState } from './state';
 
 const KEY = 'mycryptotrading.save.v4';
@@ -38,6 +39,9 @@ export function load(): GameState | null {
     s.trashGum ??= 0;
     // saves from before the clientele: everyone already comes
     s.callers ??= 0;
+    // (a save from before the lines of goods: it deals in everything, as it did)
+    s.lines ??= [...MARKS];
+    s.linesNew ??= [];
     s.display ??= null;
     s.caseTold ??= false;
     s.handled ??= [0, 0, 0, 0, 0, 0];

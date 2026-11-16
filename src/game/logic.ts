@@ -4,7 +4,8 @@ import type { Param, Catalog, Hero, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randInt, randRange } from './rng';
 import { ROTATED, sameCells, type Shape } from './shapes';
-import { factionOfName, noFavor, rankOf, rivalOf, type FactionId } from './factions';
+import { factionOfName, noFavor, rankOf, rivalOf, FACTIONS, type FactionId } from './factions';
+import { favourites, HOUSE_KINDS, HOUSE_LINES, HOUSE_MARKS, type Kind, type Mark } from './kinds';
 import { hasService, repayNightly, supplyBlock, trustDaily, type SupplyId } from './network';
 import { PERKS, type PerkId } from './perks';
 import { emptySummary, type DayEvent, type DayOrder, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
@@ -85,6 +86,7 @@ function markupBase(markup: number): number {
 
 export function matches(cat: Catalog, want: Want, itemId: number): boolean {
   const item = cat.itemById.get(itemId)!;
+  if (want.type === 'kind') return item.kind === want.kind || item.also.includes(want.kind);
   if (want.type === 'param') return item.params.includes(want.param);
   if (want.type === 'role') return item.roles.includes(want.role);
   if (want.type === 'rarity') return item.rarity >= want.min;
@@ -229,6 +231,41 @@ export function broughtRarity(s: GameState, heroRarity: number): number {
   return clamp(heroRarity + step, 1, 5);
 }
 
+// ---------------------------------------------------------------- the lines of goods the shop deals in
+
+/** True when the shop deals in this good: one with no mark always, one with marks once any of them is taken up. */
+export const dealsIn = (s: GameState, item: Item): boolean => item.marks.length === 0 || item.marks.some((mark) => s.lines.includes(mark));
+
+/** The goods of a rarity that the shop deals in (what customers bring, what the guild sends, what the night shop sells). */
+export function goodsOf(s: GameState, cat: Catalog, rarity: number): Item[] {
+  const dealt = cat.itemsByRarity[rarity].filter((item) => dealsIn(s, item));
+  return dealt.length > 0 ? dealt : cat.itemsByRarity[rarity];
+}
+
+/** Takes a line of goods up. */
+export function openLine(s: GameState, mark: Mark): boolean {
+  if (s.lines.includes(mark)) return false;
+  s.lines.push(mark);
+  s.linesNew.push(mark);
+  return true;
+}
+
+/** A house's regard opens lines of goods: one with each rank reached (kept once had). */
+function houseLines(s: GameState): void {
+  for (const f of FACTIONS) for (let rank = 1; rank <= favorRank(s, f.id); rank++) openLine(s, HOUSE_LINES[f.id][rank - 1]);
+}
+
+/** How much more (or less) a house's buyer pays for this good than its list price: a rate around 0. */
+export function taste(house: FactionId | null, item: Item): number {
+  if (!house) return 0;
+  const T = B.taste;
+  const fond = HOUSE_KINDS[house][item.kind];
+  let rate = fond === 2 ? T.fond : fond === 0 ? T.cold : 0;
+  if (item.also.some((kind) => HOUSE_KINDS[house][kind] === 2)) rate += T.also;
+  for (const mark of item.marks) rate += HOUSE_MARKS[house][mark] === 2 ? T.mark : HOUSE_MARKS[house][mark] === 1 ? T.liked : 0;
+  return Math.min(T.cap, rate);
+}
+
 // ---------------------------------------------------------------- new game and mornings
 
 export function rollRarity(s: GameState, heroBonus: number): number {
@@ -349,6 +386,8 @@ export function newGame(seed: number, cat: Catalog): GameState {
     rent: B.rentFirst,
     graceLeft: B.grace,
     callers: 0,
+    lines: [],
+    linesNew: [],
     display: null,
     caseTold: false,
     owned: false,
@@ -392,7 +431,7 @@ export function newGame(seed: number, cat: Catalog): GameState {
     crosses: [],
   };
   for (let i = 0; i < B.startStock; i++) {
-    const item = pick(s, cat.itemsByRarity[i < 3 ? 1 : 2]);
+    const item = pick(s, goodsOf(s, cat, i < 3 ? 1 : 2));
     addStock(s, cat, item.id, 1, 0);
   }
   startMorning(s);
@@ -476,8 +515,9 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
   const welcome = drawn.filter(fit);
   const hero = pick(s, welcome.length > 0 ? welcome : drawn.filter((h) => factionOfName(h.ja) !== 'haou'));
   const house = factionOfName(hero.ja);
-  const LINE: Partial<Record<FactionId, Param>> = { buyu: 'phy', eichi: 'int', fuga: 'agi' };
-  const line = house ? LINE[house] : undefined;
+  // (the kinds of goods the house is very fond of)
+  const fond: Kind[] = house ? favourites(house) : [];
+  const ofFond = (item: Item): boolean => fond.includes(item.kind) || item.also.some((kind) => fond.includes(kind));
   const heroBonus = hero.rarity - 1;
   const temper = pickWeighted(s, B.temperWeights);
   let sellerShare: number = B.sellerShare;
@@ -502,7 +542,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
   // The first day teaches the trade by doing: a friendly seller with one cheap good, then a buyer who wants it.
   const nth = s.queue.length;
   if (s.day === 1 && nth === 0) {
-    const item = pick(s, cat.itemsByRarity[1].filter((i) => i.shape === '1x1' || i.shape === '1x2' || i.shape === '2x1'));
+    const item = pick(s, goodsOf(s, cat, 1).filter((i) => i.shape === '1x1' || i.shape === '1x2' || i.shape === '2x1'));
     const ask = Math.max(1, Math.round(itemValue(cat, item.id, 1) * 0.6));
     return { ...base, temper: 0, patience: B.temperPatience[0], kind: 'sell', offers: [{ itemId: item.id, cond: 1, ask }], want: { type: 'any' }, budget: 0, line: lines.sellOpen(s, 0) };
   }
@@ -521,7 +561,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
     if (kind === 'hurry') {
       const offers: Offer[] = [];
       for (let i = 0; i < 2 + Math.floor(rand(s) * 2); i++) {
-        const item = pick(s, cat.itemsByRarity[broughtRarity(s, hero.rarity)]);
+        const item = pick(s, goodsOf(s, cat, broughtRarity(s, hero.rarity)));
         const cond = pickWeighted(s, B.condWeights);
         offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, 0.66, 0.78) * B.hurryAsk)) });
       }
@@ -539,14 +579,14 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
     const [lo, hi] = B.askRange[temper];
     const offers: Offer[] = [];
     for (let i = 0; i < count; i++) {
-      let pool = cat.itemsByRarity[broughtRarity(s, hero.rarity)];
+      let pool = goodsOf(s, cat, broughtRarity(s, hero.rarity));
       // a "wanted" sign in the showcase: most of what is brought in is of that parameter line
       if (s.seek && hasService(s, 'sign') && rand(s) < B.seekPull) {
         const sought = pool.filter((x) => x.params.includes(s.seek as Param));
         if (sought.length > 0) pool = sought;
-      } else if (line && rand(s) < B.house.houseBring) {
-        // a house brings its own line of goods
-        const own = pool.filter((x) => x.params.includes(line));
+      } else if (house && rand(s) < B.house.houseBring) {
+        // a house brings the kinds of goods it is fond of
+        const own = pool.filter(ofFond);
         if (own.length > 0) pool = own;
       }
       const item = pick(s, pool);
@@ -605,9 +645,12 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
   // a house has its own tastes: the captains, scholars and artists their line of goods; the rulers goods of standing;
   // the outlaws anything at all
   if (house && !pulled && rand(s) < B.house.houseWant) {
-    if (line) want = { type: 'param', param: line };
-    else if (house === 'haou' && hero.rarity >= 2) want = { type: 'rarity', min: clamp(hero.rarity, 2, 4) };
-    else if (house === 'muhou') want = { type: 'any' };
+    // (a kind the house is fond of, and that the shop deals in; a ruler as often asks for standing, an outlaw for anything)
+    const dealt = fond.filter((kind) => [1, 2, 3].some((rarity) => goodsOf(s, cat, rarity).some((item) => item.kind === kind)));
+    const other = rand(s) < 0.5;
+    if (house === 'haou' && hero.rarity >= 2 && other) want = { type: 'rarity', min: clamp(hero.rarity, 2, 4) };
+    else if (house === 'muhou' && other) want = { type: 'any' };
+    else if (dealt.length > 0) want = { type: 'kind', kind: pick(s, dealt) };
   }
   // on a demand day, most buyers are after that parameter line and bring more money for it
   let demand = 1;
@@ -626,6 +669,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
 
 export function openShop(s: GameState, cat: Catalog): void {
   if (s.phase !== 'morning') return;
+  s.linesNew = [];
   growClientele(s, cat);
   // (the window as it stands now is what the day's customers have heard of)
   s.display = { goods: s.showcase.map((x) => ({ ...x })), full: caseFull(s, cat) };
@@ -966,8 +1010,11 @@ export const budgetAt = (v: Visitor, tier: number): number => Math.round(v.budge
 
 export function quoteSale(s: GameState, cat: Catalog, v: Visitor, uids: readonly number[], tier: number): SaleQuote {
   const goods = uids.map((uid) => forSale(s).find((x) => x.uid === uid)).filter((x): x is StockItem => !!x);
-  const fair = goods.reduce((sum, x) => sum + salePrice(cat, x, 0), 0);
-  const asked = goods.reduce((sum, x) => sum + salePrice(cat, x, tier), 0);
+  const list = goods.reduce((sum, x) => sum + salePrice(cat, x, 0), 0);
+  // (a house pays more for goods to its taste, and less for those it has little use for)
+  const liking = (x: StockItem): number => 1 + (v.special ? 0 : taste(v.faction, cat.itemById.get(x.itemId)!));
+  const fair = v.special === 'dealer' ? list : goods.reduce((sum, x) => sum + Math.round(salePrice(cat, x, 0) * liking(x)), 0);
+  const asked = goods.reduce((sum, x) => sum + Math.round(salePrice(cat, x, tier) * liking(x)), 0);
   if (v.special === 'dealer') {
     // (the dealer's price is his own: so much off the list, whatever is asked, and no refusing)
     const offer = Math.round(fair * (1 - B.dealerCut));
@@ -1258,8 +1305,8 @@ export function placeSupply(s: GameState, cat: Catalog, id: SupplyId, param: Par
   const goods = [];
   for (let n = 0; n < kind.count; n++) {
     const rarity = kind.rarity[pickWeighted(s, kind.odds)];
-    const line = cat.itemsByRarity[rarity].filter((item) => item.params.includes(param));
-    const item = pick(s, line.length ? line : cat.itemsByRarity[rarity]);
+    const line = goodsOf(s, cat, rarity).filter((item) => item.params.includes(param));
+    const item = pick(s, line.length ? line : goodsOf(s, cat, rarity));
     goods.push({ itemId: item.id, cond: 1, paid: pay === 'gum' ? Math.round(kind.gum / kind.count) : 0 });
   }
   if (pay === 'gum') {
@@ -1399,6 +1446,7 @@ export function continueAfterWin(s: GameState): void {
 /** Closes the day: collects rent on rent days, then starts the next morning. */
 export function endDay(s: GameState): void {
   if (s.phase !== 'evening') return;
+  houseLines(s);
   emptyTrash(s);
   // the guild's instalment comes before the rent
   const loanNote = repayNightly(s);

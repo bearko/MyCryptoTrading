@@ -1,3 +1,4 @@
+import type { Kind, Mark } from './kinds';
 import type { Param, Role } from './catalog';
 import type { FactionId } from './factions';
 import type { ServiceId, SupplyId } from './network';
@@ -42,7 +43,7 @@ export interface LooseItem {
   hot?: boolean;
 }
 
-export type Want = { type: 'param'; param: Param } | { type: 'role'; role: Role } | { type: 'rarity'; min: number } | { type: 'any' };
+export type Want = { type: 'kind'; kind: Kind } | { type: 'param'; param: Param } | { type: 'role'; role: Role } | { type: 'rarity'; min: number } | { type: 'any' };
 
 /** One good a customer has brought to sell. */
 export interface Offer {
@@ -276,6 +277,13 @@ export interface GameState {
   display: { goods: StockItem[]; full: boolean } | null;
   /** the shopkeeper has been told that (the first time the window is touched while the shop is open) */
   caseTold: boolean;
+  /**
+   * The lines of goods the shop deals in, by their mark (see kinds.ts). A good with no mark is dealt in from the
+   * first day; a good with marks, once any one of them is among these.
+   */
+  lines: Mark[];
+  /** the lines taken up since the shop last opened (for the morning paper) */
+  linesNew: Mark[];
   /** how many goods of each rarity (index 1–5) the shop has bought, sold or made */
   handled: number[];
   /** the rarest class of hero that comes to the shop (1 = novices only … 5 = everyone) */
