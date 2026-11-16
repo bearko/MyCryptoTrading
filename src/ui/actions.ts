@@ -711,6 +711,11 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       render();
       return;
     }
+    case 'ask':
+      ui.ask = ui.ask === arg ? '' : arg;
+      audio.sfx('tap');
+      render();
+      return;
     case 'houses-help':
       ui.housesHelp = !ui.housesHelp;
       render();
