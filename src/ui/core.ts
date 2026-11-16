@@ -3,7 +3,7 @@ import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState, SlotId } from '../game/state';
 
-export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'network' | 'parcel' | 'wanted' | 'calendar' | 'forecast' | 'casetold';
+export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'spill' | 'network' | 'parcel' | 'wanted' | 'calendar' | 'forecast' | 'casetold';
 
 /** Screen state that is not part of the saved game. */
 export interface Ui {
@@ -36,6 +36,10 @@ export interface Ui {
   pops: Record<PopId, { open: boolean; x: number; y: number; placed: boolean }>;
   popOrder: PopId[];
   /** the goods put in the pot (uids; the first is the base) */
+  /** the goods picked out together by dragging a box round them (all on one grid) */
+  marked: { grid: 'shelf' | 'wallet' | 'case' | 'trash'; uids: number[] } | null;
+  /** several goods that did not all fit where they were dropped: which would, and which would stay */
+  spill: { from: 'shelf' | 'wallet' | 'case' | 'trash'; to: 'shelf' | 'wallet' | 'case' | 'trash'; fit: number[]; left: number[] } | null;
   craft: number[];
   /** which of the pot's candidates is picked out */
   craftPick: number;
@@ -80,8 +84,10 @@ export const ui: Ui = {
   greeting: false,
   custKey: 0,
   gridView: 'shelf',
-  pops: { craft: { open: false, x: 0, y: 0, placed: false }, wallet: { open: false, x: 0, y: 0, placed: false }, gear: { open: false, x: 0, y: 0, placed: false } },
+  pops: { craft: { open: false, x: 0, y: 0, placed: false }, wallet: { open: false, x: 0, y: 0, placed: false }, gear: { open: false, x: 0, y: 0, placed: false }, trash: { open: false, x: 0, y: 0, placed: false } },
   popOrder: ['craft', 'wallet', 'gear'],
+  marked: null,
+  spill: null,
   craft: [],
   craftPick: 0,
   supplyParam: 'phy',
@@ -155,7 +161,7 @@ export const leftWall = (shelfWidth: number): number => (appWidth() + 6) / 2 - 5
 export const caseCellFor = (cols: number, shelfWidth: number): number => Math.max(14, Math.min(CASE_CELL, Math.floor((leftWall(shelfWidth) - 44) / cols)));
 
 /** The windows that float over the shop. */
-export type PopId = 'craft' | 'wallet' | 'gear';
+export type PopId = 'craft' | 'wallet' | 'gear' | 'trash';
 /** At home on a wide screen there are no tabs: the deck always shows the shelf, and the rest opens in windows. */
 export const popsOn = (g: GameState): boolean => isWide() && atHome(g);
 

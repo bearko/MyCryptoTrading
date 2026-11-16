@@ -152,6 +152,22 @@ export function caseToldModal(): string {
   </div></div>`;
 }
 
+/** Several goods were dropped where they do not all fit: put in the ones that do, or leave it. */
+export function spillModal(): string {
+  const sp = ui.spill;
+  if (!sp) return '';
+  const tile = (uid: number): string => {
+    const x = ctx.s ? (['shelf', 'wallet', 'case', 'trash'] as const).flatMap((id) => G.itemsOf(ctx.s!, id)).find((it) => it.uid === uid) : undefined;
+    return x ? itemTile(G.findItem(cat, x.itemId), 'sm') : '';
+  };
+  return `<div class="modal" id="modal-spill" data-ui><div class="modal-box">
+    <h2 class="modal-title"><small>NO ROOM</small>置くスペースがありません</h2>
+    <p class="modal-text">選んだ ${sp.fit.length + sp.left.length} 個すべては、入りません。<b>${sp.left.length} 個</b>を元の場所に残せば、<b>${sp.fit.length} 個</b>は置けます。</p>
+    <p class="spill-label">元の場所に残す品</p><div class="spill-row">${sp.left.map(tile).join('')}</div>
+    <div class="actions">${btn('modal-close', 'やめる', { cls: 'ghost' })}${btn('spill-go', `${sp.fit.length} 個だけ置く`, { cls: 'primary', sfx: 'none' })}</div>
+  </div></div>`;
+}
+
 /** The notice on the wall: a face, and what the house that posted it will pay. */
 function wantedNotice(g: GameState): string {
   const w = g.wanted;

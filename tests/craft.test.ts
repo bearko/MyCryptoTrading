@@ -194,3 +194,50 @@ describe('the pot', () => {
   });
 
 });
+
+describe('moving many goods at once, and the bin as a grid', () => {
+  const fresh = () => {
+    const s = G.newGame(7, catalog);
+    s.stock = [];
+    s.wallet.items = [];
+    return s;
+  };
+  const sq = catalog.items.find((i) => G.shapeOf(catalog, i.id, 0).w === 2 && G.shapeOf(catalog, i.id, 0).h === 2 && !i.effect)!;
+
+  it('goods moved together are laid out from the top-left, not as they stood', () => {
+    const s = fresh();
+    const uids = [0, 1, 2].map(() => G.addTo(s, catalog, 'shelf', sq.id, 1, 0)!);
+    s.stock.forEach((x, i) => Object.assign(x, { x: 6 + i * 4, y: 5 }));
+    const done = N.moveMany(s, catalog, 'shelf', uids, 'wallet');
+    expect(done.ok).toBe(true);
+    expect(s.stock).toHaveLength(0);
+    expect(s.wallet.items.map((x) => [x.x, x.y])).toEqual([[0, 0], [2, 0], [4, 0]]);
+  });
+
+  it('when they do not all fit nothing moves, and it tells which would fit', () => {
+    const s = fresh();
+    const cols = G.caseCols(s);
+    const room = Math.floor(cols / 2) * Math.floor(B.caseDepth / 2);
+    const uids = Array.from({ length: room + 2 }, () => G.addTo(s, catalog, 'shelf', sq.id, 1, 0)!);
+    const done = N.moveMany(s, catalog, 'shelf', uids, 'case');
+    expect(done.ok).toBe(false);
+    if (done.ok) return;
+    expect(done.fit).toHaveLength(room);
+    expect(done.left).toHaveLength(2);
+    expect(s.showcase).toHaveLength(0);
+    expect(N.moveMany(s, catalog, 'shelf', done.fit, 'case').ok).toBe(true);
+    expect(s.stock).toHaveLength(2);
+  });
+
+  it('the bin holds only what fits its grid, and gives goods back', () => {
+    const s = fresh();
+    const room = (B.trashCols / 2) * (B.trashRows / 2);
+    const uids = Array.from({ length: room + 1 }, () => G.addTo(s, catalog, 'shelf', sq.id, 1, 0)!);
+    for (const uid of uids.slice(0, room)) expect(G.toTrash(s, catalog, uid)).toBe(true);
+    expect(G.toTrash(s, catalog, uids[room])).toBe(false);
+    expect(s.trashGum).toBeGreaterThan(0);
+    expect(N.transfer(s, catalog, 'trash', uids[0], 'shelf')).toBe(true);
+    expect(s.trash).toHaveLength(room - 1);
+    expect(G.toTrash(s, catalog, uids[room])).toBe(true);
+  });
+});

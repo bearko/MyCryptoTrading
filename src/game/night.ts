@@ -1,8 +1,8 @@
 import { B } from './balance';
 import type { Catalog, Item } from './catalog';
-import { addTo, canPlaceIn, findSlotIn, gridOf, hasPerk, itemsOf, goodsOf, itemValue, rollRarity, walletSize, type GridId } from './logic';
+import { addTo, canPlaceIn, disposePrice, findSlotIn, gridOf, packInto, hasPerk, itemsOf, goodsOf, itemValue, rollRarity, walletSize, type GridId } from './logic';
 import { pick, pickWeighted, rand, randRange } from './rng';
-import { SLOT_IDS, type GameState, type LooseItem, type SlotId } from './state';
+import { SLOT_IDS, type GameState, type LooseItem, type SlotId, type StockItem } from './state';
 
 /** One outing a night: allowed after closing, while not gone out yet. */
 export const canGoOut = (s: GameState): boolean => s.phase === 'evening' && !s.wentOut;
@@ -118,7 +118,38 @@ export function transfer(s: GameState, cat: Catalog, from: GridId, uid: number, 
   if (!slot) return false;
   source.splice(index, 1);
   target.items.push({ ...stock, ...slot });
+  binned(s, cat, stock, from, to);
   return true;
+}
+
+/** Keeps the bin's tally when a good goes into it or comes out of it. */
+function binned(s: GameState, cat: Catalog, x: StockItem, from: GridId, to: GridId): void {
+  if (to === 'trash') s.trashGum += disposePrice(cat, x);
+  if (from === 'trash') s.trashGum = Math.max(0, s.trashGum - disposePrice(cat, x));
+}
+
+export type ManyResult = { ok: true; moved: number[] } | { ok: false; fit: number[]; left: number[] };
+
+/**
+ * Moves several goods at once to a grid (the same one tidies them). They are not kept in the arrangement they
+ * had: each takes the first free spot from the top-left. When they do not all fit, nothing moves, and the answer
+ * tells which of them would fit if the rest stayed behind.
+ */
+export function moveMany(s: GameState, cat: Catalog, from: GridId, uids: readonly number[], to: GridId): ManyResult {
+  const source = itemsOf(s, from);
+  const goods = source.filter((x) => uids.includes(x.uid) && !x.bag);
+  const target = gridOf(s, cat, to);
+  const others = from === to ? target.items.filter((x) => !goods.includes(x)) : target.items;
+  const { spots, left } = packInto({ cols: target.cols, rows: target.rows, items: others }, cat, goods);
+  if (left.length > 0) return { ok: false, fit: goods.filter((x) => spots.has(x.uid)).map((x) => x.uid), left };
+  for (const x of goods) {
+    Object.assign(x, spots.get(x.uid));
+    if (from === to) continue;
+    source.splice(source.indexOf(x), 1);
+    target.items.push(x);
+    binned(s, cat, x, from, to);
+  }
+  return { ok: true, moved: goods.map((x) => x.uid) };
 }
 
 /** True when a good may be worn in a slot (a special good in either special slot). */

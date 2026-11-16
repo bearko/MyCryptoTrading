@@ -27,6 +27,7 @@ export function gridItem(x: { uid: number; itemId: number; x: number; y: number;
   const item = G.findItem(cat, x.itemId);
   // (a good with an effect of its own wears a mark: it does something when it is double-clicked)
   if (item.effect || x.bag) cls += ' special';
+  if (ui.marked?.uids.includes(x.uid)) cls += ' picked';
   const shape = G.shapeOf(cat, x.itemId, x.rot);
   const has = new Set(shape.cells.map(([cx, cy]) => `${cx},${cy}`));
   const cells = shape.cells
@@ -115,7 +116,7 @@ export function gridSection(g: GameState, side = ''): string {
   </section>`;
 }
 
-const POP_JA: Record<PopId, string> = { craft: '合成の壺', wallet: 'ウォレット', gear: '装備' };
+const POP_JA: Record<PopId, string> = { craft: '合成の壺', wallet: 'ウォレット', gear: '装備', trash: 'ゴミ箱' };
 
 /**
  * The windows that float over the shop (a wide screen, at home): the pot, the wallet's inside, the gear.
@@ -128,10 +129,14 @@ export function popups(g: GameState): string {
   const body = (id: PopId): string => {
     if (id === 'craft') return G.hasEffect(g, cat, 'pot') ? craftBoard(g) : '';
     if (id === 'gear') return gearBoard(g);
+    if (id === 'trash') {
+      const bin = G.gridOf(g, cat, 'trash');
+      return `<div class="grid" id="grid-trash" data-grid="trash" style="--cell:${cell}px;width:${bin.cols * cell}px;height:${bin.rows * cell}px">${bin.items.map((x) => gridItem(x)).join('')}<div class="preview" id="preview-trash" data-live></div></div><p class="pop-note">夜、眠るときに回収されます。それまでは取り出せます。</p>`;
+    }
     const grid = G.gridOf(g, cat, 'wallet');
     return `<div class="grid" id="grid-wallet" data-grid="wallet" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${grid.items.map((x) => gridItem(x)).join('')}<div class="preview" id="preview-wallet" data-live></div></div>`;
   };
-  const note = (id: PopId): string => (id === 'wallet' ? usedOf(g, 'wallet') : id === 'gear' ? `${SLOT_IDS.filter((slot) => g.equip[slot]).length}/6` : `あと ${craftsLeft(g)} 回`);
+  const note = (id: PopId): string => (id === 'wallet' || id === 'trash' ? usedOf(g, id) : id === 'gear' ? `${SLOT_IDS.filter((slot) => g.equip[slot]).length}/6` : `あと ${craftsLeft(g)} 回`);
   return ui.popOrder
     .filter((id) => ui.pops[id].open)
     .map((id, z) => {

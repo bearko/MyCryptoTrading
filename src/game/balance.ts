@@ -78,6 +78,9 @@ export const B = {
    * Its width in columns, by the guild's favours (none, one, two) — one more column, then two more.
    */
   caseDepth: 4,
+  /** the bin: a grid of its own, so only so much can be thrown away in a day */
+  trashCols: 10,
+  trashRows: 10,
   caseCols: [4, 6, 10],
   /** a good with an effect of its own is worth this many times a plain good of its rarity */
   effectValue: { pot: 1.3 },

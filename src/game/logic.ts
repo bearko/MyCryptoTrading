@@ -121,10 +121,10 @@ export interface Grid {
   rows: number;
   items: StockItem[];
 }
-export type GridId = 'shelf' | 'wallet' | 'case';
+export type GridId = 'shelf' | 'wallet' | 'case' | 'trash';
 
 /** The goods lying on a grid. */
-export const itemsOf = (s: GameState, id: GridId): StockItem[] => (id === 'shelf' ? s.stock : id === 'wallet' ? s.wallet.items : s.showcase);
+export const itemsOf = (s: GameState, id: GridId): StockItem[] => (id === 'shelf' ? s.stock : id === 'wallet' ? s.wallet.items : id === 'trash' ? s.trash : s.showcase);
 /** Everything a buyer can be sold: what is on the shelf and what is in the showcase. */
 export const forSale = (s: GameState): StockItem[] => [...s.stock.filter((x) => !x.bag), ...s.showcase];
 /** How wide the showcase is, in columns. */
@@ -137,6 +137,7 @@ export function walletSize(s: GameState, cat: Catalog): { cols: number; rows: nu
 
 export function gridOf(s: GameState, cat: Catalog, id: GridId): Grid {
   if (id === 'case') return { cols: caseCols(s), rows: B.caseDepth, items: s.showcase };
+  if (id === 'trash') return { cols: B.trashCols, rows: B.trashRows, items: s.trash };
   return id === 'shelf' ? { cols: s.rows * B.shelfColsPerLevel, rows: B.shelfDepth, items: s.stock } : { ...walletSize(s, cat), items: s.wallet.items };
 }
 
@@ -182,6 +183,38 @@ export function findSlotIn(g: Grid, cat: Catalog, itemId: number, ignoreUid = -1
     }
   }
   return null;
+}
+
+/**
+ * Lays a set of goods out on a grid, each at the first free spot from the top-left (turned if that helps).
+ * Several orders are tried (the largest first, the tallest first, the widest first, as given) and the one that
+ * seats the most is kept. Nothing is changed: it returns where each good would go, and which are left over.
+ */
+export function packInto(g: Grid, cat: Catalog, goods: readonly { uid: number; itemId: number }[]): { spots: Map<number, Slot>; left: number[] } {
+  const size = (x: { itemId: number }): Shape => shapeOf(cat, x.itemId, 0);
+  const orders: ((a: { itemId: number }, b: { itemId: number }) => number)[] = [
+    (a, b) => size(b).cells.length - size(a).cells.length,
+    (a, b) => Math.max(size(b).w, size(b).h) - Math.max(size(a).w, size(a).h) || size(b).cells.length - size(a).cells.length,
+    (a, b) => Math.min(size(b).w, size(b).h) - Math.min(size(a).w, size(a).h) || size(b).cells.length - size(a).cells.length,
+    () => 0,
+  ];
+  let best: { spots: Map<number, Slot>; left: number[] } | null = null;
+  for (const order of orders) {
+    const trial: Grid = { cols: g.cols, rows: g.rows, items: g.items.slice() };
+    const spots = new Map<number, Slot>();
+    const left: number[] = [];
+    for (const x of [...goods].sort(order)) {
+      const slot = findSlotIn(trial, cat, x.itemId);
+      if (!slot) left.push(x.uid);
+      else {
+        spots.set(x.uid, slot);
+        trial.items.push({ uid: x.uid, itemId: x.itemId, cond: 0, paid: 0, ...slot });
+      }
+    }
+    if (!best || left.length < best.left.length) best = { spots, left };
+    if (left.length === 0) break;
+  }
+  return best!;
 }
 
 export const findSlot = (s: GameState, cat: Catalog, itemId: number): Slot | null => findSlotIn(gridOf(s, cat, 'shelf'), cat, itemId);
@@ -1307,13 +1340,24 @@ export function givePot(s: GameState, cat: Catalog): void {
 
 // ---------------------------------------------------------------- the bin
 
+/** A save from before the bin was a grid: what lay in it loose is laid out (what does not fit stays in a corner until the night). */
+export function tidyBin(s: GameState, cat: Catalog): void {
+  if (!s.trash.some((x) => typeof x.x !== 'number' || s.trash.some((y) => y !== x && y.x === x.x && y.y === x.y))) return;
+  const loose = s.trash;
+  const { spots } = packInto({ cols: B.trashCols, rows: B.trashRows, items: [] }, cat, loose);
+  s.trash = loose.map((x) => ({ ...x, ...(spots.get(x.uid) ?? { x: 0, y: 0, rot: 0 }) }));
+}
+
 /** Into the bin: nothing is paid yet, and it can be taken back until the night. */
 export function toTrash(s: GameState, cat: Catalog, uid: number, id: GridId = 'shelf'): boolean {
   const items = itemsOf(s, id);
   const index = items.findIndex((x) => x.uid === uid);
-  if (index < 0 || items[index].bag) return false;
+  if (id === 'trash' || index < 0 || items[index].bag) return false;
+  // (the bin is a grid of its own: only so much can be thrown away in a day)
+  const slot = findSlotIn(gridOf(s, cat, 'trash'), cat, items[index].itemId);
+  if (!slot) return false;
   const [x] = items.splice(index, 1);
-  s.trash.push(x);
+  s.trash.push({ ...x, ...slot });
   s.trashGum += disposePrice(cat, x);
   return true;
 }

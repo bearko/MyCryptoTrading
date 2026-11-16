@@ -378,7 +378,7 @@ html.calm .prop.bed.ready svg {
   font-size: 0.75rem;
 }
 .svc.owned {
-  background: var(--gum-wash);
+  background: color-mix(in srgb, var(--gum) 28%, transparent);
 }
 .svc-done,
 .svc-lock {
@@ -607,7 +607,7 @@ html.calm .wanted {
   margin: 0;
   padding: 6px 8px;
   border-left: 5px solid var(--ink);
-  background: var(--gum-wash);
+  background: color-mix(in srgb, var(--gum) 28%, transparent);
   font-size: 0.75rem;
   line-height: 1.45;
 }
@@ -871,7 +871,7 @@ html.calm .inv-fx {
   margin-top: 4px;
   padding: 5px 7px;
   border-left: 5px solid var(--gum);
-  background: var(--gum-wash);
+  background: color-mix(in srgb, var(--gum) 28%, transparent);
   font-size: 0.75rem;
   line-height: 1.45;
 }
@@ -1072,7 +1072,7 @@ html.calm .inv-fx {
   margin: 8px 0 0;
   padding: 8px 10px;
   border: 2px solid var(--ink);
-  background: var(--gum-wash);
+  background: color-mix(in srgb, var(--gum) 28%, transparent);
   font-size: 0.8125rem;
   font-weight: 700;
 }
@@ -1260,7 +1260,7 @@ html.calm .inv-fx {
   border-style: dashed;
 }
 .tag.mark {
-  background: var(--gum-wash);
+  background: color-mix(in srgb, var(--gum) 28%, transparent);
 }
 
 /*
@@ -1412,7 +1412,7 @@ html.calm .inv-fx {
 /* had: lit; shut: dim */
 .gtile.had {
   border-color: var(--leaf);
-  background: var(--gum-wash);
+  background: color-mix(in srgb, var(--gum) 28%, transparent);
 }
 .gtile.shut {
   opacity: 0.45;
@@ -1442,4 +1442,65 @@ html.calm .inv-fx {
     grid-template-columns: 1fr;
     max-height: 38vh;
   }
+}
+
+/* picking goods out together: a box drawn from an empty cell, and the goods it touches */
+.mark-box {
+  position: fixed;
+  z-index: 95;
+  border: 2px dashed var(--gum);
+  background: color-mix(in srgb, var(--gum) 28%, transparent);
+  pointer-events: none;
+}
+.inv-item.picked {
+  z-index: 3;
+  outline: 3px solid var(--gum);
+  outline-offset: -3px;
+  filter: brightness(1.25);
+}
+.inv-item.lifted {
+  opacity: 0.35;
+}
+.group-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 95;
+  pointer-events: none;
+}
+.group-ghost .inv-item {
+  position: relative;
+  box-shadow:
+    6px 6px 0 var(--paper),
+    8px 8px 0 var(--ink),
+    12px 12px 0 var(--paper),
+    14px 14px 0 var(--ink);
+}
+.group-ghost b {
+  position: absolute;
+  right: -22px;
+  top: -12px;
+  padding: 1px 7px;
+  border: 2px solid var(--ink);
+  background: var(--gum);
+  color: var(--ink);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.pop-note {
+  margin: 6px 0 0;
+  color: var(--mute);
+  font-size: 0.6875rem;
+}
+.spill-label {
+  margin: 8px 0 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.spill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 132px;
+  overflow: auto;
 }
