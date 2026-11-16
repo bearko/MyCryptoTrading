@@ -130,6 +130,7 @@ describe('game rules', () => {
     for (let n = 0; n < 40; n++) {
       until(s, 'buy');
       const v = G.currentVisitor(s)!;
+      v.faction = null; // (no house's taste in the price)
       for (const item of G.forSale(s)) {
         const gum = s.gum;
         const fair = G.salePrice(catalog, item, 0);
@@ -459,6 +460,7 @@ describe('game rules', () => {
     s.day = 2;
     until(s, 'buy');
     const v = G.currentVisitor(s)!;
+    v.faction = null; // (no house's taste in the price)
     v.want = { type: 'any' };
     v.budget = 100000;
     s.order = { kind: 'sellCount', need: 1, have: 0, reward: 77, done: false };
@@ -633,6 +635,7 @@ describe('game rules', () => {
     for (let n = 0; n < 200; n++) {
       until(s, 'buy');
       const v = G.currentVisitor(s)!;
+      v.faction = null; // (no house's taste in the price)
       const item = s.stock.find((x) => G.matches(catalog, v.want, x.itemId));
       if (item) {
         v.budget = 1000;

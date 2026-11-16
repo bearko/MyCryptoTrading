@@ -1,3 +1,4 @@
+import { HOUSE_LINES, MARK_JA } from '../game/kinds';
 import { B } from '../game/balance';
 import { catalog as cat, HERO_CLASS_JA, PARAM_JA, RARITY_JA } from '../game/catalog';
 import { FACTIONS, factionById, rankName, rankOf } from '../game/factions';
@@ -61,6 +62,8 @@ export function morningExtras(g: GameState): string {
     ? `<p class="news-perks news-houses"><span>派閥</span>${ranked.map((f) => `<i class="fac f-${f.id}${G.favorRank(g, f.id) < 0 ? ' low' : ''}" title="${esc(f.text(G.favorRank(g, f.id)))}">${f.ja} ${mark(G.favorRank(g, f.id))}</i>`).join('')}</p>`
     : '';
   // a new class of hero is drawn to the shop from today
+  // lines of goods taken up since the shop last opened
+  const lines = g.linesNew.length ? `<p class="news-order news-crowd"><span>取り扱い</span><b>${g.linesNew.map((mark) => MARK_JA[mark]).join('・')}の品を扱えるようになりました</b><em>売り客が持ちこみ、取り寄せにも入ります</em></p>` : '';
   const crowd = G.clienteleDue(g, cat) ? `<p class="news-order news-crowd"><span>客層</span><b>${HERO_CLASS_JA[g.clientele + 1]}のヒーローが来るようになりました</b><em>${RARITY_JA[g.clientele + 1]}の品を扱ってきた評判</em></p>` : '';
   const parcel = g.parcel.length ? `<p class="news-order news-parcel"><span>荷物</span><b>ギルドから ${g.parcel.length} 個届いています</b><em>電話の下の箱から受け取る</em></p>` : '';
   const wanted = g.wanted ? `<p class="news-order news-wanted"><span>手配</span><b>${esc(cat.heroById.get(g.wanted.heroId)!.ja)}</b><em>賞金 ${num(g.wanted.bounty)} GUM</em></p>` : '';
@@ -75,7 +78,7 @@ export function morningExtras(g: GameState): string {
   const tip = tips[g.day] ? `<p class="news-order news-tip"><span>${tips[g.day]![0]}</span><b>${tips[g.day]![1]}</b></p>` : '';
   const patrol = g.patrolDay && hasService(g, 'tip') ? '<p class="news-order news-patrol"><span>知らせ</span><b>今日は、見回りが来ます</b><em>訳ありの品はウォレットへ</em></p>' : '';
   const loan = g.loan ? `<p class="news-order news-loan"><span>融資</span><b>今夜の返済 ${num(Math.min(g.loan.left, g.loan.nightly))} GUM</b><em>残り ${num(g.loan.left)}</em></p>` : '';
-  return crowd + order + patrol + tip + wanted + parcel + loan + perks + houses;
+  return lines + crowd + order + patrol + tip + wanted + parcel + loan + perks + houses;
 }
 
 // ---------------------------------------------------------------- the houses
@@ -97,7 +100,7 @@ export function housesModal(g: GameState): string {
     const fill = pts < 0 ? (low !== undefined ? pts / low : 1) : next ? (pts - from) / (next - from) : 1;
     const lines = [
       rank !== 0 ? `いま：${f.text(rank)}` : '',
-      pts >= 0 && next ? `次：${f.text(rank + 1)}` : '',
+      pts >= 0 && next ? `次：${f.text(rank + 1)}／${MARK_JA[HOUSE_LINES[f.id][rank]]}の品を扱える` : '',
       pts < 0 && low !== undefined ? `このまま下がると：${f.text(rank - 1)}` : '',
     ].filter(Boolean);
     const goal = pts < 0 ? (low !== undefined ? `<small>/${num(low)}</small>` : '<small>どん底</small>') : next ? `<small>/${next}</small>` : '<small>MAX</small>';

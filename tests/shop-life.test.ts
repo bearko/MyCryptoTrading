@@ -6,6 +6,7 @@ import * as G from '../src/game/logic';
 import * as N from '../src/game/network';
 import * as N2 from '../src/game/night';
 import { FACTIONS, factionOfName } from '../src/game/factions';
+import { favourites, HOUSE_LINES } from '../src/game/kinds';
 import type { GameState, Visitor } from '../src/game/state';
 import { seeOff } from './util';
 
@@ -337,22 +338,77 @@ describe('the five houses', () => {
     expect(kings.filter((v) => v.kind === 'sell').length / kings.length).toBeLessThan(0.25);
   });
 
-  it('captains, scholars and artists are after their own line of goods, and bring it', () => {
+  it('a house is after the kinds of goods it is fond of, and brings them', () => {
     const s = G.newGame(92, catalog);
     s.clientele = 5;
     s.day = 6;
     const vs = visitors(s, 3000).filter((v) => !v.special);
-    for (const [id, param] of [['buyu', 'phy'], ['eichi', 'int'], ['fuga', 'agi']] as const) {
+    for (const id of ['buyu', 'eichi', 'fuga'] as const) {
+      const fond = favourites(id);
       const buyers = vs.filter((v) => house(v) === id && v.kind === 'buy');
-      expect(buyers.filter((v) => v.want.type === 'param' && v.want.param === param).length / buyers.length).toBeGreaterThan(0.45);
+      expect(buyers.filter((v) => v.want.type === 'kind' && fond.includes(v.want.kind)).length / buyers.length).toBeGreaterThan(0.4);
       const offers = vs.filter((v) => house(v) === id && v.kind === 'sell').flatMap((v) => v.offers);
-      expect(offers.filter((o) => catalog.itemById.get(o.itemId)!.params.includes(param)).length / offers.length).toBeGreaterThan(0.6);
+      const liked = (itemId: number) => {
+        const item = catalog.itemById.get(itemId)!;
+        return fond.includes(item.kind) || item.also.some((kind) => fond.includes(kind));
+      };
+      expect(offers.filter((o) => liked(o.itemId)).length / offers.length).toBeGreaterThan(0.6);
     }
     // a scholar brings no replica; an outlaw brings hot goods far more often than the rest
     const offersOf = (id: string) => vs.filter((v) => house(v) === id && v.kind === 'sell').flatMap((v) => v.offers);
     expect(offersOf('eichi').some((o) => o.fake)).toBe(false);
     const hot = (id: string) => offersOf(id).filter((o) => o.hot).length / offersOf(id).length;
     expect(hot('muhou')).toBeGreaterThan(hot('buyu') * 2);
+  });
+});
+
+describe('the lines of goods', () => {
+  it('a new shop deals only in goods with no mark; a line taken up brings its goods in', () => {
+    const s = G.newGame(95, catalog);
+    s.clientele = 5;
+    s.day = 6;
+    expect(s.lines).toEqual([]);
+    for (const x of s.stock) expect(catalog.itemById.get(x.itemId)!.effect || x.bag || catalog.itemById.get(x.itemId)!.marks.length === 0).toBeTruthy();
+    const marked = (vs: Visitor[]) => vs.flatMap((v) => v.offers).filter((o) => catalog.itemById.get(o.itemId)!.marks.length > 0);
+    expect(marked(visitors(s, 600))).toHaveLength(0);
+    // the guild opens the eastern goods
+    const svc = N.serviceById('line-east');
+    s.gum = svc.gum;
+    expect(N.buyService(s, 'line-east', 'gum')).toBe(true);
+    expect(s.lines).toEqual(['east']);
+    expect(N.serviceBlock(s, 'line-east', 'gum')).toBe('owned');
+    const now = marked(visitors(s, 600));
+    expect(now.length).toBeGreaterThan(20);
+    for (const o of now) expect(catalog.itemById.get(o.itemId)!.marks).toContain('east');
+  });
+
+  it('a house\'s regard opens a line with each rank, overnight', () => {
+    const s = G.newGame(96, catalog);
+    s.favor.buyu = B.favorRanks[1];
+    s.phase = 'evening';
+    G.endDay(s);
+    expect(s.lines).toEqual(HOUSE_LINES.buyu.slice(0, 2));
+    expect(s.linesNew).toEqual(s.lines);
+    // (had once, kept: regard lost does not close a line)
+    s.favor.buyu = 0;
+    s.phase = 'evening';
+    G.endDay(s);
+    expect(s.lines).toHaveLength(2);
+  });
+
+  it('a house pays more for goods to its taste, and less for those it has little use for', () => {
+    const blade = catalog.items.find((i) => i.series === 'ブレード')!;
+    expect(G.taste('buyu', blade)).toBe(B.taste.fond + B.taste.liked); // a close weapon, western
+    expect(G.taste('eichi', blade)).toBe(B.taste.cold);
+    expect(G.taste(null, blade)).toBe(0);
+    const s = G.newGame(97, catalog);
+    s.day = 2;
+    G.openShop(s, catalog);
+    const v = G.currentVisitor(s)!;
+    const uid = G.addTo(s, catalog, 'shelf', blade.id, 1, 0)!;
+    const x = s.stock.find((y) => y.uid === uid)!;
+    Object.assign(v, { kind: 'buy', offers: [], want: { type: 'any' }, budget: 99999, done: false, special: undefined, faction: 'buyu' });
+    expect(G.quoteSale(s, catalog, v, [uid], 0).asked).toBe(Math.round(G.salePrice(catalog, x, 0) * (1 + B.taste.fond + B.taste.liked)));
   });
 });
 
@@ -463,6 +519,7 @@ describe('replicas and the loupe', () => {
     expect(visitors(early, 800).flatMap((v) => v.offers).some((o) => o.fake)).toBe(false);
     const late = G.newGame(71, catalog);
     late.day = B.fakeFromDay;
+    late.clientele = 5;
     const offers = visitors(late, 2000).flatMap((v) => v.offers);
     const share = offers.filter((o) => o.fake).length / offers.length;
     expect(share).toBeGreaterThan(0.02);

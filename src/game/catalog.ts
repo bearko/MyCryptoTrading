@@ -1,3 +1,4 @@
+import { SERIES_KIND, type Kind, type Mark } from './kinds';
 import raw from '../generated/catalog.json';
 import type { ShapeId } from './shapes';
 
@@ -22,7 +23,7 @@ export type Effect = 'pot';
 /** The goods that have an effect of their own, by id. */
 export const EFFECTS: Record<number, Effect> = { 4600: 'pot' };
 export const EFFECT_JA: Record<Effect, { name: string; text: string }> = {
-  pot: { name: '合成の壺', text: '棚に置いてダブルクリックすると、合成ができる（品を 2〜3 個入れて、1 つ上の品にする）' },
+  pot: { name: '合成の壺', text: '棚に置いてクリックすると、合成ができる（品を 2〜3 個入れて、1 つ上の品にする）' },
 };
 /** The pot every shop starts with. */
 export const POT_ID = 4600;
@@ -53,6 +54,10 @@ export interface Item {
   limited: boolean;
   /** a good with an effect of its own, used by a double click while it is on the shelf (most goods have none) */
   effect?: Effect;
+  /** what kind of thing it is, what else it passes for, and its marks of character (see kinds.ts) */
+  kind: Kind;
+  also: Kind[];
+  marks: Mark[];
 }
 
 /** A customer (a hero). */
@@ -102,6 +107,7 @@ export function buildCatalog(data: CatalogData): Catalog {
   const byId = new Map(data.items.map((item) => [item.id, item]));
   for (const item of data.items) item.limited = item.rarity === 5 && item.id % 1000 >= 500 && byId.get(item.id - 500)?.series === item.series;
   for (const item of data.items) if (EFFECTS[item.id]) item.effect = EFFECTS[item.id];
+  for (const item of data.items) Object.assign(item, SERIES_KIND[item.series] ?? { kind: 'art', also: [], marks: [] });
   for (const item of data.items) if (!item.wallet && !item.limited) itemsByRarity[item.rarity].push(item);
   const heroesByRarity: Hero[][] = [[], [], [], [], [], []];
   for (const hero of data.heroes) heroesByRarity[hero.rarity].push(hero);

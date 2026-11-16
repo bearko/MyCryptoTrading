@@ -44,6 +44,14 @@ export const B = {
    * a thinner purse, lower asks, and hot goods and replicas this many times as often.
    * `houseWant`: how often a buyer is after the house's own line of goods; `houseBring`: how often a seller brings it.
    */
+  /**
+   * What a house's buyer pays for a good to its taste, over the list price: for its kind (very fond / not much),
+   * for a kind it also passes for, and for each mark the house is very fond of or likes well enough. Capped.
+   */
+  taste: { fond: 0.15, cold: -0.1, also: 0.08, mark: 0.05, liked: 0.02, cap: 0.35 },
+  /** what the guild asks to open a line of goods to the shop: a floor, and so much for each series in the line */
+  lineGum: [200, 30],
+  lineTrust: [30, 4],
   house: {
     houseWant: 0.6,
     houseBring: 0.65,
