@@ -1262,3 +1262,184 @@ html.calm .inv-fx {
 .tag.mark {
   background: var(--gum-wash);
 }
+
+/*
+ * The guild on the telephone: a board of tiles in panels on the right, and on the left the page of the tile
+ * picked out — its name, what it does, and the two ways to pay.
+ */
+.modal-box.guild-box {
+  width: min(1040px, calc(100vw - 24px));
+  max-width: none;
+}
+.guild {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 14px;
+  height: min(58vh, 520px);
+  min-height: 0;
+}
+.ask-page {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 2px solid var(--ink);
+  background: var(--paper-2);
+}
+.ask-name {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.ask-group {
+  color: var(--sub);
+}
+.ask-text {
+  margin: 6px 0;
+  line-height: 1.7;
+}
+.ask-note {
+  margin: 4px 0;
+  padding: 6px 8px;
+  border: 2px dashed var(--ink);
+  font-size: 0.8125rem;
+}
+.ask-buy {
+  display: grid;
+  gap: 8px;
+}
+.ask-purse {
+  display: grid;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 2px solid var(--ink);
+  font-size: 0.8125rem;
+}
+.ask-purse span {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.ask-purse b {
+  margin-left: auto;
+  font-family: var(--f-pixel);
+  font-size: 1rem;
+}
+.ask-purse small {
+  color: var(--sub);
+}
+.gboard {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-content: start;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.gpanel {
+  border: 2px solid var(--ink);
+  background: var(--paper-2);
+}
+.gpanel.wide {
+  grid-column: 1 / -1;
+}
+.gpanel h3 {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 8px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.875rem;
+}
+.gpanel h3 small {
+  color: var(--gum);
+}
+.gtiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 12px;
+  padding: 12px 10px 16px;
+}
+.gtile {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 3px solid var(--ink);
+  background: var(--paper);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.gtile .rung-ico {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  padding: 0;
+  background: none;
+  fill: var(--ink);
+}
+.gtile .rung-ico .cut {
+  fill: var(--paper);
+  stroke: var(--paper);
+}
+.tile-glyph {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.gtile em {
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  translate: -50% 0;
+  padding: 0 5px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  font-family: var(--f-pixel);
+  font-size: 0.6875rem;
+  font-style: normal;
+  white-space: nowrap;
+}
+.gtile em.dear {
+  background: var(--hot);
+  color: var(--paper);
+}
+/* had: lit; shut: dim */
+.gtile.had {
+  border-color: var(--leaf);
+  background: var(--gum-wash);
+}
+.gtile.shut {
+  opacity: 0.45;
+}
+/* the next step of the tile before it */
+.gtile.chained::before {
+  content: '';
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  width: 12px;
+  height: 3px;
+  margin-top: -1.5px;
+  background: var(--ink);
+}
+.gtile.picked,
+.gtile:hover {
+  outline: 3px solid var(--gum);
+  outline-offset: 2px;
+}
+@media (max-width: 720px) {
+  .guild {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .gboard {
+    grid-template-columns: 1fr;
+    max-height: 38vh;
+  }
+}

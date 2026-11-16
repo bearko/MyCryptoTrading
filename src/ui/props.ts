@@ -2,13 +2,14 @@
  * The things of the shop that are used by hand rather than through a menu (a wide screen shows them
  * beside the shelf): the bin — goods are dragged into it — and the bed — a click on it at night ends the day.
  */
-import { MARKS } from '../game/kinds';
+import { MARK_JA, MARKS } from '../game/kinds';
 import { catalog as cat, HERO_CLASS_JA, PARAM_JA, RARITY_JA } from '../game/catalog';
 import * as G from '../game/logic';
 import { SLOT_IDS, type GameState } from '../game/state';
 import { B, WEEKDAYS } from '../game/balance';
 import { FACTIONS, factionById, rivalOf } from '../game/factions';
-import { GROUP_JA, hasService, loanBlock, loanNightly, loanTotal, serviceBlock, SERVICES, SUPPLIES, supplyBlock, supplyById, trustDaily } from '../game/network';
+import { GROUP_JA, hasService, lineOf, loanBlock, loanNightly, loanTotal, serviceBlock, SERVICES, SUPPLIES, supplyBlock, trustDaily, type ServiceId } from '../game/network';
+import { rungIcon } from './hooks';
 import { atHome, caseCellFor, ctx, ui } from './core';
 import { gridItem } from './grid';
 import { btn, esc, gum, itemTile, num } from './html';
@@ -188,36 +189,154 @@ export function wantedModal(g: GameState): string {
 
 const CRATE = `<svg viewBox="0 0 64 64" aria-hidden="true"><path class="p-ink" d="M6 18h52v40H6z"/><path class="p-fill" d="M10 22h44v32H10z"/><path class="p-ink" d="M10 34h44v4H10zM30 22h4v32h-4z"/><path class="p-paper" d="M24 8h16v12H24z"/><path class="p-ink" d="M22 6h20v16H22zm4 4v8h12v-8z" fill-rule="evenodd"/></svg>`;
 
-/** Ordering goods: a parameter line, then what to send, for GUM or for trust. One order at a time. */
-function supplyRows(g: GameState): string {
-  if (g.supply) {
-    return `<div class="svc owned" id="svc-supply"><span class="svc-main"><b>${PARAM_JA[g.supply.param]}の${esc(supplyById(g.supply.id).name)}</b><small>手配ずみ。明日の朝、店に届きます（注文は 1 度に 1 つ）</small></span><em class="svc-done">手配中</em></div>`;
-  }
-  const lines = (['phy', 'int', 'agi'] as const)
-    .map((p) => `<button class="seek ${ui.supplyParam === p ? 'on' : ''} s-${p}" data-act="supply-param" data-arg="${p}" aria-pressed="${ui.supplyParam === p}">${PARAM_JA[p]}</button>`)
-    .join('');
-  const rows = SUPPLIES.map((x) => {
-    const price = B.supplies[x.id];
-    const buy = (pay: 'gum' | 'trust'): string =>
-      btn('supply', pay === 'gum' ? `${num(price.gum)} GUM` : `信用 ${num(price.trust)}`, { arg: `${x.id}:${pay}`, cls: `small ${pay === 'gum' ? 'gold' : ''}`, disabled: !!supplyBlock(g, x.id, pay), sfx: 'none' });
-    return `<div class="svc" id="svc-${x.id}"><span class="svc-main"><b>${esc(x.name)}</b><small>${PARAM_JA[ui.supplyParam]}の${esc(x.text)}</small></span><span class="svc-buy">${buy('gum')}${buy('trust')}</span></div>`;
-  }).join('');
-  return `<div class="supply-line" role="group" aria-label="取り寄せる系統"><small>系統</small>${lines}</div>${rows}`;
+/** Pictures for the guild's tiles that the rungs' set does not have (16 × 16). */
+const TILE_ICON = {
+  box: '<path d="M2 5l6-3 6 3v7l-6 3-6-3z"/><path class="cut" d="M7.3 8h1.4v6H7.3z"/>',
+  shelf: '<path d="M1 3h14v10H1z"/><path class="cut" d="M3 5h4v2H3zM9 5h4v2H9zM3 9h4v2H3zM9 9h4v2H9z"/>',
+  window: '<path d="M2 2h12v12H2z"/><path class="cut" d="M4 4h3.3v3.3H4zM8.7 4H12v3.3H8.7zM4 8.7h3.3V12H4zM8.7 8.7H12V12H8.7z"/>',
+  pot: '<path d="M5 2h6v2h-1c3 1 4 3 4 6s-2 4-6 4-6-1-6-4 1-5 4-6H5z"/>',
+  scroll: '<path d="M3 2h9a2 2 0 012 2v10H5a2 2 0 01-2-2z"/><path class="cut" d="M6 5h5v1.2H6zM6 8h5v1.2H6z"/>',
+} as const;
+const tileIcon = (icon: keyof typeof TILE_ICON): string => `<svg class="rung-ico" viewBox="0 0 16 16" aria-hidden="true">${TILE_ICON[icon]}</svg>`;
+
+/** One thing the guild can be asked for, as a tile on the right and a page on the left. */
+interface Ask {
+  key: string;
+  group: string;
+  picture: string;
+  name: string;
+  text: string;
+  /** 'had': already done; 'shut': something else comes first */
+  state: 'open' | 'had' | 'shut';
+  /** the figure on the tile (a price, usually), and whether it is out of reach now */
+  tag: string;
+  dear: boolean;
+  /** under the words on the left: the buttons, or why not */
+  act: string;
+  /** stands next to the tile before it, as its next step */
+  chained?: boolean;
 }
 
-/** Borrowing from the guild: a sum now, paid back with interest over the coming nights. One loan at a time. */
-function loanRows(g: GameState): string {
-  if (g.loan) {
-    return `<div class="svc owned" id="svc-loan"><span class="svc-main"><b>借りています：残り ${num(g.loan.left)} GUM</b><small>毎晩 ${num(g.loan.nightly)} GUM ずつ返します。払えない夜は、残りが 1 割増えます。返しおえるまで、権利書は買えません</small></span>
-      <span class="svc-buy">${btn('repay', 'まとめて返す', { cls: 'small gold', disabled: g.gum < g.loan.left, sfx: 'none' })}</span></div>`;
+const SERVICE_PICTURE: Partial<Record<ServiceId, string>> = {
+  guest1: rungIcon('crowd'),
+  guest2: rungIcon('crowd'),
+  vip: rungIcon('star'),
+  case1: tileIcon('window'),
+  case2: tileIcon('window'),
+  sign: rungIcon('tag'),
+  tip: rungIcon('news'),
+  waiver: tileIcon('scroll'),
+  pot: tileIcon('pot'),
+  eye: rungIcon('loupe'),
+};
+
+/** Everything on the guild's board, in the order of its panels. */
+function asks(g: GameState): Ask[] {
+  const out: Ask[] = [];
+  const pay = (act: string, id: string | number, gumCost: number, trust: number, blocked: (by: 'gum' | 'trust') => boolean): string =>
+    `<div class="ask-buy">${btn(act, `${num(gumCost)} GUM`, { arg: `${id}:gum`, cls: 'gold', disabled: blocked('gum'), sfx: 'none' })}${btn(act, `信用 ${num(trust)}`, { arg: `${id}:trust`, disabled: blocked('trust'), sfx: 'none' })}</div>`;
+  // goods sent for: at the door next morning
+  for (const x of SUPPLIES) {
+    const price = B.supplies[x.id];
+    const sent = g.supply?.id === x.id;
+    const lines = (['phy', 'int', 'agi'] as const)
+      .map((param) => `<button class="seek ${ui.supplyParam === param ? 'on' : ''} s-${param}" data-act="supply-param" data-arg="${param}" aria-pressed="${ui.supplyParam === param}">${PARAM_JA[param]}</button>`)
+      .join('');
+    out.push({
+      key: `supply:${x.id}`,
+      group: '取り寄せ',
+      picture: tileIcon('box'),
+      name: x.name,
+      text: `${PARAM_JA[ui.supplyParam]}の${x.text}。明日の朝、店に届く（注文は 1 度に 1 つ）`,
+      state: sent ? 'had' : g.supply ? 'shut' : 'open',
+      tag: num(price.gum),
+      dear: g.gum < price.gum && g.trust < price.trust,
+      act: sent ? '<p class="ask-note">手配ずみ。明日の朝に届きます。</p>' : g.supply ? '<p class="ask-note">ほかの注文が届いてから。</p>' : `<div class="supply-line" role="group" aria-label="取り寄せる系統"><small>系統</small>${lines}</div>${pay('supply', x.id, price.gum, price.trust, (by) => !!supplyBlock(g, x.id, by))}`,
+    });
   }
-  return B.loans
-    .map((amount, i) => {
-      const block = loanBlock(g, i);
-      return `<div class="svc ${block ? 'locked' : ''}" id="svc-loan-${i}"><span class="svc-main"><b>${num(amount)} GUM を借りる</b><small>毎晩 ${num(loanNightly(amount))} GUM × ${B.loanNights} 晩（合計 ${num(loanTotal(amount))}）</small></span>
-        ${block === 'rep' ? `<em class="svc-lock">評判 ${B.loanRep[i]} から</em>` : `<span class="svc-buy">${btn('borrow', '借りる', { arg: i, cls: 'small', sfx: 'none' })}</span>`}</div>`;
+  for (const group of ['lines', 'intro', 'shop', 'craft'] as const) {
+    if (group === 'shop') {
+      const cost = G.shelfCost(g);
+      out.push({
+        key: 'shelf',
+        group: GROUP_JA.shop,
+        picture: tileIcon('shelf'),
+        name: '棚の拡張',
+        text: `棚が 2 列広がる（いま ${G.gridOf(g, cat, 'shelf').cols} 列）`,
+        state: cost === null ? 'had' : 'open',
+        tag: cost === null ? '' : num(cost),
+        dear: cost !== null && g.gum < cost,
+        act: cost === null ? '<p class="ask-note">これ以上は広げられません。</p>' : `<div class="ask-buy">${btn('shelf', `${num(cost)} GUM`, { cls: 'gold', disabled: g.gum < cost, sfx: 'none' })}</div>`,
+      });
+    }
+    for (const x of SERVICES.filter((y) => y.group === group)) {
+      const had = hasService(g, x.id);
+      const shut = !had && serviceBlock(g, x.id, 'gum') === 'needs';
+      const mark = lineOf(x.id);
+      out.push({
+        key: `service:${x.id}`,
+        group: GROUP_JA[group],
+        picture: mark ? `<b class="tile-glyph">${mark === 'holy' ? '聖' : mark === 'occult' ? '秘' : MARK_JA[mark].slice(0, 1)}</b>` : (SERVICE_PICTURE[x.id] ?? rungIcon('star')),
+        name: x.name,
+        text: x.text,
+        state: had ? 'had' : shut ? 'shut' : 'open',
+        tag: had ? '' : num(x.gum),
+        dear: g.gum < x.gum && g.trust < x.trust,
+        act: had ? '<p class="ask-note">頼んであります。</p>' : shut ? '<p class="ask-note">前の段を先に頼みます。</p>' : pay('service', x.id, x.gum, x.trust, (by) => !!serviceBlock(g, x.id, by)),
+        chained: !!x.needs,
+      });
+    }
+  }
+  // money lent: a sum now, paid back with interest over the coming nights
+  B.loans.forEach((amount, i) => {
+    const block = loanBlock(g, i);
+    out.push({
+      key: `loan:${i}`,
+      group: '融資',
+      picture: rungIcon('gum'),
+      name: `${num(amount)} GUM を借りる`,
+      text: `毎晩 ${num(loanNightly(amount))} GUM × ${B.loanNights} 晩（合計 ${num(loanTotal(amount))}）で返す。払えない夜は、残りが 1 割増える。借りているあいだは、店を買い取れない`,
+      state: g.loan ? 'shut' : block ? 'shut' : 'open',
+      tag: num(amount),
+      dear: false,
+      act: g.loan
+        ? `<p class="ask-note">借りています：残り ${num(g.loan.left)} GUM（毎晩 ${num(g.loan.nightly)} GUM）</p><div class="ask-buy">${btn('repay', 'まとめて返す', { cls: 'gold', disabled: g.gum < g.loan.left, sfx: 'none' })}</div>`
+        : block === 'rep'
+          ? `<p class="ask-note">評判 ${B.loanRep[i]} から借りられます。</p>`
+          : `<div class="ask-buy">${btn('borrow', '借りる', { arg: i, sfx: 'none' })}</div>`,
+    });
+  });
+  return out;
+}
+
+/** The telephone: the guild's board of tiles on the right, and on the left the page of the one picked out. */
+export function networkModal(g: GameState): string {
+  const all = asks(g);
+  const picked = all.find((x) => x.key === ui.ask) ?? null;
+  const groups: string[] = [];
+  for (const x of all) if (!groups.includes(x.group)) groups.push(x.group);
+  const panels = groups
+    .map((group) => {
+      const tiles = all
+        .filter((x) => x.group === group)
+        .map((x) => `<button class="gtile ${x.state} ${x.chained ? 'chained' : ''} ${picked?.key === x.key ? 'picked' : ''}" id="ask-${x.key.replace(':', '-')}" data-act="ask" data-arg="${x.key}" data-sfx="none" aria-label="${esc(x.name)}" aria-pressed="${picked?.key === x.key}">${x.picture}${x.tag ? `<em class="${x.dear ? 'dear' : ''}">${x.tag}</em>` : ''}</button>`)
+        .join('');
+      return `<section class="gpanel ${group === GROUP_JA.lines ? 'wide' : ''}"><h3>${group}${group === GROUP_JA.lines ? `<small>${g.lines.length}/${MARKS.length}</small>` : ''}</h3><div class="gtiles">${tiles}</div></section>`;
     })
     .join('');
+  const page = picked
+    ? `<h3 class="ask-name">${esc(picked.name)}</h3><small class="ask-group">${picked.group}</small><p class="ask-text">${esc(picked.text)}</p>${picked.act}`
+    : `<h3 class="ask-name">商人ギルド</h3><small class="ask-group">電話</small><p class="ask-text">右の印を選ぶと、ここに中身が出ます。GUM で払うか、ギルドの信用で払うかを選べます。</p>`;
+  return `<div class="modal" id="modal-network" data-ui><div class="modal-box guild-box">
+    <h2 class="modal-title"><small>GUILD</small>商人ギルド</h2>
+    <div class="guild">
+      <aside class="ask-page" id="ask-page">${page}
+        <div class="ask-purse"><span>所持金<b>${gum(g.gum)}</b></span><span>信用<b>${num(g.trust)}</b><small>毎朝 +${trustDaily(g)}</small></span></div>
+      </aside>
+      <div class="gboard" id="gboard">${panels}</div>
+    </div>
+    <div class="actions one">${btn('modal-close', '電話を切る', { cls: 'primary' })}</div>
+  </div></div>`;
 }
 
 /** What has come from the guild: each good is taken onto the shelf (or into the wallet). */
@@ -233,43 +352,6 @@ export function parcelModal(g: GameState): string {
     <p class="hint">電話で取り寄せた品です。棚（いっぱいならウォレット）に空きがある分だけ受け取れます。残りは、ここで待っています。</p>
     <div class="modal-scroll">${rows}</div>
     <div class="actions">${btn('modal-close', 'あとで')}${btn('unpack', 'すべて受け取る', { arg: 'all', cls: 'primary', sfx: 'none' })}</div>
-  </div></div>`;
-}
-
-/** The shelf is enlarged through the guild (two more columns each time). */
-function shelfRow(g: GameState): string {
-  const cost = G.shelfCost(g);
-  return `<div class="svc ${cost === null ? 'owned' : ''}" id="svc-shelf">
-    <span class="svc-main"><b>棚の拡張</b><small>棚が 2 列広がる（いま ${G.gridOf(g, cat, 'shelf').cols} 列）</small></span>
-    ${cost === null ? '<em class="svc-done">済</em>' : `<span class="svc-buy">${btn('shelf', `${num(cost)} GUM`, { cls: 'small gold', disabled: g.gum < cost, sfx: 'none' })}</span>`}
-  </div>`;
-}
-
-/** The telephone: the guild's favours, each for GUM or for trust. */
-export function networkModal(g: GameState): string {
-  const groups = (['lines', 'intro', 'shop', 'craft'] as const)
-    .map((group) => {
-      const rows = SERVICES.filter((x) => x.group === group)
-        .map((x) => {
-          const owned = hasService(g, x.id);
-          const locked = !owned && serviceBlock(g, x.id, 'gum') === 'needs';
-          const buy = (pay: 'gum' | 'trust'): string =>
-            btn('service', pay === 'gum' ? `${num(x.gum)} GUM` : `信用 ${num(x.trust)}`, { arg: `${x.id}:${pay}`, cls: `small ${pay === 'gum' ? 'gold' : ''}`, disabled: !!serviceBlock(g, x.id, pay), sfx: 'none' });
-          return `<div class="svc ${owned ? 'owned' : ''} ${locked ? 'locked' : ''}" id="svc-${x.id}">
-            <span class="svc-main"><b>${esc(x.name)}</b><small>${esc(x.text)}</small></span>
-            ${owned ? '<em class="svc-done">済</em>' : locked ? '<em class="svc-lock">前の段が先</em>' : `<span class="svc-buy">${buy('gum')}${buy('trust')}</span>`}
-          </div>`;
-        })
-        .join('');
-      return `<h3 class="rc-sub">${GROUP_JA[group]}${group === 'lines' ? `<small>いま ${g.lines.length}/${MARKS.length}。派閥の評価でも増える</small>` : ''}</h3>${group === 'shop' ? shelfRow(g) : ''}${rows}`;
-    })
-    .join('');
-  return `<div class="modal" id="modal-network" data-ui><div class="modal-box tall">
-    <h2 class="modal-title"><small>GUILD</small>商人ギルド</h2>
-    <p class="hint">品の<b>取り寄せ</b>と、ずっと効く<b>頼みごと</b>ができます。<b>GUM</b> で払うか、ギルドの<b>信用</b>で払うかを選べます。信用は毎朝 +${trustDaily(g)} ずつ貯まります（待てばただ、急ぐなら GUM）。</p>
-    <div class="svc-purse"><span>所持金 <b>${gum(g.gum)}</b></span><span>信用 <b>${num(g.trust)}</b></span></div>
-    <div class="modal-scroll"><h3 class="rc-sub">取り寄せ<small>翌朝に届く</small></h3>${supplyRows(g)}${groups}<h3 class="rc-sub">融資<small>いま借りて、あとで返す</small></h3>${loanRows(g)}</div>
-    <div class="actions one">${btn('modal-close', '電話を切る', { cls: 'primary' })}</div>
   </div></div>`;
 }
 

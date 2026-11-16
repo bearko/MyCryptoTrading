@@ -57,6 +57,8 @@ export interface Ui {
   /** the regard window: the rung picked out, and whether its words of explanation are shown */
   rung: { house: FactionId; at: number } | null;
   housesHelp: boolean;
+  /** the guild's board: the tile picked out ('service:<id>', 'supply:<id>', 'shelf', 'loan:<n>') */
+  ask: string;
   /** the customer who came while the shutter was still rising (they wait for it) */
   lateKey: number;
 }
@@ -90,6 +92,7 @@ export const ui: Ui = {
   gearHelp: false,
   rung: null,
   housesHelp: false,
+  ask: '',
   lateKey: -1,
 };
 
