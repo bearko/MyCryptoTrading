@@ -152,4 +152,45 @@ describe('the pot', () => {
     G.givePot(fresh, catalog);
     expect(fresh.stock.filter((x) => x.itemId === POT_ID)).toHaveLength(1);
   });
+
+  it('the goods in the pot give candidates to choose from: any of them can be the one that grows', () => {
+    const s = G.newGame(41, catalog);
+    s.stock = [];
+    G.addTo(s, catalog, 'shelf', POT_ID, 1, 0);
+    s.gum = 99999;
+    const blade = catalog.itemById.get(1001)!; // ブレード（コモン）
+    const katana = catalog.itemById.get(1006)!; // カタナ（コモン）
+    const a = G.addTo(s, catalog, 'shelf', blade.id, 1, 0)!;
+    const b = G.addTo(s, catalog, 'shelf', katana.id, 1, 0)!;
+    // one good alone: its own next, not yet makeable
+    const alone = C.candidates(s, catalog, [a]);
+    expect(alone).toHaveLength(1);
+    expect(alone[0].plan.block).toBe('alone');
+    // the two together: the special pairing first (not told, as it was never made), then each one grown
+    const both = C.candidates(s, catalog, [a, b]);
+    expect(both).toHaveLength(3);
+    expect(both[0].secret).toBe(true);
+    expect(both[0].plan.cross).toBe(C.crossKey(1, 6));
+    expect(both.slice(1).map((c) => c.plan.result!.id).sort()).toEqual([2001, 2006]);
+    expect(both.every((c) => !c.plan.block)).toBe(true);
+    // the plain result of a base is on offer though a pairing was possible
+    const grown = both.find((c) => c.plan.result!.id === 2006)!;
+    expect(grown.plain).toBe(true);
+    expect(grown.order[0]).toBe(b);
+    const made = C.craft(s, catalog, grown.order, grown.plain);
+    expect(made.ok && made.item.id).toBe(2006);
+    expect(s.crosses).toHaveLength(0);
+    // once made, the pairing is told
+    const c2 = G.addTo(s, catalog, 'shelf', blade.id, 1, 0)!;
+    const d2 = G.addTo(s, catalog, 'shelf', katana.id, 1, 0)!;
+    s.today.crafts = 0;
+    const again = C.candidates(s, catalog, [c2, d2]);
+    const pair = again[0];
+    expect(C.craft(s, catalog, pair.order, pair.plain).ok).toBe(true);
+    const e2 = G.addTo(s, catalog, 'shelf', blade.id, 1, 0)!;
+    const f2 = G.addTo(s, catalog, 'shelf', katana.id, 1, 0)!;
+    s.today.crafts = 0;
+    expect(C.candidates(s, catalog, [e2, f2])[0].secret).toBe(false);
+  });
+
 });

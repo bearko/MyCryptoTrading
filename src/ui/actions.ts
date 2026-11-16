@@ -1,3 +1,4 @@
+import { potCandidates } from './craft';
 import { B } from '../game/balance';
 import { perkById } from '../game/perks';
 import { catalog as cat } from '../game/catalog';
@@ -280,7 +281,8 @@ function haggle(g: GameState, v: Visitor, tier: number): void {
 /** The pot: the goods go in, the result comes out with a show. */
 function doCraft(g: GameState): void {
   const pot = ctx.root.querySelector<HTMLElement>('#pot');
-  const result = craft(g, cat, ui.craft);
+  const picked = potCandidates(g).picked;
+  const result = picked ? craft(g, cat, picked.order, picked.plain) : craft(g, cat, ui.craft);
   if (!result.ok) {
     nope(pot);
     audio.sfx('error');
@@ -288,6 +290,7 @@ function doCraft(g: GameState): void {
     return;
   }
   ui.craft = [];
+  ui.craftPick = 0;
   store.save(g);
   audio.sfx('equip');
   haptic('heavy');
@@ -670,12 +673,19 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
         return;
       }
       ui.craft.push(n);
+      ui.craftPick = 0;
       audio.sfx('drop');
       haptic('light');
       break;
     }
+    case 'craft-pick':
+      ui.craftPick = n;
+      audio.sfx('tap');
+      render();
+      return;
     case 'craft-del':
       ui.craft.splice(n, 1);
+      ui.craftPick = 0;
       break;
     case 'craft-go':
       doCraft(g);

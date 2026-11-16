@@ -37,6 +37,8 @@ export interface Ui {
   popOrder: PopId[];
   /** the goods put in the pot (uids; the first is the base) */
   craft: number[];
+  /** which of the pot's candidates is picked out */
+  craftPick: number;
   /** the parameter line picked for an order to the guild */
   supplyParam: 'phy' | 'int' | 'agi';
   /** the gear window: the slot being filled ('wallet' for the wallet), and whether it leads to the quest */
@@ -81,6 +83,7 @@ export const ui: Ui = {
   pops: { craft: { open: false, x: 0, y: 0, placed: false }, wallet: { open: false, x: 0, y: 0, placed: false }, gear: { open: false, x: 0, y: 0, placed: false } },
   popOrder: ['craft', 'wallet', 'gear'],
   craft: [],
+  craftPick: 0,
   supplyParam: 'phy',
   gearSlot: null,
   departing: false,

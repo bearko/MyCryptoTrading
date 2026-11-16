@@ -5,6 +5,7 @@
  *    1–3 switch between shelf, wallet and gear, R turns the good being dragged.
  * The right button (a good's menu, or a turn while dragging) is in drag.ts, with the rest of the pointer handling.
  */
+import { candidateCard } from './craft';
 import { advanceLine } from './scene';
 import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
@@ -34,6 +35,12 @@ function cardFor(el: HTMLElement): { key: string; html: string } | null {
     if (!x) return null;
     const item = G.findItem(cat, x.itemId);
     return { key: `i${uid}`, html: `${itemCard(x.itemId, x.cond)}<p class="tip-skill"><b>${esc(item.skill)}</b>${esc(item.skillText)}</p>` };
+  }
+  // (what the pot could make: the good itself, or only its shadow)
+  const cand = el.closest<HTMLElement>('.pcand[data-cand]');
+  if (cand) {
+    const html = candidateCard(s, Number(cand.dataset.cand));
+    return html ? { key: `c${cand.dataset.cand}:${ui.craft.join(',')}`, html } : null;
   }
   // (the goods in and under the pot)
   const potGood = el.closest<HTMLElement>('.pgood, .pslot:not(.empty)');
