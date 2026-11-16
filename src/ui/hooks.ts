@@ -1,13 +1,12 @@
-import { HOUSE_LINES, MARK_JA } from '../game/kinds';
+import { MARK_JA } from '../game/kinds';
 import { B } from '../game/balance';
 import { catalog as cat, HERO_CLASS_JA, PARAM_JA, RARITY_JA } from '../game/catalog';
-import { FACTIONS, factionById, rankName, rankOf } from '../game/factions';
+import { FACTIONS, factionById, holds, rankOf, shown as regard, standing, type Faction, type Rung, type RungIcon } from '../game/factions';
 import * as G from '../game/logic';
-import { hasService } from '../game/network';
 import { perkById } from '../game/perks';
 import type { DayOrder, GameState } from '../game/state';
 import { audio, haptic } from './audio';
-import { ctx, isWide } from './core';
+import { ctx, isWide, ui } from './core';
 import { fx } from './fx';
 import { btn, esc, num } from './html';
 
@@ -57,9 +56,8 @@ export function morningExtras(g: GameState): string {
     ? `<p class="news-perks"><span>商才</span>${g.perks.map((id) => `<i title="${esc(perkById(id).text)}">${esc(perkById(id).name)}</i>`).join('')}</p>`
     : '';
   const ranked = FACTIONS.filter((f) => G.favorRank(g, f.id) !== 0);
-  const mark = (rank: number): string => (rank > 0 ? '★'.repeat(rank) : '▼'.repeat(-rank));
   const houses = ranked.length
-    ? `<p class="news-perks news-houses"><span>派閥</span>${ranked.map((f) => `<i class="fac f-${f.id}${G.favorRank(g, f.id) < 0 ? ' low' : ''}" title="${esc(f.text(G.favorRank(g, f.id)))}">${f.ja} ${mark(G.favorRank(g, f.id))}</i>`).join('')}</p>`
+    ? `<p class="news-perks news-houses"><span>派閥</span>${ranked.map((f) => `<i class="fac f-${f.id}${G.favorRank(g, f.id) < 0 ? ' low' : ''}">${f.ja} ${standing(f, g.favor[f.id])}</i>`).join('')}</p>`
     : '';
   // a new class of hero is drawn to the shop from today
   // lines of goods taken up since the shop last opened
@@ -76,7 +74,7 @@ export function morningExtras(g: GameState): string {
     [B.fakeFromDay]: ['うわさ', '<b>レプリカ</b>が出回りはじめました。品をカウンターの<b>ルーペ</b>へドラッグすると見分けられます（1 日 3 回）'],
   };
   const tip = tips[g.day] ? `<p class="news-order news-tip"><span>${tips[g.day]![0]}</span><b>${tips[g.day]![1]}</b></p>` : '';
-  const patrol = g.patrolDay && hasService(g, 'tip') ? '<p class="news-order news-patrol"><span>知らせ</span><b>今日は、見回りが来ます</b><em>訳ありの品はウォレットへ</em></p>' : '';
+  const patrol = g.patrolDay && G.knowsPatrol(g) ? '<p class="news-order news-patrol"><span>知らせ</span><b>今日は、見回りが来ます</b><em>訳ありの品はウォレットへ</em></p>' : '';
   const loan = g.loan ? `<p class="news-order news-loan"><span>融資</span><b>今夜の返済 ${num(Math.min(g.loan.left, g.loan.nightly))} GUM</b><em>残り ${num(g.loan.left)}</em></p>` : '';
   return lines + crowd + order + patrol + tip + wanted + parcel + loan + perks + houses;
 }
@@ -88,35 +86,71 @@ export function houseDots(g: GameState): string {
   return `<span class="house-dots" id="house-dots" aria-hidden="true">${FACTIONS.map((f) => `<i class="f-${f.id} r${G.favorRank(g, f.id)}"></i>`).join('')}</span>`;
 }
 
-/** The houses: each one's regard for the shop, and what it grants. */
+/** Small pictures for what a rung of regard does (16 × 16, drawn in the ink of the day). */
+const RUNG_ICON: Record<RungIcon, string> = {
+  gum: '<circle cx="8" cy="8" r="6"/><path class="cut" d="M10.5 6H7a2 2 0 000 4h2V8.5H7.8"/>',
+  purse: '<path d="M5 2h6l-1 3h2l2 9H2l2-9h2z"/>',
+  crowd: '<circle cx="5" cy="5" r="2.5"/><circle cx="11" cy="5" r="2.5"/><path d="M1 14a4 4 0 018 0zM8 14a4 4 0 017 0z"/>',
+  gift: '<path d="M2 6h12v3H2zM3 9h10v5H3z"/><path class="cut" d="M7.2 6h1.6v8H7.2z"/><path d="M8 6C5 6 4 2 6 2s2 4 2 4 0-4 2-4 1 4-2 4z"/>',
+  line: '<path d="M2 3h8l4 4-7 7-5-5z"/><circle class="cut" cx="5.5" cy="6.5" r="1.3"/>',
+  talk: '<path d="M2 2h12v8H8l-4 4v-4H2z"/>',
+  clock: '<circle cx="8" cy="8" r="6.5"/><path class="cut" d="M7.3 4h1.4v4.4H11v1.4H7.3z"/>',
+  gem: '<path d="M4 2h8l3 4-7 8-7-8z"/>',
+  loupe: '<circle cx="6.5" cy="6.5" r="5"/><circle class="cut" cx="6.5" cy="6.5" r="2.8"/><path d="M10 9l5 5-1.5 1.5-5-5z"/>',
+  tag: '<path d="M2 2h6l6 6-6 6-6-6z"/><path class="cut" d="M5 7h5v1.6H5z"/>',
+  news: '<path d="M2 2h12v12H2z"/><path class="cut" d="M4 4h8v2H4zM4 8h8v1H4zM4 10.5h5v1H4z"/>',
+  shield: '<path d="M8 1l6 2v5c0 4-3 6-6 7-3-1-6-3-6-7V3z"/>',
+  star: '<path d="M8 1l2.2 4.6 5 .6-3.7 3.4 1 5L8 12.1 3.5 14.6l1-5L.8 6.2l5-.6z"/>',
+  shun: '<circle cx="8" cy="8" r="6.5"/><path class="cut" d="M4 7.2h8v1.6H4z"/>',
+  patrol: '<path d="M3 6h10v2H3zM5 2h6l1 4H4zM4 9h8v5H4z"/>',
+  fake: '<path d="M2 2h12v12H2z"/><path class="cut" d="M5 5l6 6M11 5l-6 6" stroke-width="1.6" fill="none"/>',
+  thief: '<path d="M3 5h10v3H3z"/><circle class="cut" cx="6" cy="6.5" r="1"/><circle class="cut" cx="10" cy="6.5" r="1"/><path d="M5 9h6v5H5z"/>',
+  skull: '<path d="M3 2h10v8h-2v4H5v-4H3z"/><path class="cut" d="M5 5h2v2H5zM9 5h2v2H9zM7.3 11h1.4v3H7.3z"/>',
+};
+export const rungIcon = (icon: RungIcon): string => `<svg class="rung-ico" viewBox="0 0 16 16" aria-hidden="true">${RUNG_ICON[icon]}</svg>`;
+
+/** One house's ladder as an upright bar: +100 at the top, −100 at the foot, a mark at every rung with an effect. */
+function ladder(g: GameState, f: Faction): string {
+  const pts = g.favor[f.id];
+  const now = regard(pts);
+  // (the bar's height is 200 of regard: a point's place from the top, in percent)
+  const top = (at: number): number => (100 - at) / 2;
+  const marks = f.rungs
+    .map((rung: Rung) => {
+      const on = holds(rung, pts);
+      const picked = ui.rung?.house === f.id && ui.rung.at === rung.at;
+      return `<button class="rung ${rung.at > 0 ? 'up' : 'down'} ${on ? 'on' : ''} ${picked ? 'picked' : ''} ${rung.icon === 'skull' ? 'dead' : ''}" id="rung-${f.id}-${rung.at}" data-act="rung" data-arg="${f.id}:${rung.at}" style="top:${top(rung.at)}%" aria-label="${f.ja} ${rung.at > 0 ? '+' : ''}${rung.at}：${esc(rung.name)}">${rungIcon(rung.icon)}</button>`;
+    })
+    .join('');
+  const ticks = [100, 80, 60, 40, 20, 0, -20, -40, -60, -80, -100].map((at) => `<i class="tick ${at === 0 ? 'zero' : ''}" style="top:${top(at)}%"></i>`).join('');
+  const fill = now >= 0 ? `top:${top(now)}%;height:${now / 2}%` : `top:50%;height:${-now / 2}%`;
+  return `<div class="ladder f-${f.id}" id="ladder-${f.id}">
+      <b class="ladder-name"><span class="fac f-${f.id}">${f.ja}</span></b>
+      <span class="ladder-n">${now > 0 ? '+' : ''}${now}<small>/100</small></span>
+      <div class="ladder-bar">${ticks}<i class="ladder-fill ${now < 0 ? 'low' : ''}" style="${fill}"></i><i class="ladder-now" style="top:${top(now)}%"></i>${marks}</div>
+      <small class="ladder-stand">${standing(f, pts)}</small>
+      <small class="ladder-rival">${f.rival ? `対立：${factionById(f.rival).ja}` : '対立なし'}</small>
+    </div>`;
+}
+
+/** The houses: each one's regard for the shop as a ladder, and under them what the rung picked out does. */
 export function housesModal(g: GameState): string {
-  const rows = FACTIONS.map((f) => {
-    const pts = g.favor[f.id];
-    const rank = G.favorRank(g, f.id);
-    // the bar runs to the next rank up; below zero, down to the next rank lost
-    const from = rank <= 0 ? 0 : B.favorRanks[rank - 1];
-    const next: number | undefined = B.favorRanks[Math.max(0, rank)];
-    const low: number | undefined = B.favorLow[Math.max(0, -rank)];
-    const fill = pts < 0 ? (low !== undefined ? pts / low : 1) : next ? (pts - from) / (next - from) : 1;
-    const lines = [
-      rank !== 0 ? `いま：${f.text(rank)}` : '',
-      pts >= 0 && next ? `次：${f.text(rank + 1)}／${MARK_JA[HOUSE_LINES[f.id][rank]]}の品を扱える` : '',
-      pts < 0 && low !== undefined ? `このまま下がると：${f.text(rank - 1)}` : '',
-    ].filter(Boolean);
-    const goal = pts < 0 ? (low !== undefined ? `<small>/${num(low)}</small>` : '<small>どん底</small>') : next ? `<small>/${next}</small>` : '<small>MAX</small>';
-    return `<div class="house r${rank}${pts < 0 ? ' low' : ''}">
-        <span class="fac f-${f.id}">${f.ja}</span>
-        <span class="house-main"><b>${f.boon}<em>${rankName(rank)}</em>${f.rival ? `<span class="house-rival">対立：<i class="fac f-${f.rival}">${factionById(f.rival).ja}</i></span>` : '<span class="house-rival">対立なし</span>'}</b>
-          <span class="house-bar"><i style="transform:scaleX(${fill.toFixed(3)})"></i></span>
-          <small>${lines.join('<br />')}</small>
-          <small class="house-trait"><b>${f.who}</b>${f.trait}</small></span>
-        <span class="house-n"><b>${num(pts)}</b>${goal}</span>
-      </div>`;
-  }).join('');
-  return `<div class="modal" id="modal-houses" data-ui><div class="modal-box">
+  const picked = ui.rung ? factionById(ui.rung.house).rungs.find((rung) => rung.at === ui.rung!.at) : undefined;
+  const f = ui.rung ? factionById(ui.rung.house) : undefined;
+  const detail =
+    picked && f
+      ? `<div class="rung-detail ${holds(picked, g.favor[f.id]) ? 'on' : ''}" id="rung-detail">
+          <b>${rungIcon(picked.icon)}${esc(picked.name)}<em>${holds(picked, g.favor[f.id]) ? '有効' : 'まだ'}</em><small><span class="fac f-${f.id}">${f.ja}</span> ${picked.at > 0 ? '+' : ''}${picked.at}${picked.at > 0 ? ' 以上' : ' 以下'}</small></b>
+          <p>${esc(picked.text)}</p>
+          <p class="rung-who"><b>${f.who}</b>${f.trait}</p>
+        </div>`
+      : `<div class="rung-detail empty" id="rung-detail"><p>印をクリックすると、その評価で得られる（失う）ものが出ます。</p></div>`;
+  return `<div class="modal" id="modal-houses" data-ui><div class="modal-box houses-box">
     <h2 class="modal-title"><small>HOUSES</small>派閥の評価</h2>
-    <p class="hint">お客さんは 5 つの派閥のどれかに属しています。取引がまとまると、その派閥の評価が上がります。<b>値引きして売る</b>・<b>色をつけて買う</b>と大きく上がりますが、<b>対立する派閥の評価は下がります</b>。強気の値で通したり怒らせたりすると、その派閥が下がり、対立する派閥が少し喜びます。評価が下がりきった派閥は、恩恵が裏返ります。</p>
-    <div class="houses">${rows}</div>
+    <button class="help-dot ${ui.housesHelp ? 'on' : ''}" id="houses-help-btn" data-act="houses-help" aria-label="この画面の説明" aria-pressed="${ui.housesHelp}">?</button>
+    ${ui.housesHelp ? '<p class="hint" id="houses-help">取引がまとまると、その客の派閥の評価が上がります。<b>値引きして売る</b>・<b>色をつけて買う</b>と大きく上がり、<b>対立する派閥</b>の評価が下がります。強気の値は、通っても断られても下がります。評価は −100 から +100 まで。20 ごとに、その派閥ならではの効きめがあります。</p>' : ''}
+    <div class="ladders">${FACTIONS.map((x) => ladder(g, x)).join('')}</div>
+    ${detail}
     <div class="actions one">${btn('modal-close', '閉じる', { cls: 'primary' })}</div>
   </div></div>`;
 }
@@ -175,7 +209,7 @@ export function hookEffects(g: GameState): void {
       const now = g.favor[f.id];
       if (now === was) continue;
       const plate = root.querySelector('.plate') ?? '#hud-rep';
-      window.setTimeout(() => fx.text(`${f.ja} ${now > was ? '+' : '−'}${Math.abs(now - was)}`, plate, { kind: now > was ? 'gain' : 'dmg', size: 18 }), 520 + 380 * shown);
+      window.setTimeout(() => fx.text(`${f.ja} ${now > was ? '+' : '−'}${(Math.abs(now - was) / 2).toFixed(1).replace('.0', '')}`, plate, { kind: now > was ? 'gain' : 'dmg', size: 18 }), 520 + 380 * shown);
       shown += 1;
       const rank = rankOf(now);
       const before = rankOf(was);
@@ -185,8 +219,12 @@ export function hookEffects(g: GameState): void {
         audio.sfx(up ? 'event' : 'error');
         haptic('heavy');
         // (a rank won or lost, a house that turns cold, a house that comes round)
-        const sub = rank === 0 ? (up ? 'わだかまりが解けた' : '恩恵がなくなった') : `${f.boon}：${f.text(rank)}`;
-        void fx.banner(`${f.ja}・${rank === 0 ? 'ふつうの仲' : rankName(rank)}`, { sub, ms: 1500 });
+        // (the rung just reached on the way up, or the one just fallen onto; else one that was lost)
+        const at = (up ? rank : rank < 0 ? rank : before) * 20;
+        const rung = f.rungs.find((x) => x.at === at);
+        const gained = rung ? holds(rung, now) : false;
+        const sub = rung ? `${rung.name}${gained ? '' : '（なくなった）'}：${rung.text}` : `評価 ${regard(now) > 0 ? '+' : ''}${regard(now)}`;
+        void fx.banner(`${f.ja} ${regard(now) > 0 ? '+' : ''}${regard(now)}`, { sub, ms: 1700 });
         const dots = root.querySelector('#house-dots');
         if (dots && up) fx.burst('stars', dots, { count: 12 });
       }, 1200);

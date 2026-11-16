@@ -169,21 +169,35 @@ export const B = {
   favorHard: -1,
   /** the houses are at odds two by two: a kind price costs the rival house this share of what was earned, and a house's loss cheers its rival by this much */
   rivalShare: 0.4,
+  /** … but no lower than this (shown as −80): only what is done to a house itself takes it to the foot of its ladder */
+  rivalFloor: -160,
   rivalGlee: 1,
-  /** regard at which a house turns cold, then hostile (ranks −1 and −2: its boon is turned around), and where regard stops */
-  favorLow: [-30, -80],
-  favorFloor: -120,
-  favorCap: 300,
+  /**
+   * Regard runs from −200 to +200 points, shown as −100 to +100. Every `favorStep` points is a rung of the
+   * house's ladder (five up, five down), each with an effect of its own (see factions.ts).
+   */
+  favorStep: 40,
+  favorFloor: -200,
+  favorCap: 200,
   /** a customer who storms off costs their house this much */
   favorAngry: 2,
   /** regard needed for ranks 1–3 */
-  favorRanks: [40, 100, 200],
-  /** what a house grants, per rank: customers a day, buyers' budgets, sellers' asking prices, the odds of a bargain, rarity */
-  boonVisitors: 1,
-  boonBudget: 0.1,
-  boonAsk: 0.05,
-  boonChance: 0.04,
-  boonRarity: 1,
+  /** what the rungs of the houses' ladders are worth (the ladders themselves are in factions.ts) */
+  rung: {
+    tip: 0.1,
+    purse: 0.25,
+    extra: 0.2,
+    gift: 0.25,
+    shun: 0.5,
+    patrol: 0.5,
+    chance: [0.04, 0.06],
+    chanceLow: -0.08,
+    looks: 2,
+    ask: 0.05,
+    dealer: 0.1,
+    fakes: 1,
+    theft: 0.15,
+  },
   /** reputation for a sale: at the fair price or under, up to +30%, above that */
   saleRep: [1, 0, -1],
 

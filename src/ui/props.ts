@@ -280,7 +280,7 @@ export function calendarModal(g: GameState): string {
   for (let day = g.day; day < g.day + 14; day++) {
     const marks: string[] = [];
     if (day === g.day) marks.push(`<i class="cal-mark today">今日</i>${{ none: 'いつもどおりの一日', demand: '流行りの系統がある日', caravan: '隊商が来る日', rain: '雨の日', bargain: '投げ売りの日' }[g.event.id]}`);
-    if (day === g.day && g.patrolDay && hasService(g, 'tip')) marks.push('<i class="cal-mark warn">見回り</i>棚とショーケースを改めに来る');
+    if (day === g.day && g.patrolDay && G.knowsPatrol(g)) marks.push('<i class="cal-mark warn">見回り</i>棚とショーケースを改めに来る');
     if (day === g.day + 1 && g.supply) marks.push('<i class="cal-mark">荷物</i>ギルドに頼んだ品が届く');
     if (g.wanted && !g.wanted.came && day === Math.max(g.day, g.wanted.day)) marks.push(`<i class="cal-mark warn">手配</i>${esc(cat.heroById.get(g.wanted.heroId)!.ja)} が来るころ`);
     if (g.loan && day - g.day < Math.ceil(g.loan.left / g.loan.nightly)) marks.push(`<i class="cal-mark">返済</i>夜に ${num(Math.min(g.loan.nightly, g.loan.left - g.loan.nightly * (day - g.day)))} GUM`);

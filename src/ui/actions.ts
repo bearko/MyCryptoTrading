@@ -11,6 +11,7 @@ import type { GameState, SlotId, Visitor } from '../game/state';
 import { audio, haptic, hapticSettings } from './audio';
 import { offerKey } from './counter';
 import { ctx, defaultWinSize, ui, popsOn, type PopId } from './core';
+import type { FactionId } from '../game/factions';
 import { fx } from './fx';
 import { itemTile } from './html';
 import { holdGum, resetHud } from './hud';
@@ -703,6 +704,17 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       render();
       return;
     }
+    case 'rung': {
+      const [house, at] = arg.split(':');
+      ui.rung = ui.rung?.house === house && ui.rung.at === Number(at) ? null : { house: house as FactionId, at: Number(at) };
+      audio.sfx('tap');
+      render();
+      return;
+    }
+    case 'houses-help':
+      ui.housesHelp = !ui.housesHelp;
+      render();
+      return;
     case 'gear-help':
       ui.gearHelp = !ui.gearHelp;
       render();

@@ -1,3 +1,4 @@
+import { B } from './balance';
 import { noFavor } from './factions';
 import { MARKS } from './kinds';
 import type { GameState } from './state';
@@ -63,6 +64,8 @@ export function load(): GameState | null {
       for (const v of s.queue ?? []) v.faction = null;
     }
     s.favor = { ...noFavor(), ...s.favor };
+    // (regard used to run further up, and not so far down: kept within the ladder, and clear of its last rung)
+    for (const id of Object.keys(s.favor) as (keyof typeof s.favor)[]) s.favor[id] = Math.max(B.favorFloor + B.favorStep, Math.min(B.favorCap, s.favor[id]));
     for (const v of s.queue) {
       v.nego ??= 0;
       v.faction ??= null;

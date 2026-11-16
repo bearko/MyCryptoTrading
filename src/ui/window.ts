@@ -1,7 +1,7 @@
 import { B } from '../game/balance';
 import { catalog as cat, COND_JA, RARITY_JA } from '../game/catalog';
 import { wantText } from '../game/lines';
-import { factionById, rivalOf } from '../game/factions';
+import { factionById, rivalOf, shown, standing } from '../game/factions';
 import * as G from '../game/logic';
 import type { GameState, Visitor } from '../game/state';
 import { offerKey } from './counter';
@@ -97,10 +97,10 @@ function favorLine(g: GameState, v: Visitor): string {
   if (!v.faction) return '';
   const f = factionById(v.faction);
   const pts = g.favor[v.faction];
-  const next = pts < 0 ? B.favorLow.find((low) => pts > low) : B.favorRanks.find((need) => pts < need);
   const rival = rivalOf(v.faction);
-  const versus = rival ? `<div class="nego-fac rival"><span>対立</span><span class="fac f-${rival}">${factionById(rival).ja}</span><b>${num(g.favor[rival])}</b></div>` : '';
-  return `<div class="nego-fac"><span class="fac f-${f.id}">${f.ja}</span><span>の評価</span><b>${num(pts)}</b>${next !== undefined ? `<small>/${num(next)}</small>` : `<small>${pts < 0 ? 'どん底' : 'MAX'}</small>`}</div>${versus}`;
+  const signed = (points: number): string => `${shown(points) > 0 ? '+' : ''}${shown(points)}`;
+  const versus = rival ? `<div class="nego-fac rival"><span>対立</span><span class="fac f-${rival}">${factionById(rival).ja}</span><b>${signed(g.favor[rival])}</b></div>` : '';
+  return `<div class="nego-fac"><span class="fac f-${f.id}">${f.ja}</span><span>の評価</span><b>${signed(pts)}</b><small>${standing(f, pts)}</small></div>${versus}`;
 }
 
 /**
