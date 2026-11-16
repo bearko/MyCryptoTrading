@@ -148,14 +148,14 @@ function find(s: GameState, uid: number): { grid: GridId; stock: StockItem } | n
   return bag ? { grid: 'wallet', stock: bag } : null;
 }
 
-/** What the goods in the pot would make (the first one is the base). */
-export function planCraft(s: GameState, cat: Catalog, uids: readonly number[]): CraftPlan {
+/** What the goods in the pot would make (the first one is the base). `plain`: the base's own line, whatever pairing it could make. */
+export function planCraft(s: GameState, cat: Catalog, uids: readonly number[], plain = false): CraftPlan {
   const inputs = uids.map((uid) => find(s, uid)?.stock).filter((x): x is StockItem => !!x);
   const none: CraftPlan = { base: null, result: null, cond: 1, need: 0, have: 0, match: false, fee: 0, cross: '', block: 'empty' };
   if (inputs.length === 0) return none;
   const base = cat.itemById.get(inputs[0].itemId)!;
   const partners = inputs.slice(1).map((x) => cat.itemById.get(x.itemId)!);
-  const cross = crossOf(cat, base, partners);
+  const cross = plain ? null : crossOf(cat, base, partners);
   const result = cross?.item ?? nextOf(cat, base);
   const need = pointsOf(base);
   const have = partners.reduce((sum, p) => sum + pointsOf(p), 0);
@@ -170,13 +170,47 @@ export function planCraft(s: GameState, cat: Catalog, uids: readonly number[]): 
 
 export const CRAFT_MAX = 3;
 
+/** One thing the goods in the pot could become: which of them grows (it leads `order`), and what comes of it. */
+export interface Candidate {
+  order: number[];
+  /** the base's own line, though a special pairing was possible */
+  plain: boolean;
+  plan: CraftPlan;
+  /** a special pairing not made before: what comes out is not told */
+  secret: boolean;
+}
+
+/**
+ * What the goods in the pot could become: up to three results to choose from. Any of the goods can be the one
+ * that grows (into the next of its line), and any two that make a special pairing give that pairing's good.
+ * The ones that can be made now come first, special pairings ahead of the rest, then by worth.
+ */
+export function candidates(s: GameState, cat: Catalog, uids: readonly number[]): Candidate[] {
+  const found: Candidate[] = [];
+  for (const uid of uids) {
+    const order = [uid, ...uids.filter((other) => other !== uid)];
+    for (const plain of [false, true]) {
+      const plan = planCraft(s, cat, order, plain);
+      if (!plan.result || (plain && !planCraft(s, cat, order).cross)) continue;
+      const same = found.findIndex((c) => c.plan.result!.id === plan.result!.id);
+      const next: Candidate = { order, plain, plan, secret: !!plan.cross && !s.crosses.includes(plan.cross) };
+      // (the same result two ways: the way that can be made, then the better kept)
+      if (same < 0) found.push(next);
+      else if ((found[same].plan.block && !plan.block) || (!!found[same].plan.block === !!plan.block && plan.cond > found[same].plan.cond)) found[same] = next;
+    }
+  }
+  const worth = (c: Candidate): number => (c.plan.result!.limited ? B.limitedValue : B.rarityValue[c.plan.result!.rarity]);
+  return found.sort((a, b) => Number(!!a.plan.block) - Number(!!b.plan.block) || Number(!!b.plan.cross) - Number(!!a.plan.cross) || worth(b) - worth(a)).slice(0, CRAFT_MAX);
+}
+
 /** Makes it: the goods are used up and the result is put on the shelf (in the wallet when the shelf has no room). */
 export function craft(
   s: GameState,
   cat: Catalog,
   uids: readonly number[],
+  plain = false,
 ): { ok: true; uid: number; item: Item; first: boolean; cross: boolean; found: boolean } | { ok: false; reason: 'plan' | 'room' } {
-  const plan = planCraft(s, cat, uids);
+  const plan = planCraft(s, cat, uids, plain);
   const found = uids.map((uid) => find(s, uid));
   if (plan.block || !plan.result || uids.length > CRAFT_MAX || new Set(uids).size !== uids.length || found.some((f) => !f)) return { ok: false, reason: 'plan' };
   const used = found.map((f) => f!);

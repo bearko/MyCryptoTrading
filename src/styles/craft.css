@@ -582,3 +582,129 @@ html.calm .pot img {
   font-size: 0.75rem;
   line-height: 1.5;
 }
+
+/*
+ * The pot's board, from the top down: what could come out (up to three, to choose from), the pot, what goes in
+ * (up to three), then the shop's goods to put in — by a click, or carried up.
+ */
+.pcands,
+.craft > .pslots {
+  display: grid;
+  grid-template-columns: repeat(3, 76px);
+  justify-content: center;
+  gap: 14px;
+  padding-top: 6px;
+}
+.pcand {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  padding: 0;
+  border: 3px solid var(--rar, var(--ink-3));
+  background: var(--fill, var(--ink-2));
+  cursor: pointer;
+}
+.pcand.empty,
+.craft > .pslots .pslot.empty {
+  border: 3px dashed var(--mute);
+  background: none;
+  cursor: default;
+}
+.pcand.empty small {
+  color: var(--mute);
+  font-weight: 700;
+}
+.pcand img {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.pcand em {
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  translate: -50% 0;
+  padding: 0 5px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.625rem;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pcand.dim img,
+.pcand.dim .pcand-q {
+  opacity: 0.4;
+}
+.pcand.picked {
+  outline: 3px solid var(--gum);
+  outline-offset: 3px;
+}
+/* a pairing not made before: a question mark, and a glow to go with it */
+.pcand.secret {
+  border-color: var(--gum);
+  background: var(--ink);
+  animation: cand-glow 1.6s ease-in-out infinite;
+}
+.pcand-q {
+  font-family: var(--f-pixel);
+  font-size: 2.25rem;
+  color: var(--gum);
+}
+@keyframes cand-glow {
+  50% {
+    box-shadow: 0 0 0 4px var(--gum-wash);
+  }
+}
+html.calm .pcand.secret {
+  animation: none;
+}
+.craft > .pot {
+  justify-self: center;
+  width: 120px;
+  height: 120px;
+  margin: 2px 0 -6px;
+}
+.craft > .pot img {
+  width: 116px;
+  height: 116px;
+}
+.craft > .pslots .pslot {
+  width: 76px;
+  height: 76px;
+}
+.craft > .pslots .pslot img {
+  width: 58px;
+  height: 58px;
+}
+.craft > .pout-text {
+  justify-content: center;
+  margin-top: 12px;
+}
+.craft > .pinfo {
+  justify-content: center;
+}
+.pgood.lifted {
+  opacity: 0.35;
+}
+.pick-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 90;
+  pointer-events: none;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+/* the card of a pairing not made before: a shadow of the good, and no name */
+.secret-tile img {
+  filter: brightness(0);
+}
+.item-card.secret {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}

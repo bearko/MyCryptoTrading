@@ -125,7 +125,16 @@ function examined(result: '' | 'real' | 'fake', at: () => HTMLElement | null, kn
   }
 }
 
-type Drag = { kind: 'win'; dx: number; dy: number; sx: number; sy: number; moving: boolean } | { kind: 'pop'; id: PopId; dx: number; dy: number } | OfferDrag | ItemDrag;
+/** A good carried from the pot's list of goods up into the pot. */
+interface PickDrag {
+  kind: 'pick';
+  uid: number;
+  sx: number;
+  sy: number;
+  from: HTMLElement;
+  ghost: HTMLElement | null;
+}
+type Drag = PickDrag | { kind: 'win'; dx: number; dy: number; sx: number; sy: number; moving: boolean } | { kind: 'pop'; id: PopId; dx: number; dy: number } | OfferDrag | ItemDrag;
 let drag: Drag | null = null;
 
 const HOLD_MS = 500;
@@ -306,6 +315,12 @@ function onDown(event: PointerEvent): void {
       return;
     }
   }
+  // a good in the pot's list: a still press is a click (it goes in); carried, it is dropped into the pot
+  const listed = target.closest<HTMLElement>('.pgood');
+  if (listed) {
+    drag = { kind: 'pick', uid: Number(listed.id.split('-')[1]), sx: event.clientX, sy: event.clientY, from: listed, ghost: null };
+    return;
+  }
   // (with a mouse the whole slip is a handle, not only its bar; on a phone the slip's body scrolls under the finger)
   const bar = target.closest(isWide() ? '#win' : '.win-bar');
   if (bar && !target.closest('input, [data-offer], [data-item]') && (isWide() || !target.closest('button'))) {
@@ -416,6 +431,22 @@ function onMove(event: PointerEvent): void {
   const s = ctx.s;
   if (!drag || !s) return;
   const root = ctx.root;
+  if (drag.kind === 'pick') {
+    if (!drag.ghost) {
+      if (Math.hypot(event.clientX - drag.sx, event.clientY - drag.sy) < 6) return;
+      const ghost = drag.from.cloneNode(true) as HTMLElement;
+      ghost.removeAttribute('id');
+      ghost.classList.add('pick-ghost');
+      document.body.appendChild(ghost);
+      drag.ghost = ghost;
+      drag.from.classList.add('lifted');
+      ctx.swallowClick = true;
+    }
+    drag.ghost.style.transform = `translate(${event.clientX - 26}px, ${event.clientY - 26}px)`;
+    root.querySelector('#craft')?.classList.toggle('hot', overPot(event.clientX, event.clientY) && ui.craft.length < CRAFT_MAX);
+    event.preventDefault();
+    return;
+  }
   if (drag.kind === 'pop') {
     const rect = root.getBoundingClientRect();
     ui.pops[drag.id].x = event.clientX - rect.left - drag.dx;
@@ -549,6 +580,13 @@ function onMove(event: PointerEvent): void {
   d.ok = ok;
 }
 
+/** True over the pot's board, above its list of goods. */
+function overPot(x: number, y: number): boolean {
+  const board = ctx.root.querySelector<HTMLElement>('#craft');
+  const list = ctx.root.querySelector<HTMLElement>('#pgoods');
+  return !!board && inside(board.getBoundingClientRect(), x, y) && !(list && inside(list.getBoundingClientRect(), x, y));
+}
+
 function cleanup(): void {
   const root = ctx.root;
   root.classList.remove('dragging', 'drag-offer', 'drag-shelf', 'drag-wallet', 'drag-case');
@@ -592,6 +630,21 @@ function onUp(event: PointerEvent): void {
   drag = null;
   if (d.kind === 'pop') {
     root.querySelector(`#pop-${d.id}`)?.classList.remove('held');
+    return;
+  }
+  if (d.kind === 'pick') {
+    if (!d.ghost) return; // (a click: the button's own action puts it in)
+    d.ghost.remove();
+    root.querySelector('#craft')?.classList.remove('hot');
+    if (overPot(event.clientX, event.clientY) && ui.craft.length < CRAFT_MAX && !ui.craft.includes(d.uid)) {
+      ui.craft.push(d.uid);
+      ui.craftPick = 0;
+      ctx.render();
+      audio.sfx('drop');
+      const put = document.getElementById(`pslot-${d.uid}`);
+      if (put) fx.burst('dust', pointOn(put, 0.5, 0.9), { count: 8 });
+      haptic('light');
+    } else ctx.render();
     return;
   }
   if (d.kind === 'win') {
@@ -754,6 +807,7 @@ function onUp(event: PointerEvent): void {
     // dropped in the pot
     if (d.ok && !d.slot) {
       ui.craft.push(d.uid);
+      ui.craftPick = 0;
       ctx.render();
       good(document.getElementById(`pslot-${d.uid}`), 'drop');
     } else {
@@ -809,7 +863,7 @@ function onCancel(): void {
 }
 
 /** True while something is being dragged (the screen must not be redrawn under it). */
-export const dragging = (): boolean => !!drag && drag.kind !== 'win' && drag.kind !== 'pop' && drag.active;
+export const dragging = (): boolean => !!drag && drag.kind !== 'win' && drag.kind !== 'pop' && (drag.kind === 'pick' ? !!drag.ghost : drag.active);
 
 /** Turns the good being dragged a quarter (R, or the right button). True when something was turned. */
 export function rotateDragged(dir: 1 | -1 = 1): boolean {
