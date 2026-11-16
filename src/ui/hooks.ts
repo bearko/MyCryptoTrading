@@ -105,7 +105,8 @@ export function housesModal(g: GameState): string {
         <span class="fac f-${f.id}">${f.ja}</span>
         <span class="house-main"><b>${f.boon}<em>${rankName(rank)}</em>${f.rival ? `<span class="house-rival">対立：<i class="fac f-${f.rival}">${factionById(f.rival).ja}</i></span>` : '<span class="house-rival">対立なし</span>'}</b>
           <span class="house-bar"><i style="transform:scaleX(${fill.toFixed(3)})"></i></span>
-          <small>${lines.join('<br />')}</small></span>
+          <small>${lines.join('<br />')}</small>
+          <small class="house-trait"><b>${f.who}</b>${f.trait}</small></span>
         <span class="house-n"><b>${num(pts)}</b>${goal}</span>
       </div>`;
   }).join('');

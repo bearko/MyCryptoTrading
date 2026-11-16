@@ -1,6 +1,6 @@
 import { B } from './balance';
 import { POT_ID, type Effect } from './catalog';
-import type { Param, Catalog, Item } from './catalog';
+import type { Param, Catalog, Hero, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randInt, randRange } from './rng';
 import { ROTATED, sameCells, type Shape } from './shapes';
@@ -37,14 +37,16 @@ export const SALE_TIERS: number[] = [...B.generousTiers.map((_, i) => -(i + 1)).
 export const disposePrice = (cat: Catalog, stock: StockItem): number => Math.round(itemValue(cat, stock.itemId, stock.cond) * B.disposeRate);
 export const discountedAsk = (ask: number, tier: number): number => Math.max(1, Math.round(ask * (1 - B.discountTiers[tier])));
 
-function chance(s: GameState, base: number, temper: number): number {
+function chance(s: GameState, base: number, v: Visitor): number {
   if (base >= 1) return 1;
-  return clamp(base + B.temperMod[temper] + (s.rep - 50) / B.repDivisor + B.boonChance * favorRank(s, 'byakko'), 0.05, 0.95);
+  // (a scholar is harder to bargain with)
+  const house = v.faction === 'eichi' ? B.house.eichiChance : 0;
+  return clamp(base + B.temperMod[v.temper] + (s.rep - 50) / B.repDivisor + B.boonChance * favorRank(s, 'buyu') + house, 0.05, 0.95);
 }
 
 /** How often this customer accepts a price tier, before the budget comes into it. */
 export const tierChance = (s: GameState, v: Visitor, tier: number): number =>
-  chance(s, markupBase(markupOf(tier)) + (tier > 0 && hasPerk(s, 'tagger') ? B.perkTagger : 0), v.temper);
+  chance(s, markupBase(markupOf(tier)) + (tier > 0 && hasPerk(s, 'tagger') ? B.perkTagger : 0), v);
 
 // ---------------------------------------------------------------- the houses
 
@@ -68,7 +70,7 @@ function addFavor(s: GameState, v: Visitor, delta: number): void {
   if (rival) moveFavor(s, rival, rivalFavor(delta));
 }
 export const hasPerk = (s: GameState, id: PerkId): boolean => s.perks.includes(id);
-export const discountChance = (s: GameState, v: Visitor, tier: number): number => chance(s, B.discountChance[tier] + (hasPerk(s, 'talker') ? B.perkTalker : 0), v.temper);
+export const discountChance = (s: GameState, v: Visitor, tier: number): number => chance(s, B.discountChance[tier] + (hasPerk(s, 'talker') ? B.perkTalker : 0), v);
 
 /** How often a customer accepts paying `markup` over the fair price (0.15 = +15%). */
 function markupBase(markup: number): number {
@@ -211,7 +213,7 @@ export const visitorsFor = (rep: number): number => B.visitorsBase + Math.floor(
 export function visitorsExpected(s: GameState): number {
   const event = s.event.id === 'caravan' ? B.caravanVisitors : s.event.id === 'rain' ? B.rainVisitors : 0;
   const late = s.lateOpen && !hasPerk(s, 'nightowl') ? B.lateOpenLoss : 0;
-  return Math.max(B.visitorsMin, visitorsFor(s.rep) + event + (hasPerk(s, 'regular') ? 1 : 0) + B.boonVisitors * favorRank(s, 'suzaku') + (hasService(s, 'guest1') ? 1 : 0) + (hasService(s, 'guest2') ? 1 : 0) - late);
+  return Math.max(B.visitorsMin, visitorsFor(s.rep) + event + (hasPerk(s, 'regular') ? 1 : 0) + B.boonVisitors * favorRank(s, 'fuga') + (hasService(s, 'guest1') ? 1 : 0) + (hasService(s, 'guest2') ? 1 : 0) - late);
 }
 export const shelfCost = (s: GameState): number | null => B.shelfCost[s.shelfLevel] ?? null;
 
@@ -221,7 +223,7 @@ export function addRep(s: GameState, delta: number): void {
 
 /** The rarity of a good a hero brings in to sell: the hero's own, sometimes one below, seldom one above. */
 export function broughtRarity(s: GameState, heroRarity: number): number {
-  const up = B.broughtUp + 0.03 * B.boonRarity * favorRank(s, 'koryu');
+  const up = B.broughtUp + 0.03 * B.boonRarity * favorRank(s, 'eichi');
   const roll = rand(s);
   const step = roll < up ? 1 : roll < up + B.broughtDown ? -1 : 0;
   return clamp(heroRarity + step, 1, 5);
@@ -230,7 +232,7 @@ export function broughtRarity(s: GameState, heroRarity: number): number {
 // ---------------------------------------------------------------- new game and mornings
 
 export function rollRarity(s: GameState, heroBonus: number): number {
-  heroBonus += B.boonRarity * favorRank(s, 'koryu');
+  heroBonus += B.boonRarity * favorRank(s, 'eichi');
   return 1 + pickWeighted(s, B.rarityOdds.map(([base, rep, hero]) => Math.max(0, base + s.rep * rep + heroBonus * hero)));
 }
 
@@ -414,7 +416,7 @@ function makeVisitor(s: GameState, cat: Catalog): Visitor {
     const hero = cat.heroById.get(w.heroId)!;
     w.came = true;
     v.heroId = hero.id;
-    v.faction = factionOfName(hero.faction);
+    v.faction = factionOfName(hero.ja);
     v.wanted = true;
     // on the run: money to spend freely, or goods to be rid of
     // (the purse is this hero's own, not that of whoever would have come instead)
@@ -467,20 +469,29 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
   const appeal = showAppeal(s, cat);
   const draw = (rarity: number): number => (rarity >= 3 ? (1 + B.showAppeal[rarity] * appeal) * (hasService(s, 'vip') ? B.serviceVip : 1) : 1);
   const odds = B.heroOdds.map((w, rarity) => (rarity === 5 ? (s.day < B.specialFromDay || (s.day === B.specialFromDay && nthToday < 1) ? 0 : w * (hasPerk(s, 'patron') ? 2 : 1)) : w) * draw(rarity) * (comes(rarity) ? 1 : 0));
-  const hero = pick(s, cat.heroesByRarity[forcedRich ? 5 : pickWeighted(s, odds)]);
+  // (a ruler comes only to a shop whose window shows goods fit for one; the third day's passer-by is never one)
+  const best = shownGoods(s).reduce((top, x) => Math.max(top, cat.itemById.get(x.itemId)!.rarity), 0);
+  const fit = (h: Hero): boolean => factionOfName(h.ja) !== 'haou' || (!forcedRich && (h.rarity === 1 || best >= Math.min(4, h.rarity - B.house.haouShown)));
+  const drawn = cat.heroesByRarity[forcedRich ? 5 : pickWeighted(s, odds)];
+  const welcome = drawn.filter(fit);
+  const hero = pick(s, welcome.length > 0 ? welcome : drawn.filter((h) => factionOfName(h.ja) !== 'haou'));
+  const house = factionOfName(hero.ja);
+  const LINE: Partial<Record<FactionId, Param>> = { buyu: 'phy', eichi: 'int', fuga: 'agi' };
+  const line = house ? LINE[house] : undefined;
   const heroBonus = hero.rarity - 1;
   const temper = pickWeighted(s, B.temperWeights);
   let sellerShare: number = B.sellerShare;
   // (nothing to sell: the wallet and the like do not count)
   if (forSale(s).length === 0) sellerShare = 0.85;
   else if (freeCells(s, cat) < 4) sellerShare = 0.2;
+  if (house === 'haou') sellerShare *= B.house.haouSells;
   const base = {
     heroId: hero.id,
     temper,
-    patience: B.temperPatience[temper],
+    patience: Math.max(1, B.temperPatience[temper] - (house === 'buyu' ? 1 : 0)),
     haggled: false,
     nego: 0,
-    faction: factionOfName(hero.faction),
+    faction: house,
     mood: 'neutral' as const,
     done: false,
     offers: [] as Offer[],
@@ -533,17 +544,22 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
       if (s.seek && hasService(s, 'sign') && rand(s) < B.seekPull) {
         const sought = pool.filter((x) => x.params.includes(s.seek as Param));
         if (sought.length > 0) pool = sought;
+      } else if (line && rand(s) < B.house.houseBring) {
+        // a house brings its own line of goods
+        const own = pool.filter((x) => x.params.includes(line));
+        if (own.length > 0) pool = own;
       }
       const item = pick(s, pool);
-      const cond = pickWeighted(s, B.condWeights);
-      const hurry = s.event.id === 'bargain' ? B.bargainAsk : 1;
+      const cond = Math.min(B.condWeights.length - 1, pickWeighted(s, B.condWeights) + (house === 'fuga' ? 1 : 0));
+      const hurry = (s.event.id === 'bargain' ? B.bargainAsk : 1) * (house === 'muhou' ? B.house.muhouAsk : 1);
       const guild = hasService(s, 'eye') ? 1 - B.serviceAsk : 1;
-      offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi) * hurry * guild * (1 - B.boonAsk * favorRank(s, 'genbu')))) });
+      offers.push({ itemId: item.id, cond, ask: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, lo, hi) * hurry * guild * (1 - B.boonAsk * favorRank(s, 'muhou')))) });
     }
+    const shady = house === 'muhou' ? B.house.muhouShady : 1;
     // some of it is not what it seems: a replica, priced a little low
     if (s.day >= B.fakeFromDay) {
       for (const o of offers) {
-        if (rand(s) >= B.fakeOdds[cat.itemById.get(o.itemId)!.rarity]) continue;
+        if (house === 'eichi' || rand(s) >= B.fakeOdds[cat.itemById.get(o.itemId)!.rarity] * shady) continue;
         o.fake = true;
         o.ask = Math.max(1, Math.round(o.ask * B.fakeAsk));
       }
@@ -551,7 +567,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
     // … and some of it is hot: cheap, and no questions asked
     if (s.day >= B.hotFromDay) {
       for (const o of offers) {
-        if (o.fake || rand(s) >= B.hotOdds) continue;
+        if (o.fake || rand(s) >= B.hotOdds * shady) continue;
         o.hot = true;
         o.ask = Math.max(1, Math.round(o.ask * B.hotAsk));
       }
@@ -561,11 +577,13 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
   }
 
   let want: Want;
+  let pulled = false;
   const shown = shownGoods(s);
   // (word of what the shop has does not bring customers after the shop's own tools, such as the pot)
   const plain = s.stock.filter((x) => !x.bag && !cat.itemById.get(x.itemId)?.effect);
   if (shown.length > 0 && rand(s) < Math.min(B.showPullMax, B.showPull[0] + B.showPull[1] * shown.length)) {
     // drawn in by the showcase: after the kind of good that is shown there
+    pulled = true;
     const item = cat.itemById.get(pick(s, shown).itemId)!;
     want = rand(s) < 0.7 || item.roles.length === 0 ? { type: 'param', param: pick(s, item.params) } : { type: 'role', role: pick(s, item.roles) };
   } else if (plain.length > 0 && rand(s) < B.buyerKnowsStock) {
@@ -584,6 +602,13 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
     else if (roll < 0.85) want = { type: 'rarity', min: clamp(rarity, 2, 4) };
     else want = { type: 'any' };
   }
+  // a house has its own tastes: the captains, scholars and artists their line of goods; the rulers goods of standing;
+  // the outlaws anything at all
+  if (house && !pulled && rand(s) < B.house.houseWant) {
+    if (line) want = { type: 'param', param: line };
+    else if (house === 'haou' && hero.rarity >= 2) want = { type: 'rarity', min: clamp(hero.rarity, 2, 4) };
+    else if (house === 'muhou') want = { type: 'any' };
+  }
   // on a demand day, most buyers are after that parameter line and bring more money for it
   let demand = 1;
   if (s.event.id === 'demand' && s.event.param && rand(s) < 0.6) {
@@ -591,10 +616,11 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
     demand = B.demandBudget;
   }
   // some customers carry enough for two or three goods; rarer heroes more often
-  const goods = 1 + pickWeighted(s, [B.budgetCountWeights[0], B.budgetCountWeights[1] + heroBonus * 4, B.budgetCountWeights[2] + heroBonus * 4]);
+  const goods = 1 + (house === 'fuga' ? 1 : 0) + pickWeighted(s, [B.budgetCountWeights[0], B.budgetCountWeights[1] + heroBonus * 4, B.budgetCountWeights[2] + heroBonus * 4]);
   // the purse is the hero's own (rarer heroes are richer): it does not follow what the shop happens to hold
   const purse = B.heroWealth[Math.min(hero.rarity, 4)] * randRange(s, B.wealthSpread[0], B.wealthSpread[1]) * (1 + s.rep * B.wealthPerRep);
-  const budget = Math.round(purse * goods * demand * (1 + B.boonBudget * favorRank(s, 'seiryu')));
+  const housePurse = house === 'haou' ? B.house.haouPurse : house === 'buyu' ? B.house.buyuPurse : house === 'muhou' ? B.house.muhouPurse : 1;
+  const budget = Math.round(purse * goods * demand * housePurse * (1 + B.boonBudget * favorRank(s, 'haou')));
   return { ...base, kind: 'buy', want, budget, line: lines.buyOpen(s, want) };
 }
 
@@ -647,9 +673,9 @@ export function examineStock(s: GameState, uid: number): '' | 'real' | 'fake' {
 
 /** A house posts a notice for a hero of its rival house: they will come by within a few days. */
 function postWanted(s: GameState, cat: Catalog): void {
-  const by = pick(s, ['suzaku', 'seiryu', 'genbu', 'byakko'] as const);
+  const by = pick(s, ['haou', 'buyu', 'muhou', 'eichi'] as const);
   const prey = rivalOf(by)!;
-  const heroes = cat.heroes.filter((h) => factionOfName(h.faction) === prey && h.rarity >= 2 && h.rarity <= Math.min(4, s.clientele));
+  const heroes = cat.heroes.filter((h) => factionOfName(h.ja) === prey && h.rarity >= 2 && h.rarity <= Math.min(4, s.clientele));
   if (heroes.length === 0) return;
   const hero = pick(s, heroes);
   s.wanted = { heroId: hero.id, by, bounty: B.wantedBounty[hero.rarity], day: s.day + randInt(s, B.wantedWithin + 1), slot: randInt(s, Math.max(1, s.visitorsToday - 1)), came: false };
@@ -956,7 +982,7 @@ export function quoteSale(s: GameState, cat: Catalog, v: Visitor, uids: readonly
     paid,
     budget,
     over: Math.max(0, asked - budget),
-    chance: chance(s, markupBase(markup) + (markup > 1e-9 && hasPerk(s, 'tagger') ? B.perkTagger : 0), v.temper),
+    chance: chance(s, markupBase(markup) + (markup > 1e-9 && hasPerk(s, 'tagger') ? B.perkTagger : 0), v),
     matches: goods.length > 0 && goods.every((x) => matches(cat, v.want, x.itemId)),
   };
 }
