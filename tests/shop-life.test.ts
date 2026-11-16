@@ -327,6 +327,12 @@ describe('the five houses', () => {
     G.addTo(fine, catalog, 'case', catalog.itemsByRarity[4][0].id, 1, 0);
     const kings = visitors(fine, 1200).filter((v) => house(v) === 'haou' && catalog.heroById.get(v.heroId)!.rarity >= 2);
     expect(kings.length).toBeGreaterThan(20);
+    // the monitor says as much: no rulers above the novice to a bare window, and what would bring them
+    const before = G.forecast(bare, catalog);
+    const after = G.forecast(fine, catalog);
+    expect(before.rulersNeed).toBe(2 - B.house.haouShown);
+    expect(after.houses.haou).toBeGreaterThan(before.houses.haou * 3);
+    expect(Object.values(after.houses).reduce((a, n) => a + n, 0)).toBeCloseTo(1, 5);
     // … and they seldom sell
     expect(kings.filter((v) => v.kind === 'sell').length / kings.length).toBeLessThan(0.25);
   });

@@ -1224,13 +1224,13 @@ html.calm .inv-fx {
 .fc-row.fc-off {
   color: var(--mute);
 }
-.fc-bar i {
+.fc-bar > i {
   flex: 0 0 96px;
   height: 10px;
   border: 2px solid var(--ink);
   background: var(--paper-2);
 }
-.fc-bar u {
+.fc-bar > i > u {
   display: block;
   height: 100%;
   background: var(--ink);
@@ -1243,4 +1243,8 @@ html.calm .inv-fx {
 }
 .fc-bar.s-agi u {
   background: var(--leaf);
+}
+
+.fc-bar[class*='f-'] u {
+  background: var(--fc, var(--ink));
 }

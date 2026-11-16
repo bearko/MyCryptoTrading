@@ -6,7 +6,7 @@ import { catalog as cat, HERO_CLASS_JA, PARAM_JA, RARITY_JA } from '../game/cata
 import * as G from '../game/logic';
 import { SLOT_IDS, type GameState } from '../game/state';
 import { B, WEEKDAYS } from '../game/balance';
-import { factionById, rivalOf } from '../game/factions';
+import { FACTIONS, factionById, rivalOf } from '../game/factions';
 import { GROUP_JA, hasService, loanBlock, loanNightly, loanTotal, serviceBlock, SERVICES, SUPPLIES, supplyBlock, supplyById, trustDaily } from '../game/network';
 import { atHome, caseCellFor, ctx, ui } from './core';
 import { gridItem } from './grid';
@@ -118,6 +118,8 @@ export function forecastModal(g: GameState): string {
     )
     .join('');
   const purses = f.purses.map((x) => `<div class="fc-row"><span>${HERO_CLASS_JA[x.rarity]}</span><b>およそ ${num(x.budget)} GUM</b></div>`).join('');
+  const houses = FACTIONS.map((h) => `<div class="fc-bar f-${h.id}"><span><span class="fac f-${h.id}">${h.ja}</span></span><i><u style="width:${pct(f.houses[h.id])}"></u></i><b>${pct(f.houses[h.id])}</b></div>`).join('');
+  const rulers = f.rulersNeed > 0 ? `<p class="note bad">覇王のヒーローは、ショーケースに<b>${RARITY_JA[f.rulersNeed]}以上</b>の品がないと来ません。</p>` : '';
   const next = g.clientele + 1;
   const crowd = next > 5 ? '' : `<div class="fc-row"><span>次の客層：${HERO_CLASS_JA[next]}</span><b>${Math.min(G.clienteleScore(g, cat, next), B.clienteleNeed[next])}/${B.clienteleNeed[next]}</b></div>`;
   return `<div class="modal" id="modal-forecast" data-ui><div class="modal-box tall">
@@ -131,6 +133,7 @@ export function forecastModal(g: GameState): string {
           : `<h3 class="rc-sub">欲しがる品<small>買い客のうち</small></h3>${lines}<div class="fc-row"><span>ショーケースを見て来る買い客</span><b>${pct(f.pull)}</b></div>
       <h3 class="rc-sub">来る階級<small>レアリティの高い品ほど効く</small></h3>${richer}`
       }
+      <h3 class="rc-sub">来る派閥<small>客のうち</small></h3>${houses}${rulers}
       <h3 class="rc-sub">客の予算<small>買い客 1 人あたり</small></h3>${purses}${crowd}
     </div>
     <div class="actions one">${btn('modal-close', '閉じる', { cls: 'primary' })}</div>

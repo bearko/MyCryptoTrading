@@ -1132,6 +1132,10 @@ export interface Forecast {
   richer: [number, number, number];
   /** what a buyer of each class that comes has to spend, about */
   purses: { rarity: number; budget: number }[];
+  /** of the customers to come, the share from each house (they add up to 1) */
+  houses: Record<FactionId, number>;
+  /** the rarity a good in the window must have for more rulers to come (0: every ruler who could come, does) */
+  rulersNeed: number;
 }
 
 /** What the window, as it stands now, will do for the shop from its next opening. */
@@ -1144,7 +1148,28 @@ export function forecast(s: GameState, cat: Catalog): Forecast {
     for (const param of params) lines[param] += 1 / params.length / goods.length;
   }
   const vip = hasService(s, 'vip') ? B.serviceVip : 1;
+  // who comes: each class of hero by its weight, and within a class every hero alike — but for the rulers,
+  // who stay away from a window that shows nothing fit for them
+  const best = goods.reduce((top, x) => Math.max(top, cat.itemById.get(x.itemId)!.rarity), 0);
+  const houses = noFavor();
+  let total = 0;
+  let rulersNeed = 0;
+  for (let rarity = 1; rarity <= Math.min(4, s.clientele); rarity++) {
+    const weight = B.heroOdds[rarity] * (rarity >= 3 ? (1 + B.showAppeal[rarity] * appeal) * vip : 1);
+    const all = cat.heroesByRarity[rarity];
+    const need = Math.min(4, rarity - B.house.haouShown);
+    const kept = all.filter((h) => factionOfName(h.ja) !== 'haou' || rarity === 1 || best >= need);
+    if (kept.length < all.length && (rulersNeed === 0 || need < rulersNeed)) rulersNeed = need;
+    for (const h of kept) {
+      const house = factionOfName(h.ja);
+      if (house) houses[house] += weight / kept.length;
+    }
+    total += weight;
+  }
+  for (const id of Object.keys(houses) as FactionId[]) houses[id] = total > 0 ? houses[id] / total : 0;
   return {
+    houses,
+    rulersNeed,
     count: goods.length,
     full: caseFull(s, cat),
     appeal,
