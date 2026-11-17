@@ -23,6 +23,9 @@ export type Effect = 'pot' | 'crate';
 
 /** The boxes sent home from the night shop, kept shut on the shelf: goods of their own, as large as what they hold (the index is the box's size). */
 export const CRATE_IDS = [9001, 9002, 9003];
+/** A box once it is empty: folded flat. It is good for nothing but the bin. */
+export const FLAT_ID = 9000;
+const FLAT_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect x='1' y='6' width='14' height='5' fill='%23b98a52'/%3E%3Crect x='1' y='6' width='14' height='1' fill='%23d3a86e'/%3E%3Crect x='5' y='6' width='1' height='5' fill='%238a6236'/%3E%3Crect x='10' y='6' width='1' height='5' fill='%238a6236'/%3E%3Cpath d='M1 6h14v5H1z' fill='none' stroke='%231b1b22'/%3E%3C/svg%3E";
 /** (as large as the boxes of `balance.ts` hold: a box saves no room) */
 const CRATE_SHAPES = [['小', '4x4'], ['中', '5x4'], ['大', '6x5']];
 const CRATE_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect x='1' y='4' width='14' height='11' fill='%23b98a52'/%3E%3Crect x='1' y='4' width='14' height='3' fill='%23d3a86e'/%3E%3Crect x='7' y='4' width='2' height='11' fill='%23e9d7a8'/%3E%3Crect x='1' y='7' width='14' height='1' fill='%238a6236'/%3E%3Cpath d='M1 4h14v11H1z' fill='none' stroke='%231b1b22'/%3E%3C/svg%3E";
@@ -123,7 +126,7 @@ export function buildCatalog(data: CatalogData): Catalog {
   return {
     ...data,
     heroesByRarity,
-    itemById: new Map([...data.items, ...crates].map((i) => [i.id, i])),
+    itemById: new Map([...data.items, ...crates, { ...crates[0], id: FLAT_ID, ja: 'たたんだ段ボール', shape: '2x1' as ShapeId, skill: '空き箱', skillText: 'ゴミ箱に捨てられる。', img: FLAT_IMG, effect: undefined }].map((i) => [i.id, i])),
     heroById: new Map(data.heroes.map((h) => [h.id, h])),
     itemsByRarity,
     wallets: data.items.filter((i) => i.wallet).sort((a, b) => a.rarity - b.rarity),

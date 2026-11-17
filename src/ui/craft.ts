@@ -3,7 +3,7 @@
  * this is the board, the recipe book, and the show when something is made.
  */
 import { B } from '../game/balance';
-import { catalog as cat, POT_ID, COND_JA, RARITY_JA, type Item } from '../game/catalog';
+import { catalog as cat, FLAT_ID, POT_ID, COND_JA, RARITY_JA, type Item } from '../game/catalog';
 import * as C from '../game/craft';
 import * as G from '../game/logic';
 import type { GameState, StockItem } from '../game/state';
@@ -83,7 +83,7 @@ export function craftBoard(g: GameState): string {
     : `<div class="pinfo"><span class="pchip ${left === 0 ? 'ng' : ''}">今日あと <b>${left}</b> 回</span>${ui.craft.length > 0 ? `<span class="pwhy">${ui.craft.length === 1 ? WHY.alone : 'この組み合わせでは、何もできません'}</span>` : ''}</div>`;
   const used = new Set(ui.craft);
   const mine = [...g.stock, ...g.wallet.items]
-    .filter((x) => !used.has(x.uid) && !ui.counter.includes(x.uid) && !x.bag && !G.findItem(cat, x.itemId).effect)
+    .filter((x) => !used.has(x.uid) && !ui.counter.includes(x.uid) && !x.bag && !G.findItem(cat, x.itemId).effect && x.itemId !== FLAT_ID)
     .sort((a, b) => G.findItem(cat, b.itemId).rarity - G.findItem(cat, a.itemId).rarity || a.itemId - b.itemId)
     .map((x) => {
       const item = G.findItem(cat, x.itemId);

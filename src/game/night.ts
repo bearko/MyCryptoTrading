@@ -1,3 +1,4 @@
+import { FLAT_ID } from './catalog';
 import { B } from './balance';
 import type { Catalog, Item } from './catalog';
 import { addTo, canPlaceIn, disposePrice, findSlotIn, gridOf, packInto, hasPerk, itemsOf, goodsOf, itemValue, rollRarity, walletSize, type GridId } from './logic';
@@ -167,6 +168,8 @@ export function transfer(s: GameState, cat: Catalog, from: GridId, uid: number, 
   if (index < 0 || source[index].bag) return false;
   // (a shut box is kept on the shelf or in the wallet: it is not shown, binned or sent again)
   if (source[index].crate && to !== 'shelf' && to !== 'wallet') return false;
+  // (a folded box is not shown, and not sent)
+  if (source[index].itemId === FLAT_ID && (to === 'case' || to === 'box')) return false;
   const stock = source[index];
   const target = gridOf(s, cat, to);
   const slot = x === undefined || y === undefined ? findSlotIn(target, cat, stock.itemId) : canPlaceIn(target, cat, stock.itemId, x, y, stock.rot) ? { x, y, rot: stock.rot } : null;
@@ -192,7 +195,7 @@ export type ManyResult = { ok: true; moved: number[] } | { ok: false; fit: numbe
  */
 export function moveMany(s: GameState, cat: Catalog, from: GridId, uids: readonly number[], to: GridId): ManyResult {
   const source = itemsOf(s, from);
-  const goods = source.filter((x) => uids.includes(x.uid) && !x.bag && !(x.crate && to !== 'shelf' && to !== 'wallet'));
+  const goods = source.filter((x) => uids.includes(x.uid) && !x.bag && !(x.crate && to !== 'shelf' && to !== 'wallet') && !(x.itemId === FLAT_ID && (to === 'case' || to === 'box')));
   const target = gridOf(s, cat, to);
   const others = from === to ? target.items.filter((x) => !goods.includes(x)) : target.items;
   const { spots, left } = packInto({ cols: target.cols, rows: target.rows, items: others }, cat, goods);
