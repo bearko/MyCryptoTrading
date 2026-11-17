@@ -1,3 +1,4 @@
+import { knows } from '../game/guide';
 import { factionById } from '../game/factions';
 import { B } from '../game/balance';
 import { catalog as cat, SLOT_JA } from '../game/catalog';
@@ -73,12 +74,14 @@ export function overModal(g: GameState, v: Visitor): string {
 
 /** The door: where to go tonight. */
 export function destModal(): string {
+  // (the dungeon is on offer once it has been spoken of)
+  const quest = !ctx.s || knows(ctx.s, 'quest');
   return `<div class="modal" id="modal-dest" data-ui><div class="modal-box dest">
     <h2 class="modal-title"><small>TONIGHT</small>どこへ行きますか？</h2>
     <p class="hint">一晩に行けるのは一か所だけ。外出すると翌朝の開店が遅れ、お客さんが ${B.lateOpenLoss} 人減ります。</p>
     <div class="dest-cards">
       <button class="dest-card go-shop" data-act="go-shop" data-sfx="none"><span class="dest-icon">${ICON.bag}</span><span class="dest-text"><b>ショップ</b><small>エクステンションを買い、ウォレットに入れて持ち帰る</small></span><em>SHOP</em></button>
-      <button class="dest-card go-quest" data-act="go-quest" data-sfx="confirm"><span class="dest-icon">${ICON.sword}</span><span class="dest-text"><b>クエスト</b><small>装備を整えてダンジョンへ。品と GUM を持ち帰る</small></span><em>QUEST</em></button>
+      <button class="dest-card go-quest ${quest ? '' : 'untaught'}" data-act="go-quest" data-sfx="confirm"><span class="dest-icon">${ICON.sword}</span><span class="dest-text"><b>クエスト</b><small>装備を整えてダンジョンへ。品と GUM を持ち帰る</small></span><em>QUEST</em></button>
     </div>
     <div class="actions one">${btn('modal-close', 'やめる', { cls: 'ghost' })}</div>
   </div></div>`;
