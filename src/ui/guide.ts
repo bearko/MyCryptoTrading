@@ -1,5 +1,6 @@
 import { catalog as cat } from '../game/catalog';
-import { GUIDE_HERO, LESSONS } from '../game/guide';
+import { GUIDE_HERO, LESSONS, lessonText } from '../game/guide';
+import { ctx } from './core';
 import { ui } from './core';
 import { btn, esc } from './html';
 
@@ -11,7 +12,7 @@ export function memoModal(): string {
   if (!lesson) return '';
   return `<div class="modal" id="modal-memo" data-ui><div class="modal-box memo">
     <div class="memo-head"><img class="memo-face" src="${face()}" alt="" draggable="false" /><span><small>福沢諭吉のメモ</small><b class="pix">${esc(lesson.title)}</b></span></div>
-    ${lesson.text.map((t) => `<p class="memo-text">${esc(t)}</p>`).join('')}
+    ${(ctx.s ? lessonText(ctx.s, lesson) : lesson.text).map((t) => `<p class="memo-text">${esc(t)}</p>`).join('')}
     <p class="memo-hint">${esc(lesson.hint)}</p>
     <div class="actions">${btn('memo-ok', 'わかった', { cls: 'primary', sfx: 'confirm' })}</div>
   </div></div>`;

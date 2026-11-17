@@ -66,6 +66,8 @@ export interface Offer {
   seen?: boolean;
   /** a hot good: cheap, and taken away if a patrol finds it on the shelf */
   hot?: boolean;
+  /** the first replica of a guided game: the one small failure the shop is led into */
+  bait?: boolean;
 }
 
 export interface Visitor {
@@ -282,6 +284,8 @@ export interface GameState {
   parcel: Parcel[];
   /** what the shop has been taught in its first days (see guide.ts); absent or null: everything */
   taught?: string[] | null;
+  /** the first replica of a guided game: offered by the caller at `cursor`, then bought (as `uid`), then found out by its buyer */
+  bait?: { at: 'offered' | 'bought' | 'caught'; cursor: number; uid?: number } | null;
   /** MCHC held (the night shop takes nothing else), what one costs in GUM today, and what it cost yesterday */
   mchc: number;
   rate: number;

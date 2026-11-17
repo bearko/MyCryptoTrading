@@ -419,3 +419,50 @@ describe('the first days are taught a thing at a time', () => {
     for (const l of Gd.LESSONS) expect(l.text.length).toBeGreaterThan(0);
   });
 });
+
+describe('the one small failure of the first days', () => {
+  const start = async () => {
+    const Gd = await import('../src/game/guide');
+    const s = G.newGame(91, catalog);
+    Gd.startGuided(s);
+    for (const id of ['sleep', 'mchc', 'shop', 'case', 'pot'] as const) Gd.learn(s, catalog, id);
+    s.day = B.fakeFromDay;
+    s.phase = 'morning';
+    s.gum = 5000;
+    G.openShop(s, catalog);
+    return { s, Gd };
+  };
+
+  it('bought and sold on: the buyer finds out, it costs a little, and the loupe comes', async () => {
+    const { s, Gd } = await start();
+    const seller = G.currentVisitor(s)!;
+    expect(seller.kind).toBe('sell');
+    expect(seller.offers).toHaveLength(1);
+    expect(seller.offers[0].fake).toBe(true);
+    expect(seller.offers[0].ask).toBeLessThan(G.itemValue(catalog, seller.offers[0].itemId, 2) * 0.6);
+    expect(Gd.knows(s, 'loupe')).toBe(false);
+    expect(G.buy(s, catalog, [0])).toBe(true);
+    expect(s.bait?.at).toBe('bought');
+    expect(Gd.lessonDue(s)).toBeNull();
+    G.pass(s);
+    G.callNext(s, catalog);
+    const buyer = G.currentVisitor(s)!;
+    expect(buyer.kind).toBe('buy');
+    const rep = s.rep;
+    expect(G.sell(s, catalog, [s.bait!.uid!], 0)).toBe('sold');
+    expect(s.bait?.at).toBe('caught');
+    expect(s.rep).toBeLessThan(rep + 3);
+    expect(Gd.lessonDue(s)).toBe('loupe');
+    expect(Gd.lessonText(s, Gd.LESSONS.find((l) => l.id === 'loupe')!)[0]).toContain('レプリカ');
+    Gd.learn(s, catalog, 'loupe');
+    expect(Gd.lessonDue(s)).toBeNull();
+  });
+
+  it('passed up: he says it was well judged, and the loupe comes all the same', async () => {
+    const { s, Gd } = await start();
+    expect(Gd.lessonDue(s)).toBeNull();
+    G.pass(s);
+    expect(Gd.lessonDue(s)).toBe('loupe');
+    expect(Gd.lessonText(s, Gd.LESSONS.find((l) => l.id === 'loupe')!)[0]).toContain('いい判断');
+  });
+});

@@ -1,3 +1,4 @@
+import { knows } from '../game/guide';
 import { B } from '../game/balance';
 import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
@@ -89,7 +90,7 @@ export function counterBar(g: GameState, v: Visitor | null): string {
   // the loupe lies on the counter's edge once replicas are about: a good dragged onto it is looked at closely
   const looks = G.looksLeft(g);
   const loupe =
-    g.phase === 'open' && g.day >= B.fakeFromDay
+    g.phase === 'open' && g.day >= B.fakeFromDay && knows(g, 'loupe')
       ? `<button class="loupe ${looks ? '' : 'spent'}" id="loupe" data-act="loupe" data-sfx="none" aria-label="ルーペ（品をここへドラッグして、本物かレプリカかを見分ける。今日はあと ${looks} 回）">${LOUPE}<em>${looks}</em></button>`
       : '';
   return `<div class="ledge" aria-hidden="true"></div>
