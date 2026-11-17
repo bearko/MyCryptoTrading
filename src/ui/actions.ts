@@ -949,7 +949,7 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       ui.parcelHelp = !ui.parcelHelp;
       break;
     case 'crate-open':
-      if (G.openCrate(g, n)) {
+      if (G.openCrate(g, cat, n)) {
         store.save(g);
         audio.sfx('open');
       }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { B } from '../src/game/balance';
-import { catalog, POT_ID } from '../src/game/catalog';
+import { catalog, FLAT_ID, POT_ID } from '../src/game/catalog';
 import * as C from '../src/game/craft';
 import * as G from '../src/game/logic';
 import * as M from '../src/game/mchc';
@@ -306,8 +306,13 @@ describe('the night shop: goods on a floor, and a box to send home', () => {
     // opened, its goods take the room it stood in
     const at = { x: box.x, y: box.y };
     expect(G.unboxCrate(s, catalog, box.uid)).toBe(sent);
-    const out = s.stock.filter((x) => !x.bag);
+    // (and the empty box lies folded on the shelf: not for sale, but it can be thrown away)
+    const flat = s.stock.find((x) => x.itemId === FLAT_ID)!;
+    expect(G.forSale(s).includes(flat)).toBe(false);
+    expect(N.transfer(s, catalog, 'shelf', flat.uid, 'case')).toBe(false);
+    const out = s.stock.filter((x) => !x.bag && x !== flat);
     expect(out).toHaveLength(sent);
+    expect(G.toTrash(s, catalog, flat.uid)).toBe(true);
     for (const x of out) {
       expect(x.x).toBeGreaterThanOrEqual(at.x);
       expect(x.x).toBeLessThan(at.x + B.boxes[2].cols);

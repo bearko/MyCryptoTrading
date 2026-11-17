@@ -1,5 +1,5 @@
 import { B } from './balance';
-import { POT_ID, type Effect, CRATE_IDS } from './catalog';
+import { POT_ID, type Effect, CRATE_IDS, FLAT_ID } from './catalog';
 import type { Param, Catalog, Hero, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randInt, randRange } from './rng';
@@ -126,7 +126,7 @@ export type GridId = 'shelf' | 'wallet' | 'case' | 'trash' | 'box';
 /** The goods lying on a grid. */
 export const itemsOf = (s: GameState, id: GridId): StockItem[] => (id === 'shelf' ? s.stock : id === 'wallet' ? s.wallet.items : id === 'trash' ? s.trash : id === 'box' ? (s.shop?.box?.items ?? []) : s.showcase);
 /** Everything a buyer can be sold: what is on the shelf and what is in the showcase. */
-export const forSale = (s: GameState): StockItem[] => [...s.stock.filter((x) => !x.bag && !x.crate), ...s.showcase];
+export const forSale = (s: GameState): StockItem[] => [...s.stock.filter((x) => !x.bag && !x.crate && x.itemId !== FLAT_ID), ...s.showcase];
 /** How wide the showcase is, in columns. */
 export const caseCols = (s: GameState): number => B.caseCols[(hasService(s, 'case1') ? 1 : 0) + (hasService(s, 'case2') ? 1 : 0)];
 
@@ -880,11 +880,17 @@ function courier(s: GameState, cat: Catalog): Visitor {
 }
 
 /** Opens a box standing by the telephone: what is in it joins the parcel, to be taken in from there. */
-export function openCrate(s: GameState, index: number): boolean {
+/** An emptied box folds itself flat and lies on the shelf, to be thrown away (when there is no room for it, it is simply gone). */
+function foldBox(s: GameState, cat: Catalog): void {
+  addTo(s, cat, 'shelf', FLAT_ID, 1, 0);
+}
+
+export function openCrate(s: GameState, cat: Catalog, index: number): boolean {
   const box = s.crates[index];
   if (!box) return false;
   s.crates.splice(index, 1);
   s.parcel.push(...box.items.map((x) => ({ itemId: x.itemId, cond: x.cond, paid: x.paid })));
+  foldBox(s, cat);
   return true;
 }
 
@@ -918,6 +924,7 @@ export function unboxCrate(s: GameState, cat: Catalog, uid: number): number {
     s.stock.push({ uid: s.nextUid++, itemId: x.itemId, cond: x.cond, paid: x.paid, ...slot });
     out += 1;
   }
+  foldBox(s, cat);
   return out;
 }
 

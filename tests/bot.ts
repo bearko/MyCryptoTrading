@@ -1,3 +1,4 @@
+import { FLAT_ID } from '../src/game/catalog';
 import * as M from '../src/game/mchc';
 import { B } from '../src/game/balance';
 import type { Catalog } from '../src/game/catalog';
@@ -81,7 +82,8 @@ const WANTED: ServiceId[] = ['case1', 'guest1', 'vip', 'eye', 'guest2', 'case2']
 
 /** The morning round of the shop's things: the parcel, the guild, the showcase, and an order when the shelf is thin. */
 function keepShop(s: GameState, cat: Catalog, pot: boolean): void {
-  while (s.crates.length > 0) G.openCrate(s, 0);
+  while (s.crates.length > 0) G.openCrate(s, cat, 0);
+  for (const x of s.stock.filter((it) => it.itemId === FLAT_ID)) G.toTrash(s, cat, x.uid);
   G.unpackAll(s, cat);
   const reserve = G.daysToRent(s) <= 2 && !s.owned ? s.rent : 0;
   // the guild: with trust when there is enough of it, with GUM only when money is plentiful
