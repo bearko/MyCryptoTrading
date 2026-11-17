@@ -22,12 +22,13 @@ function imageSpot(cells: readonly (readonly [number, number])[], size: number):
 }
 
 /** One good on a grid: a tile for each cell of its footprint (outlined along the outer edge), and its picture. */
-export function gridItem(x: { uid: number; itemId: number; x: number; y: number; rot: number; fake?: boolean; seen?: boolean; hot?: boolean; bag?: boolean }, cls = ''): string {
+export function gridItem(x: { uid: number; itemId: number; x: number; y: number; rot: number; fake?: boolean; seen?: boolean; hot?: boolean; bag?: boolean; crate?: unknown }, cls = ''): string {
   const cell = ctx.cell;
   const item = G.findItem(cat, x.itemId);
   // (a good with an effect of its own wears a mark: it does something when it is double-clicked)
   if (item.effect || x.bag) cls += ' special';
   if (ui.marked?.uids.includes(x.uid)) cls += ' picked';
+  if (x.crate) cls += ' crate';
   const shape = G.shapeOf(cat, x.itemId, x.rot);
   const has = new Set(shape.cells.map(([cx, cy]) => `${cx},${cy}`));
   const cells = shape.cells

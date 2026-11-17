@@ -62,6 +62,7 @@ export interface Ui {
   gearHelp: boolean;
   /** the notes on the sending service are open */
   shipHelp: boolean;
+  parcelHelp: boolean;
   /** the swap panel: which token is given, and how much of it */
   dex: { from: 'gum' | 'mchc'; amount: number };
   /** where a bought good goes at a click, at the night shop */
@@ -106,6 +107,7 @@ export const ui: Ui = {
   gearFlash: null,
   gearHelp: false,
   shipHelp: false,
+  parcelHelp: false,
   dex: { from: 'gum', amount: 0 },
   stowTo: 'wallet',
   rung: null,

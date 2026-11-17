@@ -1499,3 +1499,20 @@ html.calm .inv-fx {
   max-height: 132px;
   overflow: auto;
 }
+
+/* a shut box on the shelf: card, with its picture kept small in the middle */
+.inv-item.crate .inv-cell {
+  background: color-mix(in srgb, var(--gum) 38%, var(--ink-2));
+}
+.inv-item.crate img {
+  width: 56%;
+  height: 56%;
+  inset: 22%;
+  image-rendering: pixelated;
+}
+.crate-tile {
+  background: color-mix(in srgb, var(--gum) 38%, var(--paper));
+}
+.crate-row .btn {
+  flex: 0 0 auto;
+}

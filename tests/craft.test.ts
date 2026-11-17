@@ -278,13 +278,13 @@ describe('the night shop: goods on a floor, and a box to send home', () => {
     expect(sent).toBeGreaterThan(0);
     const day = s.day;
     N.goHome(s, catalog);
-    expect(s.post).toEqual([{ due: day + 1, items: expect.any(Array) }]);
+    expect(s.post).toEqual([{ due: day + 1, size: 2, items: expect.any(Array) }]);
     expect(s.post[0].items).toHaveLength(sent);
     // the next day: the keeper brings it as the last caller, and it lies by the telephone
     G.endDay(s);
     s.phase = 'morning';
     G.openShop(s, catalog);
-    const parcels = s.parcel.length;
+    s.stock = s.stock.filter((x) => x.bag);
     let courier = false;
     for (let n = 0; n < 60 && (s.phase as string) === 'open'; n++) {
       if (G.currentVisitor(s)?.special === 'courier') courier = true;
@@ -293,7 +293,26 @@ describe('the night shop: goods on a floor, and a box to send home', () => {
     }
     expect(courier).toBe(true);
     expect(s.post).toHaveLength(0);
-    expect(s.parcel.length).toBe(parcels + sent);
+    expect(s.crates).toHaveLength(1);
+    expect(s.crates[0].items).toHaveLength(sent);
+    // the box goes on the shelf shut, as large as it holds; it is not for sale, and not thrown away
+    expect(G.shelveCrate(s, catalog, 0)).toBe(true);
+    const box = s.stock.find((x) => x.crate)!;
+    const shape = G.shapeOf(catalog, box.itemId, 0);
+    expect([shape.w, shape.h]).toEqual([B.boxes[2].cols, B.boxes[2].rows]);
+    expect(G.forSale(s).includes(box)).toBe(false);
+    expect(G.toTrash(s, catalog, box.uid)).toBe(false);
+    expect(N.transfer(s, catalog, 'shelf', box.uid, 'case')).toBe(false);
+    // opened, its goods take the room it stood in
+    const at = { x: box.x, y: box.y };
+    expect(G.unboxCrate(s, catalog, box.uid)).toBe(sent);
+    const out = s.stock.filter((x) => !x.bag);
+    expect(out).toHaveLength(sent);
+    for (const x of out) {
+      expect(x.x).toBeGreaterThanOrEqual(at.x);
+      expect(x.x).toBeLessThan(at.x + B.boxes[2].cols);
+      expect(x.y).toBeLessThan(at.y + B.boxes[2].rows);
+    }
   });
 });
 

@@ -1,5 +1,5 @@
 import { B } from './balance';
-import { POT_ID, type Effect } from './catalog';
+import { POT_ID, type Effect, CRATE_IDS } from './catalog';
 import type { Param, Catalog, Hero, Item } from './catalog';
 import { lines } from './lines';
 import { pick, pickWeighted, rand, randInt, randRange } from './rng';
@@ -8,7 +8,7 @@ import { factionById, factionOfName, holds, noFavor, rankOf, rivalOf, FACTIONS, 
 import { favourites, HOUSE_KINDS, HOUSE_MARKS, type Kind, type Mark } from './kinds';
 import { hasService, repayNightly, supplyBlock, trustDaily, type SupplyId } from './network';
 import { PERKS, type PerkId } from './perks';
-import { emptySummary, type DayEvent, type DayOrder, type GameState, type LooseItem, type Offer, type StockItem, type Visitor, type Want } from './state';
+import { emptySummary, type DayEvent, type DayOrder, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
 
 const clamp = (v: number, min: number, max: number): number => Math.min(max, Math.max(min, v));
 
@@ -126,7 +126,7 @@ export type GridId = 'shelf' | 'wallet' | 'case' | 'trash' | 'box';
 /** The goods lying on a grid. */
 export const itemsOf = (s: GameState, id: GridId): StockItem[] => (id === 'shelf' ? s.stock : id === 'wallet' ? s.wallet.items : id === 'trash' ? s.trash : id === 'box' ? (s.shop?.box?.items ?? []) : s.showcase);
 /** Everything a buyer can be sold: what is on the shelf and what is in the showcase. */
-export const forSale = (s: GameState): StockItem[] => [...s.stock.filter((x) => !x.bag), ...s.showcase];
+export const forSale = (s: GameState): StockItem[] => [...s.stock.filter((x) => !x.bag && !x.crate), ...s.showcase];
 /** How wide the showcase is, in columns. */
 export const caseCols = (s: GameState): number => B.caseCols[(hasService(s, 'case1') ? 1 : 0) + (hasService(s, 'case2') ? 1 : 0)];
 
@@ -474,6 +474,7 @@ export function newGame(seed: number, cat: Catalog): GameState {
     supply: null,
     parcel: [],
     post: [],
+    crates: [],
     mchc: B.mchc.start,
     rate: B.mchc.base,
     rateWas: B.mchc.base,
@@ -832,7 +833,7 @@ export function callNext(s: GameState, cat: Catalog): void {
     const due = s.post.filter((p) => p.due <= s.day);
     const came = (who: Visitor['special']): boolean => s.queue.some((v) => v.special === who);
     const tuesday = (s.day - 1) % 7 === B.mchc.weekday - 1;
-    const next = tuesday && !came('satoshi') ? satoshi(s, cat) : due.length > 0 ? courier(s, cat, due.flatMap((p) => p.items)) : !isRentDay(s) ? null : !came('dealer') ? dealer(s, cat) : !came('landlord') ? landlord(s, cat) : null;
+    const next = tuesday && !came('satoshi') ? satoshi(s, cat) : due.length > 0 ? courier(s, cat) : !isRentDay(s) ? null : !came('dealer') ? dealer(s, cat) : !came('landlord') ? landlord(s, cat) : null;
     if (next) {
       s.callers += 1;
       s.queue.push(next);
@@ -871,10 +872,53 @@ export function stepRate(s: GameState): void {
 }
 
 /** The keeper of the night shop, with the box sent home the night before: it is set down by the telephone. */
-function courier(s: GameState, cat: Catalog, goods: LooseItem[]): Visitor {
+function courier(s: GameState, cat: Catalog): Visitor {
+  const due = s.post.filter((p) => p.due <= s.day);
   s.post = s.post.filter((p) => p.due > s.day);
-  s.parcel.push(...goods);
-  return { ...caller(s, cat, B.dealerHero), special: 'courier', want: { type: 'rarity', min: 9 }, budget: 0, line: `お届け物だよ。${goods.length} 個、電話の横に置いておくからね。` };
+  s.crates.push(...due.map((p) => ({ size: p.size, items: p.items })));
+  return { ...caller(s, cat, B.dealerHero), special: 'courier', want: { type: 'rarity', min: 9 }, budget: 0, line: `お届け物だよ。箱を ${due.length} つ、電話の横に置いておくからね。` };
+}
+
+/** Opens a box standing by the telephone: what is in it joins the parcel, to be taken in from there. */
+export function openCrate(s: GameState, index: number): boolean {
+  const box = s.crates[index];
+  if (!box) return false;
+  s.crates.splice(index, 1);
+  s.parcel.push(...box.items.map((x) => ({ itemId: x.itemId, cond: x.cond, paid: x.paid })));
+  return true;
+}
+
+/** Puts a box on the shelf still shut. It takes as much room as it holds (a box saves none). */
+export function shelveCrate(s: GameState, cat: Catalog, index: number): boolean {
+  const box = s.crates[index];
+  const uid = box ? addTo(s, cat, 'shelf', CRATE_IDS[box.size], 1, 0) : null;
+  if (!box || uid === null) return false;
+  s.stock.find((x) => x.uid === uid)!.crate = box.items;
+  s.crates.splice(index, 1);
+  return true;
+}
+
+/**
+ * Opens a box on the shelf: its goods take the room it stood in, as they were packed (when the box was turned,
+ * or something is in the way, they take the first free spots; what finds none goes to the parcel).
+ */
+export function unboxCrate(s: GameState, cat: Catalog, uid: number): number {
+  const index = s.stock.findIndex((x) => x.uid === uid && x.crate);
+  if (index < 0) return -1;
+  const [box] = s.stock.splice(index, 1);
+  let out = 0;
+  for (const x of box.crate!) {
+    const g = gridOf(s, cat, 'shelf');
+    const there = { x: box.x + x.x, y: box.y + x.y, rot: x.rot };
+    const slot = box.rot === 0 && canPlaceIn(g, cat, x.itemId, there.x, there.y, there.rot) ? there : findSlotIn(g, cat, x.itemId);
+    if (!slot) {
+      s.parcel.push({ itemId: x.itemId, cond: x.cond, paid: x.paid });
+      continue;
+    }
+    s.stock.push({ uid: s.nextUid++, itemId: x.itemId, cond: x.cond, paid: x.paid, ...slot });
+    out += 1;
+  }
+  return out;
 }
 
 /** The landlord: comes for the rent, and sells the shop to a keeper who can pay for it. */
@@ -1238,7 +1282,7 @@ export function pass(s: GameState): void {
 export function dispose(s: GameState, cat: Catalog, uid: number, id: GridId = 'shelf'): boolean {
   const items = itemsOf(s, id);
   const index = items.findIndex((x) => x.uid === uid);
-  if (index < 0 || items[index].bag) return false;
+  if (index < 0 || items[index].bag || items[index].crate) return false;
   const price = disposePrice(cat, items[index]);
   items.splice(index, 1);
   s.gum += price;
@@ -1425,7 +1469,7 @@ export function tidyBin(s: GameState, cat: Catalog): void {
 export function toTrash(s: GameState, cat: Catalog, uid: number, id: GridId = 'shelf'): boolean {
   const items = itemsOf(s, id);
   const index = items.findIndex((x) => x.uid === uid);
-  if (id === 'trash' || index < 0 || items[index].bag) return false;
+  if (id === 'trash' || index < 0 || items[index].bag || items[index].crate) return false;
   // (the bin is a grid of its own: only so much can be thrown away in a day)
   const slot = findSlotIn(gridOf(s, cat, 'trash'), cat, items[index].itemId);
   if (!slot) return false;

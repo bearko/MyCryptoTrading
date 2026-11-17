@@ -3,7 +3,7 @@
  * beside the shelf): the bin — goods are dragged into it — and the bed — a click on it at night ends the day.
  */
 import { MARK_JA, MARKS } from '../game/kinds';
-import { catalog as cat, HERO_CLASS_JA, PARAM_JA, RARITY_JA } from '../game/catalog';
+import { catalog as cat, HERO_CLASS_JA, PARAM_JA, RARITY_JA, CRATE_IDS } from '../game/catalog';
 import * as G from '../game/logic';
 import { SLOT_IDS, type GameState } from '../game/state';
 import { B, WEEKDAYS } from '../game/balance';
@@ -87,7 +87,7 @@ export function stageProps(g: GameState): string {
       ${sign}<small class="case-tip">${tip}</small></div>
     <button class="monitor ${g.phase === 'open' && pending(g) ? 'stale' : ''}" id="monitor" data-act="forecast" data-sfx="open" aria-label="予測客のモニター（ショーケースが呼ぶ客の見込みを見る）"><i class="mon-screen"><u></u><u></u><u></u></i><b>予測客</b></button>
     ${wantedNotice(g)}
-    ${g.parcel.length ? `<button class="parcel" id="parcel" data-act="parcel" data-sfx="open" aria-label="ギルドから届いた荷物（${g.parcel.length} 個。クリックで受け取る）">${CRATE}<b>荷物</b><em>${g.parcel.length}</em></button>` : ''}
+    ${g.parcel.length + g.crates.length ? `<button class="parcel" id="parcel" data-act="parcel" data-sfx="open" aria-label="届いた荷物（${g.crates.length + g.parcel.length} 個。クリックで受け取る）">${CRATE}<b>荷物</b><em>${g.parcel.length}</em></button>` : ''}
   </div>${phone}`;
 }
 
@@ -364,11 +364,19 @@ export function parcelModal(g: GameState): string {
       return `<div class="pick-row">${itemTile(item, 'sm')}<span class="pick-main"><b class="pix">${esc(item.ja)}</b><small>相場 ${num(G.itemValue(cat, x.itemId, x.cond))}</small></span>${btn('unpack', '棚へ', { arg: i, cls: 'small', sfx: 'none' })}</div>`;
     })
     .join('');
+  // boxes sent from the night shop, still shut: opened here, or put on the shelf as they are
+  const boxes = g.crates
+    .map((c, i) => {
+      const b = B.boxes[c.size];
+      return `<div class="pick-row crate-row"><span class="tile sm crate-tile"><img src="${G.findItem(cat, CRATE_IDS[c.size]).img}" alt="" draggable="false" /></span><span class="pick-main"><b class="pix">段ボール箱（${b.ja}）</b><small>${c.items.length} 個入り・${b.cols}×${b.rows} マス</small></span>${btn('crate-shelve', '箱のまま棚へ', { arg: i, cls: 'small ghost', sfx: 'none' })}${btn('crate-open', '開ける', { arg: i, cls: 'small', sfx: 'none' })}</div>`;
+    })
+    .join('');
   return `<div class="modal" id="modal-parcel" data-ui><div class="modal-box tall">
-    <h2 class="modal-title"><small>PARCEL</small>ギルドからの荷物</h2>
-    <p class="hint">電話で取り寄せた品です。棚（いっぱいならウォレット）に空きがある分だけ受け取れます。残りは、ここで待っています。</p>
-    <div class="modal-scroll">${rows}</div>
-    <div class="actions">${btn('modal-close', 'あとで')}${btn('unpack', 'すべて受け取る', { arg: 'all', cls: 'primary', sfx: 'none' })}</div>
+    <button class="help-dot ${ui.parcelHelp ? 'on' : ''}" data-act="parcel-help" aria-label="荷物の説明" aria-pressed="${ui.parcelHelp}">?</button>
+    <h2 class="modal-title"><small>PARCEL</small>届いた荷物</h2>
+    ${ui.parcelHelp ? '<p class="hint">棚（いっぱいならウォレット）に空きがある分だけ受け取れます。残りは、ここで待っています。箱は、開けずに棚へ置くこともできます（箱の大きさは、入る量と同じです）。棚の箱は、クリックで開きます。</p>' : ''}
+    <div class="modal-scroll">${boxes}${rows}</div>
+    <div class="actions">${btn('modal-close', 'あとで')}${g.parcel.length ? btn('unpack', 'すべて受け取る', { arg: 'all', cls: 'primary', sfx: 'none' }) : ''}</div>
   </div></div>`;
 }
 
