@@ -163,6 +163,16 @@ export function customerWindow(g: GameState, v: Visitor): string {
     <i class="teeth" aria-hidden="true"></i>
   </div>`;
   }
+  if (v.special === 'courier') {
+    // the keeper of the night shop, with last night's box: nothing to trade
+    return `<div class="win paper small kind-buy rent-win" id="win" data-ui style="left:${ui.win.x}px;top:${ui.win.y}px">
+    <div class="win-bar"><span class="win-kind"><span>配達</span></span><i class="win-grip" aria-hidden="true"></i></div>
+    <div class="win-who"><b>${esc(hero.ja)}</b><em class="temper t0">夜のショップ</em></div>
+    <div class="win-body"><div class="sum"><span>届いた荷物</span><b class="total">${g.parcel.length} 個</b></div>
+      <p class="hint">電話の横の荷物から、棚に出せます。ベルを鳴らして、見送ります。</p></div>
+    <i class="teeth" aria-hidden="true"></i>
+  </div>`;
+  }
   if (v.special === 'landlord') {
     // the landlord's slip: pay, do not pay, or buy the shop outright
     const can = G.rentChoices(g);

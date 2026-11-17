@@ -87,7 +87,7 @@ export interface Visitor {
   /** deals closed with this customer (a customer who leaves with none breaks the streak) */
   deals: number;
   /** an unusual customer: 大富豪 / 急ぎの旅人 / 収集家 */
-  special?: 'rich' | 'hurry' | 'collector' | 'patrol' | 'dealer' | 'landlord';
+  special?: 'rich' | 'hurry' | 'collector' | 'patrol' | 'dealer' | 'landlord' | 'courier';
   /** a patrol: the hot goods it took from the shelf, and the fine */
   seized?: number[];
   fine?: number;
@@ -142,8 +142,11 @@ export interface DayEvent {
 
 /** A night visit to the shop: what is for sale, and what was bought but is not in the wallet yet. */
 export interface ShopVisit {
-  goods: { itemId: number; cond: number; price: number; sold: boolean }[];
+  /** each good stands on the shop's floor at its real size (x, y: its top-left cell) */
+  goods: { itemId: number; cond: number; price: number; sold: boolean; x?: number; y?: number }[];
   tray: LooseItem[];
+  /** a box bought to send goods home (its size is an index into B.boxes) */
+  box?: { size: number; items: StockItem[] } | null;
 }
 
 export interface Fighter {
@@ -267,6 +270,8 @@ export interface GameState {
   /** the wanted notice on the wall, if one is up */
   wanted: Wanted | null;
   parcel: Parcel[];
+  /** boxes sent from the night shop, on their way: each comes with the last caller of the day it is due */
+  post: { due: number; items: LooseItem[] }[];
   /** goods dropped in the bin: they can be taken back until the night, when they are carried off and paid for */
   trash: StockItem[];
   /** what the night's collection will pay for them */

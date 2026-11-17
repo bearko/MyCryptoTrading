@@ -84,6 +84,7 @@ function enterGame(g: GameState | null): void {
       G.enlarge(g, cat);
       G.tidyBin(g, cat);
       G.refit(g, cat);
+      N.layShop(g, cat);
       store.save(g);
     } else if (g && (!g.wide || G.shelfSpills(g, cat))) {
       G.repackShelf(g, cat);
@@ -424,7 +425,7 @@ function buy(g: GameState, v: Visitor, picks: number[], button: HTMLElement | nu
 
 function shopBuy(g: GameState, index: number, button: HTMLElement | null): void {
   const good = g.shop?.goods[index];
-  const tile = $(`#good-${index} .tile`);
+  const tile = $(`#sgood-${index}`)?.offsetParent ? $(`#sgood-${index}`) : $(`#good-${index} .tile`);
   const from = tile?.getBoundingClientRect() ?? null;
   const firstUid = g.nextUid;
   if (!good || !N.shopBuy(g, index)) {
@@ -434,12 +435,12 @@ function shopBuy(g: GameState, index: number, button: HTMLElement | null): void 
     return;
   }
   // straight into the wallet when it fits; otherwise it waits on the tray
-  const stowed = N.stow(g, cat, g.shop!.tray.length - 1);
+  const stowed = N.stow(g, cat, g.shop!.tray.length - 1, g.shop!.box ? ui.stowTo : 'wallet') || (!!g.shop!.box && N.stow(g, cat, g.shop!.tray.length - 1, ui.stowTo === 'box' ? 'wallet' : 'box'));
   store.save(g);
   render();
   audio.sfx('buy');
   haptic('light');
-  const target = stowed ? document.getElementById(`item-${firstUid}`) : $('#tray .zone-goods .offer:last-child');
+  const target = stowed ? (document.getElementById(`item-${firstUid}`) ?? document.getElementById(`bgood-${firstUid}`)) : $('#tray .zone-goods .offer:last-child');
   if (target && from) {
     target.style.visibility = 'hidden';
     void flyGhost(itemTile(G.findItem(cat, good.itemId), 'fly'), from, target.getBoundingClientRect(), { ms: 440, arc: -30 }).then(() => {
@@ -456,14 +457,15 @@ function stow(g: GameState, index: number, button: HTMLElement | null): void {
   const from = button?.getBoundingClientRect() ?? null;
   const loose = g.shop?.tray[index];
   const firstUid = g.nextUid;
-  if (!loose || !N.stow(g, cat, index)) {
+  const first = g.shop?.box ? ui.stowTo : 'wallet';
+  if (!loose || !(N.stow(g, cat, index, first) || (!!g.shop?.box && N.stow(g, cat, index, first === 'box' ? 'wallet' : 'box')))) {
     nope(button);
-    note('ウォレットに入らない', 'bad');
+    note(g.shop?.box ? 'ウォレットにも箱にも入らない' : 'ウォレットに入らない。発送サービスも使えます', 'bad');
     return;
   }
   store.save(g);
   render();
-  const target = document.getElementById(`item-${firstUid}`);
+  const target = document.getElementById(`item-${firstUid}`) ?? document.getElementById(`bgood-${firstUid}`);
   if (target && from) {
     target.style.visibility = 'hidden';
     void flyGhost(itemTile(G.findItem(cat, loose.itemId), 'fly'), from, target.getBoundingClientRect(), { ms: 320, arc: -20 }).then(() => {
@@ -1105,6 +1107,31 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
         goHome(g);
         return;
       }
+      break;
+    case 'ship':
+      ui.modal = 'ship';
+      break;
+    case 'ship-help':
+      ui.shipHelp = !ui.shipHelp;
+      break;
+    case 'stow-to':
+      ui.stowTo = arg === 'box' ? 'box' : 'wallet';
+      audio.sfx('tap');
+      break;
+    case 'box-buy':
+      if (N.buyBox(g, n)) {
+        ui.stowTo = 'box';
+        closeModal();
+        store.save(g);
+        audio.sfx('buy');
+        haptic('light');
+      } else {
+        audio.sfx('error');
+        nope(el);
+      }
+      break;
+    case 'unbox':
+      if (N.unstow(g, n)) store.save(g);
       break;
     case 'shop-leave-ok':
       goHome(g);

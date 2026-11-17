@@ -4,6 +4,7 @@ import { catalog, POT_ID } from '../src/game/catalog';
 import * as C from '../src/game/craft';
 import * as G from '../src/game/logic';
 import * as N from '../src/game/night';
+import { seeOff } from './util';
 
 const item = (id: number) => catalog.itemById.get(id)!;
 
@@ -239,5 +240,58 @@ describe('moving many goods at once, and the bin as a grid', () => {
     expect(N.transfer(s, catalog, 'trash', uids[0], 'shelf')).toBe(true);
     expect(s.trash).toHaveLength(room - 1);
     expect(G.toTrash(s, catalog, uids[room])).toBe(true);
+  });
+});
+
+describe('the night shop: goods on a floor, and a box to send home', () => {
+  it('goods stand on the floor at their size without touching, and a box sends what the wallet cannot carry', () => {
+    const s = G.newGame(31, catalog);
+    s.phase = 'evening';
+    s.gum = 99999;
+    expect(N.goShop(s, catalog)).toBe(true);
+    const shop = s.shop!;
+    const taken = new Set<string>();
+    for (const g of shop.goods) {
+      const [w, h] = catalog.itemById.get(g.itemId)!.shape.split('x').map(Number);
+      expect(g.x! + w).toBeLessThanOrEqual(B.shopFloor);
+      expect(g.y! + h).toBeLessThanOrEqual(B.shopFloor);
+      for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) {
+        expect(taken.has(`${g.x! + x},${g.y! + y}`)).toBe(false);
+        taken.add(`${g.x! + x},${g.y! + y}`);
+      }
+    }
+    // everything is bought: the wallet takes what it can, the rest waits
+    shop.goods.forEach((g, i) => {
+      if (!catalog.itemById.get(g.itemId)!.wallet && N.shopBuy(s, i)) N.stow(s, catalog, shop.tray.length - 1);
+    });
+    expect(shop.tray.length).toBeGreaterThan(0);
+    const before = s.gum;
+    expect(N.buyBox(s, 0)).toBe(true);
+    expect(before - s.gum).toBe(B.boxes[0].price + B.boxes[0].post);
+    // a larger box costs the difference, and a smaller one is refused
+    expect(N.buyBox(s, 0)).toBe(false);
+    expect(N.buyBox(s, 2)).toBe(true);
+    expect(before - s.gum).toBe(B.boxes[2].price + B.boxes[2].post);
+    let sent = 0;
+    for (let i = shop.tray.length - 1; i >= 0; i--) if (N.stow(s, catalog, i, 'box')) sent += 1;
+    expect(sent).toBeGreaterThan(0);
+    const day = s.day;
+    N.goHome(s, catalog);
+    expect(s.post).toEqual([{ due: day + 1, items: expect.any(Array) }]);
+    expect(s.post[0].items).toHaveLength(sent);
+    // the next day: the keeper brings it as the last caller, and it lies by the telephone
+    G.endDay(s);
+    s.phase = 'morning';
+    G.openShop(s, catalog);
+    const parcels = s.parcel.length;
+    let courier = false;
+    for (let n = 0; n < 60 && (s.phase as string) === 'open'; n++) {
+      if (G.currentVisitor(s)?.special === 'courier') courier = true;
+      seeOff(s);
+      G.callNext(s, catalog);
+    }
+    expect(courier).toBe(true);
+    expect(s.post).toHaveLength(0);
+    expect(s.parcel.length).toBe(parcels + sent);
   });
 });

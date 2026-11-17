@@ -835,8 +835,41 @@
   #app[data-phase='shop'] > .shop .shop-hint {
     display: none;
   }
+  #app[data-phase='shop'] > .shop {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+  }
   #app[data-phase='shop'] > .shop .shop-list {
-    margin-top: 12px;
+    display: none;
+  }
+  #app[data-phase='shop'] > .shop .shop-floor-wrap {
+    display: grid;
+    place-items: center;
+    min-height: 0;
+    padding: 12px 0 4px;
+    container-type: size;
+  }
+  .shop-floor {
+    --scell: calc(min(100cqw, 100cqh) / var(--n));
+    position: relative;
+    width: calc(var(--scell) * var(--n));
+    height: calc(var(--scell) * var(--n));
+    border: 3px solid var(--violet);
+    background:
+      radial-gradient(circle, color-mix(in srgb, var(--paper) 22%, transparent) 1px, transparent 1.5px) 0 0 / var(--scell) var(--scell),
+      linear-gradient(to right, color-mix(in srgb, var(--violet) 35%, transparent) 1px, transparent 1px) 0 0 / var(--scell) var(--scell),
+      linear-gradient(to bottom, color-mix(in srgb, var(--violet) 35%, transparent) 1px, transparent 1px) 0 0 / var(--scell) var(--scell),
+      var(--ink);
+  }
+  #app[data-phase='shop'] .inv.with-side .board {
+    align-self: flex-start;
+  }
+  #app[data-phase='shop'] .inv.with-side .tray .counter-mat {
+    flex: 0 0 auto;
+  }
+  #app[data-phase='shop'] .inv.with-side .tray .btn {
+    min-height: 40px;
   }
   #app[data-phase='shop'] > .keeper {
     grid-column: 2;

@@ -1,3 +1,4 @@
+import { leaveShopModal, shipModal } from './shop';
 import morphdom from 'morphdom';
 import * as G from '../game/logic';
 import type { GameState } from '../game/state';
@@ -14,7 +15,7 @@ import { recipesModal } from './craft';
 import { spillModal, caseToldModal, deckProps, forecastModal, networkModal, calendarModal, parcelModal, trashModal, wantedModal } from './props';
 import { mountDesk } from './desk';
 import { hookEffects, housesModal, perkModal } from './hooks';
-import { destModal, ending, helpModal, inspectModal, leaveModal, menuModal, overModal, settingsModal } from './modals';
+import { destModal, ending, helpModal, inspectModal, menuModal, overModal, settingsModal } from './modals';
 import { nope } from './motion';
 import { questEffects, questScreen } from './quest';
 import { bubbleHtml, sceneEffects } from './scene';
@@ -47,7 +48,8 @@ function screenHtml(): string {
     if (ui.modal === 'menu') html += menuModal(g);
     if (ui.modal === 'over' && v) html += overModal(g, v);
     if (ui.modal === 'dest') html += destModal();
-    if (ui.modal === 'leave') html += leaveModal();
+    if (ui.modal === 'leave') html += leaveShopModal();
+    if (ui.modal === 'ship' && ctx.s) html += shipModal(ctx.s);
     if (ui.modal === 'gear') html += gearModal(g);
     if (ui.modal === 'pick') html += pickModal(g);
   }

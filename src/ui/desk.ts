@@ -36,6 +36,17 @@ function cardFor(el: HTMLElement): { key: string; html: string } | null {
     const item = G.findItem(cat, x.itemId);
     return { key: `i${uid}`, html: `${itemCard(x.itemId, x.cond)}<p class="tip-skill"><b>${esc(item.skill)}</b>${esc(item.skillText)}</p>` };
   }
+  // (a good on the night shop's floor, or in the box to be sent)
+  const onFloor = el.closest<HTMLElement>('.sgood[data-good]');
+  const o = onFloor ? s.shop?.goods[Number(onFloor.dataset.good)] : undefined;
+  if (o) {
+    const item = G.findItem(cat, o.itemId);
+    const fits = !!G.findSlotIn(G.gridOf(s, cat, 'wallet'), cat, o.itemId);
+    return { key: `s${onFloor!.dataset.good}:${s.wallet.items.length}`, html: `${itemCard(o.itemId, o.cond)}<p class="tip-skill"><b>${o.price} GUM</b>${fits ? 'ウォレットに入ります' : 'いまのウォレットには入りません'}</p><p class="tip-skill"><b>${esc(item.skill)}</b>${esc(item.skillText)}</p>` };
+  }
+  const inBox = el.closest<HTMLElement>('.bgood[data-boxed]');
+  const boxed = inBox ? s.shop?.box?.items.find((it) => it.uid === Number(inBox.dataset.boxed)) : undefined;
+  if (boxed) return { key: `b${boxed.uid}`, html: itemCard(boxed.itemId, boxed.cond) };
   // (what the pot could make: the good itself, or only its shadow)
   const cand = el.closest<HTMLElement>('.pcand[data-cand]');
   if (cand) {
