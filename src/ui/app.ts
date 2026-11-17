@@ -1,3 +1,4 @@
+import { dexModal } from './dex';
 import { leaveShopModal, shipModal } from './shop';
 import morphdom from 'morphdom';
 import * as G from '../game/logic';
@@ -50,6 +51,7 @@ function screenHtml(): string {
     if (ui.modal === 'dest') html += destModal();
     if (ui.modal === 'leave') html += leaveShopModal();
     if (ui.modal === 'ship' && ctx.s) html += shipModal(ctx.s);
+    if (ui.modal === 'dex' && ctx.s) html += dexModal(ctx.s);
     if (ui.modal === 'gear') html += gearModal(g);
     if (ui.modal === 'pick') html += pickModal(g);
   }

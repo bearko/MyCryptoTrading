@@ -59,7 +59,7 @@ export function hud(g: GameState): string {
   return `<header class="hud" id="hud" data-ui>
     <div class="hud-row">
       <button class="day-tag" id="day-tag" data-act="calendar" data-sfx="open" aria-label="${g.day} 日目（${weekday}）。クリックで暦を見る"><small>DAY</small><b>${g.day}</b><i>${weekday}</i></button>
-      <div class="hud-gum" id="hud-gum" aria-label="所持 GUM"><img src="${cat.icons.gum}" alt="" /><b id="gum-num" data-live>${num(shown.gum)}</b><small>GUM</small></div>
+      <div class="hud-gum" id="hud-gum" aria-label="所持 GUM"><img src="${cat.icons.gum}" alt="" /><b id="gum-num" data-live>${num(shown.gum)}</b><small>GUM</small><span class="hud-mchc" id="hud-mchc" aria-label="所持 MCHC ${g.mchc}"><img src="${cat.icons.mchc}" alt="" /><i>${num(g.mchc)}</i></span></div>
       <button class="hud-rep" id="hud-rep" data-act="houses" data-sfx="open" aria-label="評判 ${g.rep}（タップで派閥の評価を見る）">
         <span class="rep-top"><small>評判</small><b id="rep-num">${g.rep}</b></span>
         <span class="rep-stars"><span class="rep-fill" style="width:${stars}%">★★★★★</span>★★★★★</span>

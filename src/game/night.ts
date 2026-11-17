@@ -18,12 +18,12 @@ export function goShop(s: GameState, cat: Catalog): boolean {
   for (let i = 0; i < B.shopCount; i++) {
     const item = pick(s, goodsOf(s, cat, rollRarity(s, 0)));
     const cond = pickWeighted(s, B.condWeights);
-    goods.push({ itemId: item.id, cond, price: Math.max(1, Math.round(itemValue(cat, item.id, cond) * randRange(s, B.shopRate[0], B.shopRate[1]) * (hasPerk(s, 'eye') ? B.perkEye : 1))), sold: false });
+    goods.push({ itemId: item.id, cond, price: inMchc(itemValue(cat, item.id, cond) * randRange(s, B.shopRate[0], B.shopRate[1]) * (hasPerk(s, 'eye') ? B.perkEye : 1)), sold: false });
   }
   // sometimes the next wallet up is on sale: a bigger wallet carries more home
   const now = cat.itemById.get(s.wallet.itemId)!.rarity;
   const next = cat.wallets.find((w) => w.rarity === now + 1);
-  if (next && rand(s) < B.shopWalletChance) goods.push({ itemId: next.id, cond: 1, price: itemValue(cat, next.id, 1), sold: false });
+  if (next && rand(s) < B.shopWalletChance) goods.push({ itemId: next.id, cond: 1, price: inMchc(itemValue(cat, next.id, 1)), sold: false });
   s.shop = { goods, tray: [], box: null };
   layShop(s, cat);
   return true;
@@ -68,21 +68,23 @@ export function buyBox(s: GameState, size: number): boolean {
   const shop = s.shop;
   if (s.phase !== 'shop' || !shop || !B.boxes[size] || (shop.box && size <= shop.box.size)) return false;
   const cost = boxCost(s, size);
-  if (s.gum < cost) return false;
-  s.gum -= cost;
-  s.today.spend += cost;
+  if (s.mchc < cost) return false;
+  s.mchc -= cost;
   shop.box = { size, items: shop.box?.items ?? [] };
   return true;
 }
 
-/** Pays for a good. It is not in the wallet yet: it has to be put in to be carried home. */
+/** The night shop's price for a worth in GUM: in MCHC, at the price MCHC rests at (so MCHC bought cheap buys more). */
+const inMchc = (gum: number): number => Math.max(1, Math.round(gum / B.mchc.base));
+
+/** Pays for a good (in MCHC). It is not in the wallet yet: it has to be put in to be carried home. */
 export function shopBuy(s: GameState, index: number): boolean {
   const good = s.shop?.goods[index];
-  if (s.phase !== 'shop' || !good || good.sold || s.gum < good.price) return false;
-  s.gum -= good.price;
+  if (s.phase !== 'shop' || !good || good.sold || s.mchc < good.price) return false;
+  s.mchc -= good.price;
   good.sold = true;
-  s.today.spend += good.price;
-  s.shop!.tray.push({ itemId: good.itemId, cond: good.cond, paid: good.price });
+  // (what it cost, in GUM, for the shop's books)
+  s.shop!.tray.push({ itemId: good.itemId, cond: good.cond, paid: Math.round(good.price * B.mchc.base) });
   return true;
 }
 

@@ -242,6 +242,7 @@ const SERVICE_PICTURE: Partial<Record<ServiceId, string>> = {
   sign: rungIcon('tag'),
   tip: rungIcon('news'),
   waiver: tileIcon('scroll'),
+  dex: '<b class="gtile-txt">⇅</b>',
   pot: tileIcon('pot'),
   eye: rungIcon('loupe'),
 };

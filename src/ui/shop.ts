@@ -4,6 +4,7 @@ import * as G from '../game/logic';
 import type { GameState } from '../game/state';
 import * as N from '../game/night';
 import { ui } from './core';
+import { mchcTag } from './dex';
 import { sideFits } from './grid';
 import { btn, esc, glyphs, itemTile, labels, num, tone } from './html';
 
@@ -13,9 +14,9 @@ export function shopScreen(g: GameState): { top: string; side: string } {
   const goods = shop.goods
     .map((o, i) => {
       const item = G.findItem(cat, o.itemId);
-      const poor = !o.sold && g.gum < o.price;
+      const poor = !o.sold && g.mchc < o.price;
       const value = G.itemValue(cat, o.itemId, o.cond);
-      const off = Math.round((1 - o.price / value) * 100);
+      const off = Math.round((1 - (o.price * B.mchc.base) / value) * 100);
       return `<div class="shop-good ${o.sold ? 'sold' : ''}" id="good-${i}" style="--i:${i}">
         ${itemTile(item, 'lg')}
         <div class="good-body">
@@ -26,8 +27,8 @@ export function shopScreen(g: GameState): { top: string; side: string } {
         ${
           o.sold
             ? '<span class="stamp sold" aria-label="購入済み">SOLD</span>'
-            : `<button class="price-tag ${poor ? 'poor' : ''}" data-act="shop-buy" data-arg="${i}" data-sfx="none" ${poor ? 'disabled' : ''} aria-label="${esc(item.ja)}を ${o.price} GUM で買う">
-                <small>${poor ? 'GUM 不足' : off > 0 ? `${off}% お得` : '買う'}</small><b>${num(o.price)}</b></button>`
+            : `<button class="price-tag ${poor ? 'poor' : ''}" data-act="shop-buy" data-arg="${i}" data-sfx="none" ${poor ? 'disabled' : ''} aria-label="${esc(item.ja)}を ${o.price} MCHC で買う">
+                <small>${poor ? 'MCHC 不足' : off > 0 ? `${off}% お得` : '買う'}</small><b>${mchcTag(o.price)}</b></button>`
         }
       </div>`;
     })
@@ -37,11 +38,11 @@ export function shopScreen(g: GameState): { top: string; side: string } {
     .map((o, i) => {
       const item = G.findItem(cat, o.itemId);
       const [w, h] = item.shape.split('x').map(Number);
-      const poor = !o.sold && g.gum < o.price;
+      const poor = !o.sold && g.mchc < o.price;
       const at = `left:calc(var(--scell) * ${o.x ?? 0});top:calc(var(--scell) * ${o.y ?? 0});width:calc(var(--scell) * ${w});height:calc(var(--scell) * ${h})`;
       if (o.sold) return `<span class="sgood sold" id="sgood-${i}" style="${at}"><b>SOLD</b></span>`;
-      return `<button class="sgood ${poor ? 'poor' : ''}" id="sgood-${i}" data-good="${i}" data-act="shop-buy" data-arg="${i}" data-sfx="none" style="${at};${tone(item)}" aria-label="${esc(item.ja)}（${w}×${h} マス）を ${o.price} GUM で買う">
-          <img src="${item.img}" alt="" draggable="false" /><em>${num(o.price)}</em></button>`;
+      return `<button class="sgood ${poor ? 'poor' : ''}" id="sgood-${i}" data-good="${i}" data-act="shop-buy" data-arg="${i}" data-sfx="none" style="${at};${tone(item)}" aria-label="${esc(item.ja)}（${w}×${h} マス）を ${o.price} MCHC で買う">
+          <img src="${item.img}" alt="" draggable="false" /><em>${mchcTag(o.price)}</em></button>`;
     })
     .join('');
   // a box to send home what the wallet cannot carry
@@ -65,10 +66,10 @@ export function shopScreen(g: GameState): { top: string; side: string } {
   // the keeper of the shop (a wide screen: he stands on the right, above the wallet)
   const keeper = cat.heroById.get(B.dealerHero);
   const left = G.freeCells(g, cat, 'wallet');
-  const line = box && box.items.length > 0 ? '箱の品は、明日の閉店まぎわに届けるよ。' : shop.tray.length > 0 ? 'ウォレットに入らない品は、持ち帰れないよ。箱で送ることもできる。' : left === 0 ? 'ウォレットがいっぱいだね。大きいのに替えれば、もっと運べる。' : 'いらっしゃい。持ち帰れるのは、ウォレットに入るぶんだけだ。';
+  const line = box && box.items.length > 0 ? '箱の品は、明日の閉店まぎわに届けるよ。' : shop.tray.length > 0 ? 'ウォレットに入らない品は、持ち帰れないよ。箱で送ることもできる。' : left === 0 ? 'ウォレットがいっぱいだね。大きいのに替えれば、もっと運べる。' : g.mchc <= 0 ? 'うちは MCHC でしか売らないよ。火曜の両替商か、DEX で用意しておいで。' : 'いらっしゃい。支払いは MCHC。持ち帰れるのは、ウォレットに入るぶんだけだ。';
   const stage = `<main class="shop" id="shop" data-ui>
       <header class="shop-sign"><b>NIGHT SHOP</b><span>夜のショップ</span></header>
-      <p class="shop-hint">支払いは電子決済。手持ちの GUM をすべて使えます。買った品は、<b>ウォレットに入れた分だけ</b>持ち帰れます。</p>
+      <p class="shop-hint">支払いは MCHC だけ。買った品は、<b>ウォレットに入れた分だけ</b>持ち帰れます。</p>
       <div class="shop-list">${goods}</div>
       <div class="shop-floor-wrap"><div class="shop-floor" id="shop-floor" style="--n:${B.shopFloor}">${floor}</div></div>
     </main>
@@ -82,6 +83,7 @@ export function shopScreen(g: GameState): { top: string; side: string } {
         <div class="zone-goods">${tray || '<div class="counter-note">入りきらない品が<br />ここに並びます</div>'}</div></div>
       ${box ? `<div class="sbox-wrap"><span class="zone-label">発送の箱（${size!.ja}）</span>${boxed}
         <div class="stow-to" role="group" aria-label="買った品の入れ先"><button class="${ui.stowTo === 'wallet' ? 'on' : ''}" data-act="stow-to" data-arg="wallet" aria-pressed="${ui.stowTo === 'wallet'}">ウォレットへ</button><button class="${ui.stowTo === 'box' ? 'on' : ''}" data-act="stow-to" data-arg="box" aria-pressed="${ui.stowTo === 'box'}">箱へ</button></div></div>` : ''}
+      ${g.services.includes('dex') ? btn('dex', 'Swap', { cls: 'ghost', sfx: 'open' }) : ''}
       ${btn('ship', box ? '箱を大きくする' : '発送サービス', { cls: 'ghost', sfx: 'open', disabled: !!box && box.size >= B.boxes.length - 1 })}
       ${btn('shop-leave', '帰宅する', { cls: 'primary', sfx: 'none' })}
     </div>`;
@@ -90,7 +92,7 @@ export function shopScreen(g: GameState): { top: string; side: string } {
 }
 
 const SHIP_NOTES = `<ul class="ship-notes">
-      <li>箱代と送料がかかります（箱を大きくするときは、差額だけ）。</li>
+      <li>箱代と送料が MCHC でかかります（箱を大きくするときは、差額だけ）。</li>
       <li>箱に入れた品は、<b>翌日の閉店まぎわ</b>に店主が届けに来ます。店に並べられるのは、その次の日からです。</li>
       <li>届いた品は、電話の横の荷物から棚に出します。</li>
       <li>箱は 1 晩に 1 つ。箱に入れずに残した品は、持ち帰れません。</li>
@@ -103,9 +105,9 @@ export function shipModal(g: GameState): string {
     .map((b, i) => {
       const cost = N.boxCost(g, i);
       const had = !!now && i <= now.size;
-      return `<button class="ship-box ${had ? 'had' : ''} ${!had && g.gum < cost ? 'poor' : ''}" data-act="box-buy" data-arg="${i}" data-sfx="none" ${had || g.gum < cost ? 'disabled' : ''} aria-label="${b.ja}の箱（${b.cols}×${b.rows} マス）">
+      return `<button class="ship-box ${had ? 'had' : ''} ${!had && g.mchc < cost ? 'poor' : ''}" data-act="box-buy" data-arg="${i}" data-sfx="none" ${had || g.mchc < cost ? 'disabled' : ''} aria-label="${b.ja}の箱（${b.cols}×${b.rows} マス）">
         <i class="ship-pic" style="--c:${b.cols};--r:${b.rows}"></i><b>${b.ja}</b><span>${b.cols}×${b.rows} マス</span>
-        <em>${had ? (i === now!.size ? '購入済み' : '—') : `${num(cost)} GUM`}</em>${had ? '' : `<small>箱 ${b.price}＋送料 ${b.post}${now ? '（差額）' : ''}</small>`}</button>`;
+        <em>${had ? (i === now!.size ? '購入済み' : '—') : `${num(cost)} MCHC`}</em>${had ? '' : `<small>箱 ${b.price}＋送料 ${b.post}${now ? '（差額）' : ''}</small>`}</button>`;
     })
     .join('');
   return `<div class="modal" id="modal-ship" data-ui><div class="modal-box">

@@ -1,3 +1,4 @@
+import * as M from '../game/mchc';
 import { moveMany } from '../game/night';
 import { potCandidates } from './craft';
 import { B } from '../game/balance';
@@ -1110,6 +1111,47 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       break;
     case 'ship':
       ui.modal = 'ship';
+      break;
+    case 'dex':
+      if (M.hasDex(g)) {
+        ui.dex.amount = 0;
+        ui.modal = 'dex';
+      }
+      break;
+    case 'dex-add':
+      ui.dex.amount = Math.min(M.swapMax(g, M.facingSatoshi(g) ? 'gum' : ui.dex.from), ui.dex.amount + n);
+      break;
+    case 'dex-max':
+      ui.dex.amount = M.swapMax(g, M.facingSatoshi(g) ? 'gum' : ui.dex.from);
+      break;
+    case 'dex-clear':
+      ui.dex.amount = 0;
+      break;
+    case 'dex-flip':
+      ui.dex = { from: ui.dex.from === 'gum' ? 'mchc' : 'gum', amount: 0 };
+      break;
+    case 'dex-go':
+      if (M.swap(g, M.facingSatoshi(g) ? 'gum' : ui.dex.from, ui.dex.amount)) {
+        ui.dex.amount = 0;
+        store.save(g);
+        audio.sfx('buy');
+        haptic('light');
+      } else {
+        audio.sfx('error');
+        nope(el);
+      }
+      break;
+    case 'dex-medal':
+      if (M.swapMedal(g, cat, n)) {
+        ui.craft = ui.craft.filter((uid) => uid !== n);
+        ui.counter = ui.counter.filter((uid) => uid !== n);
+        store.save(g);
+        audio.sfx('buy');
+        haptic('light');
+      } else {
+        audio.sfx('error');
+        nope(el);
+      }
       break;
     case 'ship-help':
       ui.shipHelp = !ui.shipHelp;

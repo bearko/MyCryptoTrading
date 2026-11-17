@@ -1,3 +1,4 @@
+import { rateLine } from './dex';
 import { MARK_JA } from '../game/kinds';
 import { B } from '../game/balance';
 import { catalog as cat, HERO_CLASS_JA, PARAM_JA, RARITY_JA } from '../game/catalog';
@@ -15,8 +16,8 @@ import { btn, esc, num } from './html';
  * unusual customers (the routine broken), and 商才 (the shop growing its own way).
  */
 
-export const SPECIAL_JA = { rich: '大富豪', hurry: '急ぎの旅人', collector: '収集家', patrol: '見回り', dealer: '引取の商人', landlord: '大家', courier: '配達' } as const;
-const SPECIAL_SUB = { rich: '予算は桁ちがい。売れるだけ売ろう', hurry: '破格の言い値。値切りは聞いてくれない', collector: 'レア以上の品に大金を出す', patrol: '棚の品を改めていく' , dealer: `何でも買うが、定価の ${Math.round(B.dealerCut * 100)}% 引き。予算まで`, landlord: '家賃の日。払うか、店を買い取るか', courier: '昨夜の箱を届けに来た。荷物は電話の横に' } as const;
+export const SPECIAL_JA = { rich: '大富豪', hurry: '急ぎの旅人', collector: '収集家', patrol: '見回り', dealer: '引取の商人', landlord: '大家', courier: '配達', satoshi: 'MCHC の両替' } as const;
+const SPECIAL_SUB = { rich: '予算は桁ちがい。売れるだけ売ろう', hurry: '破格の言い値。値切りは聞いてくれない', collector: 'レア以上の品に大金を出す', patrol: '棚の品を改めていく' , dealer: `何でも買うが、定価の ${Math.round(B.dealerCut * 100)}% 引き。予算まで`, landlord: '家賃の日。払うか、店を買い取るか', courier: '昨夜の箱を届けに来た。荷物は電話の横に', satoshi: 'GUM やメダルを、MCHC と交換してくれる' } as const;
 
 export function orderText(o: DayOrder): string {
   if (o.kind === 'sellParam') return `${PARAM_JA[o.param ?? 'phy']}の品を ${o.need} 個売る`;
@@ -50,6 +51,8 @@ export function goalChips(g: GameState): string {
 
 /** On the morning paper: the order of the day and the knacks the shop has. */
 export function morningExtras(g: GameState): string {
+  // (the token's price, in small print)
+  const ticker = `<p class="news-mchc"><span>MCHC</span>${rateLine(g)}${(g.day - 1) % 7 === B.mchc.weekday - 1 ? '<i>本日、両替商が来店</i>' : ''}</p>`;
   const o = g.order;
   const order = o ? `<p class="news-order"><span>本日の注文</span><b>${orderText(o)}</b><em>達成で +${num(o.reward)} GUM</em></p>` : '';
   const perks = g.perks.length
@@ -76,7 +79,7 @@ export function morningExtras(g: GameState): string {
   const tip = tips[g.day] ? `<p class="news-order news-tip"><span>${tips[g.day]![0]}</span><b>${tips[g.day]![1]}</b></p>` : '';
   const patrol = g.patrolDay && G.knowsPatrol(g) ? '<p class="news-order news-patrol"><span>知らせ</span><b>今日は、見回りが来ます</b><em>訳ありの品はウォレットへ</em></p>' : '';
   const loan = g.loan ? `<p class="news-order news-loan"><span>融資</span><b>今夜の返済 ${num(Math.min(g.loan.left, g.loan.nightly))} GUM</b><em>残り ${num(g.loan.left)}</em></p>` : '';
-  return lines + crowd + order + patrol + tip + wanted + parcel + loan + perks + houses;
+  return ticker + lines + crowd + order + patrol + tip + wanted + parcel + loan + perks + houses;
 }
 
 // ---------------------------------------------------------------- the houses

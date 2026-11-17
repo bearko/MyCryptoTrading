@@ -1,3 +1,4 @@
+import * as M from '../src/game/mchc';
 import { B } from '../src/game/balance';
 import type { Catalog } from '../src/game/catalog';
 import * as C from '../src/game/craft';
@@ -36,6 +37,12 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
         // the shop when it can be had, the rent otherwise (and when there is no rent to give, the guild's word or the street)
         if (G.buyDeed(s)) break;
         if (!G.payRent(s)) G.refuseRent(s);
+      } else if (v.special === 'satoshi') {
+        // the Tuesday caller: some of what is to spare becomes MCHC, for the night shop (never the rent)
+        const keep = s.owned ? 0 : s.rent;
+        const give = Math.min(M.swapMax(s, 'gum'), Math.floor(Math.max(0, s.gum - keep) * 0.5), Math.max(0, Math.round((160 - s.mchc) * s.rate)));
+        if (give > 0) M.swap(s, 'gum', give);
+        G.pass(s);
       } else if (v.special === 'dealer') {
         // short of the rent: goods go to the dealer, the cheapest first (never the pot)
         const goods = G.forSale(s)
@@ -55,10 +62,9 @@ export function play(cat: Catalog, seed: number, style: Style, maxDays = 200): G
     const cost = G.shelfCost(s);
     if (cost !== null && G.freeCells(s, cat) < 6 && s.gum - cost > reserve + 150) G.upgradeShelf(s);
     // a thin shelf and some money: a night at the shop (tomorrow opens late)
-    const spare = s.gum - reserve;
-    if (s.stock.filter((x) => !x.bag && !cat.itemById.get(x.itemId)!.effect).length < 3 && spare > 120 && N.goShop(s, cat)) {
+    if (s.stock.filter((x) => !x.bag && !cat.itemById.get(x.itemId)!.effect).length < 3 && s.mchc >= 15 && N.goShop(s, cat)) {
       s.shop!.goods.forEach((g, i) => {
-        if (s.gum - g.price < reserve + 40 || cat.itemById.get(g.itemId)!.wallet) return;
+        if (s.mchc < g.price || cat.itemById.get(g.itemId)!.wallet) return;
         // (nothing is bought that the wallet cannot carry home)
         if (!G.findSlotIn(G.gridOf(s, cat, 'wallet'), cat, g.itemId)) return;
         if (N.shopBuy(s, i) && !N.stow(s, cat, s.shop!.tray.length - 1)) s.shop!.tray.pop(); // does not fit: left behind

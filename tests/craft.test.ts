@@ -3,6 +3,7 @@ import { B } from '../src/game/balance';
 import { catalog, POT_ID } from '../src/game/catalog';
 import * as C from '../src/game/craft';
 import * as G from '../src/game/logic';
+import * as M from '../src/game/mchc';
 import * as N from '../src/game/night';
 import { seeOff } from './util';
 
@@ -247,7 +248,7 @@ describe('the night shop: goods on a floor, and a box to send home', () => {
   it('goods stand on the floor at their size without touching, and a box sends what the wallet cannot carry', () => {
     const s = G.newGame(31, catalog);
     s.phase = 'evening';
-    s.gum = 99999;
+    s.mchc = 99999;
     expect(N.goShop(s, catalog)).toBe(true);
     const shop = s.shop!;
     const taken = new Set<string>();
@@ -265,13 +266,13 @@ describe('the night shop: goods on a floor, and a box to send home', () => {
       if (!catalog.itemById.get(g.itemId)!.wallet && N.shopBuy(s, i)) N.stow(s, catalog, shop.tray.length - 1);
     });
     expect(shop.tray.length).toBeGreaterThan(0);
-    const before = s.gum;
+    const before = s.mchc;
     expect(N.buyBox(s, 0)).toBe(true);
-    expect(before - s.gum).toBe(B.boxes[0].price + B.boxes[0].post);
+    expect(before - s.mchc).toBe(B.boxes[0].price + B.boxes[0].post);
     // a larger box costs the difference, and a smaller one is refused
     expect(N.buyBox(s, 0)).toBe(false);
     expect(N.buyBox(s, 2)).toBe(true);
-    expect(before - s.gum).toBe(B.boxes[2].price + B.boxes[2].post);
+    expect(before - s.mchc).toBe(B.boxes[2].price + B.boxes[2].post);
     let sent = 0;
     for (let i = shop.tray.length - 1; i >= 0; i--) if (N.stow(s, catalog, i, 'box')) sent += 1;
     expect(sent).toBeGreaterThan(0);
@@ -293,5 +294,72 @@ describe('the night shop: goods on a floor, and a box to send home', () => {
     expect(courier).toBe(true);
     expect(s.post).toHaveLength(0);
     expect(s.parcel.length).toBe(parcels + sent);
+  });
+});
+
+describe('MCHC', () => {
+  it('the night shop takes MCHC only; the Tuesday caller gives it for GUM and medals; the exchange swaps both ways for a fee', () => {
+    const s = G.newGame(52, catalog);
+    s.stock = [];
+    // the price moves from day to day, within its bounds
+    const seen = new Set<number>();
+    for (let n = 0; n < 40; n++) {
+      G.stepRate(s);
+      seen.add(s.rate);
+      expect(s.rate).toBeGreaterThanOrEqual(B.mchc.min);
+      expect(s.rate).toBeLessThanOrEqual(B.mchc.max);
+    }
+    expect(seen.size).toBeGreaterThan(10);
+    // no caller, no exchange: nothing to swap with
+    s.gum = 1000;
+    expect(M.swapVia(s)).toBeNull();
+    expect(M.swap(s, 'gum', 100)).toBe(false);
+    // Tuesday: he comes after the day's line, and gives MCHC for GUM as far as his purse goes
+    s.day = 2;
+    s.phase = 'morning';
+    G.openShop(s, catalog);
+    for (let n = 0; n < 60 && G.currentVisitor(s)?.special !== 'satoshi'; n++) {
+      seeOff(s);
+      G.callNext(s, catalog);
+    }
+    const v = G.currentVisitor(s)!;
+    expect(v.special).toBe('satoshi');
+    const gum = s.gum;
+    const had = s.mchc;
+    const purse = v.budget;
+    expect(M.swap(s, 'mchc', 1)).toBe(false);
+    expect(M.swap(s, 'gum', 100)).toBe(true);
+    expect(s.gum).toBe(gum - 100);
+    expect(s.mchc - had).toBe(Math.floor(100 / s.rate));
+    expect(v.budget).toBe(purse - (s.mchc - had));
+    expect(M.swap(s, 'gum', M.swapMax(s, 'gum') + 1)).toBe(false);
+    // a medal goes for MCHC too
+    const medal = catalog.items.find((i) => M.isMedal(i))!;
+    const uid = G.addTo(s, catalog, 'shelf', medal.id, 1, 0)!;
+    const before = s.mchc;
+    const quote = M.medalQuote(s, catalog, s.stock.find((x) => x.uid === uid)!);
+    expect(M.swapMedal(s, catalog, uid)).toBe(true);
+    expect(s.mchc).toBe(before + quote);
+    expect(s.stock.some((x) => x.uid === uid)).toBe(false);
+    G.pass(s);
+    expect(M.swapVia(s)).toBeNull();
+    // the exchange: both ways, and it keeps its fee
+    s.services.push('dex');
+    const m = s.mchc;
+    const g2 = s.gum;
+    expect(M.swap(s, 'mchc', 10)).toBe(true);
+    expect(s.mchc).toBe(m - 10);
+    expect(s.gum - g2).toBe(Math.floor(10 * s.rate * (1 - B.mchc.dexFee)));
+    // the night shop: MCHC is what is paid
+    s.phase = 'evening';
+    s.wentOut = false;
+    s.mchc = 0;
+    expect(N.goShop(s, catalog)).toBe(true);
+    expect(N.shopBuy(s, 0)).toBe(false);
+    s.mchc = s.shop!.goods[0].price;
+    const gumNow = s.gum;
+    expect(N.shopBuy(s, 0)).toBe(true);
+    expect(s.mchc).toBe(0);
+    expect(s.gum).toBe(gumNow);
   });
 });

@@ -474,6 +474,9 @@ export function newGame(seed: number, cat: Catalog): GameState {
     supply: null,
     parcel: [],
     post: [],
+    mchc: B.mchc.start,
+    rate: B.mchc.base,
+    rateWas: B.mchc.base,
     wanted: null,
     loan: null,
     patrolDay: false,
@@ -828,7 +831,8 @@ export function callNext(s: GameState, cat: Catalog): void {
     // (first of the callers: the keeper of the night shop, with a box sent the night before)
     const due = s.post.filter((p) => p.due <= s.day);
     const came = (who: Visitor['special']): boolean => s.queue.some((v) => v.special === who);
-    const next = due.length > 0 ? courier(s, cat, due.flatMap((p) => p.items)) : !isRentDay(s) ? null : !came('dealer') ? dealer(s, cat) : !came('landlord') ? landlord(s, cat) : null;
+    const tuesday = (s.day - 1) % 7 === B.mchc.weekday - 1;
+    const next = tuesday && !came('satoshi') ? satoshi(s, cat) : due.length > 0 ? courier(s, cat, due.flatMap((p) => p.items)) : !isRentDay(s) ? null : !came('dealer') ? dealer(s, cat) : !came('landlord') ? landlord(s, cat) : null;
     if (next) {
       s.callers += 1;
       s.queue.push(next);
@@ -851,6 +855,19 @@ function caller(s: GameState, cat: Catalog, heroId: number): Visitor {
 /** The dealer: buys whatever is put before him, under the list price, until his purse is empty. */
 function dealer(s: GameState, cat: Catalog): Visitor {
   return { ...caller(s, cat, B.dealerHero), special: 'dealer', want: { type: 'any' }, budget: Math.max(B.dealerFloor, Math.round(s.rent * B.dealerPurse)), line: `引き取りに来たよ。何でも買うが、値は定価の ${Math.round(B.dealerCut * 100)}% 引きだ。` };
+}
+
+/** The Tuesday caller: gives MCHC for GUM or for medals, as far as his purse goes (his budget is in MCHC). */
+function satoshi(s: GameState, cat: Catalog): Visitor {
+  const purse = B.mchc.purse + B.mchc.purseWeek * Math.floor((s.day - 1) / 7);
+  return { ...caller(s, cat, B.mchc.hero), special: 'satoshi', want: { type: 'rarity', min: 9 }, budget: purse, line: 'GUM かメダルを、MCHC と交換しないか。私は MCHC でしか取引しない。' };
+}
+
+/** A new day's price for MCHC: it wanders, and is drawn back toward where it rests. */
+export function stepRate(s: GameState): void {
+  s.rateWas = s.rate;
+  const moved = s.rate * (1 + randRange(s, -B.mchc.swing, B.mchc.swing)) + (B.mchc.base - s.rate) * B.mchc.pull;
+  s.rate = Math.round(Math.min(B.mchc.max, Math.max(B.mchc.min, moved)) * 100) / 100;
 }
 
 /** The keeper of the night shop, with the box sent home the night before: it is set down by the telephone. */
@@ -1197,6 +1214,10 @@ export function pass(s: GameState): void {
   v.done = true;
   if (v.special === 'dealer') {
     v.line = 'では、また家賃の日に。';
+    return;
+  }
+  if (v.special === 'satoshi') {
+    v.line = 'では、また火曜日に。';
     return;
   }
   if (v.special === 'courier') {
@@ -1567,6 +1588,7 @@ export function continueAfterWin(s: GameState): void {
 /** Closes the day: collects rent on rent days, then starts the next morning. */
 export function endDay(s: GameState): void {
   if (s.phase !== 'evening') return;
+  stepRate(s);
   houseLines(s);
   if (rungs(s, 'fame') > 0) addRep(s, rungs(s, 'fame'));
   // a shop the outlaws have marked is robbed in the night, now and then

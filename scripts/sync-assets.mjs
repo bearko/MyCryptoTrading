@@ -233,7 +233,7 @@ const enemies = enemyRows.filter((e) => total(e) < 100).filter((_, i) => i % 4 =
 const bosses = enemyRows.filter((e) => total(e) >= 800 && total(e) < 100000).filter((_, i) => i % 40 === 0).map(toEnemy);
 
 // ---------------------------------------------------------------- icons, backdrop
-const icons = { gum: use('Image/Icons/gum.png') };
+const icons = { gum: use('Image/Icons/gum.png'), mchc: use('Image/Icons/mchc_official.png') };
 
 /** Halves a large backdrop (box filter) so phones do not download a 1000×1500 image. */
 function halve(relPath) {

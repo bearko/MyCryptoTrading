@@ -82,7 +82,7 @@ export interface Enemy {
 interface CatalogData {
   items: Item[];
   heroes: Hero[];
-  icons: { gum: string };
+  icons: { gum: string; mchc: string };
   backdrop: string;
   dungeon: string;
   player: { ja: string; img: string; stats: number[] };
