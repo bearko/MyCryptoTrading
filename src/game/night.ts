@@ -111,7 +111,7 @@ export function unstow(s: GameState, uid: number): boolean {
 export function goHome(s: GameState, cat: Catalog): void {
   if (s.phase !== 'shop' && s.phase !== 'quest') return;
   const boxed = s.shop?.box?.items ?? [];
-  if (boxed.length > 0) s.post.push({ due: s.day + 1, items: boxed.map((x) => ({ itemId: x.itemId, cond: x.cond, paid: x.paid })) });
+  if (boxed.length > 0) s.post.push({ due: s.day + 1, size: s.shop!.box!.size, items: boxed.map((x) => ({ itemId: x.itemId, cond: x.cond, paid: x.paid, x: x.x, y: x.y, rot: x.rot })) });
   s.shop = null;
   s.quest = null;
   s.phase = 'evening';
@@ -150,7 +150,7 @@ function take(s: GameState, id: GridId, uid: number): LooseItem | null {
   const items = itemsOf(s, id);
   const index = items.findIndex((x) => x.uid === uid);
   // (the wallet in use stays on the shelf)
-  if (index < 0 || items[index].bag) return null;
+  if (index < 0 || items[index].bag || items[index].crate) return null;
   const [x] = items.splice(index, 1);
   return { itemId: x.itemId, cond: x.cond, paid: x.paid, ...(x.fake ? { fake: true } : {}), ...(x.seen ? { seen: true } : {}), ...(x.hot ? { hot: true } : {}) };
 }
@@ -165,6 +165,8 @@ export function transfer(s: GameState, cat: Catalog, from: GridId, uid: number, 
   const index = source.findIndex((it) => it.uid === uid);
   // (the wallet in use stays on the shelf)
   if (index < 0 || source[index].bag) return false;
+  // (a shut box is kept on the shelf or in the wallet: it is not shown, binned or sent again)
+  if (source[index].crate && to !== 'shelf' && to !== 'wallet') return false;
   const stock = source[index];
   const target = gridOf(s, cat, to);
   const slot = x === undefined || y === undefined ? findSlotIn(target, cat, stock.itemId) : canPlaceIn(target, cat, stock.itemId, x, y, stock.rot) ? { x, y, rot: stock.rot } : null;
@@ -190,7 +192,7 @@ export type ManyResult = { ok: true; moved: number[] } | { ok: false; fit: numbe
  */
 export function moveMany(s: GameState, cat: Catalog, from: GridId, uids: readonly number[], to: GridId): ManyResult {
   const source = itemsOf(s, from);
-  const goods = source.filter((x) => uids.includes(x.uid) && !x.bag);
+  const goods = source.filter((x) => uids.includes(x.uid) && !x.bag && !(x.crate && to !== 'shelf' && to !== 'wallet'));
   const target = gridOf(s, cat, to);
   const others = from === to ? target.items.filter((x) => !goods.includes(x)) : target.items;
   const { spots, left } = packInto({ cols: target.cols, rows: target.rows, items: others }, cat, goods);

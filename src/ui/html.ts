@@ -24,6 +24,8 @@ export function btn(act: string, label: string, opts: { cls?: string; arg?: stri
  * A good on two lines is split diagonally between the two colours.
  */
 export function tone(item: Item): string {
+  // (a good of no line, such as a box, takes the colour of card)
+  if (item.params.length === 0) return `--ta:var(--gum);--tb:var(--gum);--rar:var(--ink)`;
   const a = item.params[0];
   const b = item.params[1] ?? a;
   // (the fill says the parameter line; the frame says the rarity)

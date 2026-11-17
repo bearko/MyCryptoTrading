@@ -11,6 +11,13 @@ export interface Parcel {
   paid: number;
 }
 
+/** A good packed in a box: what it is, and where it lies in the box. */
+export interface Boxed extends LooseItem {
+  x: number;
+  y: number;
+  rot: number;
+}
+
 export interface StockItem {
   uid: number;
   itemId: number;
@@ -23,6 +30,8 @@ export interface StockItem {
   seen?: boolean;
   /** a hot good (see Offer) */
   hot?: boolean;
+  /** a box sent from the night shop, kept shut: what lies in it, as it was packed */
+  crate?: Boxed[];
   /** the wallet in use: it stands on the shelf, and what it holds is `wallet.items` (it is not sold, binned or carried off) */
   bag?: boolean;
   /** top-left cell of its footprint on the grid it lies on */
@@ -276,7 +285,9 @@ export interface GameState {
   rate: number;
   rateWas: number;
   /** boxes sent from the night shop, on their way: each comes with the last caller of the day it is due */
-  post: { due: number; items: LooseItem[] }[];
+  post: { due: number; size: number; items: Boxed[] }[];
+  /** boxes that have come and stand by the telephone, still shut */
+  crates: { size: number; items: Boxed[] }[];
   /** goods dropped in the bin: they can be taken back until the night, when they are carried off and paid for */
   trash: StockItem[];
   /** what the night's collection will pay for them */

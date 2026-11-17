@@ -704,6 +704,19 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       // the pot's window opens — or shuts, if it was open; the wallet in use opens its inside the same way
       const used = ui.sel ? G.gridOf(g, cat, ui.sel.grid).items.find((x) => x.uid === ui.sel!.uid) : undefined;
       const effect = used ? G.findItem(cat, used.itemId).effect : undefined;
+      if (used?.crate && ui.sel?.grid === 'shelf') {
+        // a shut box on the shelf: it is opened, and its goods take the room it stood in
+        const n = used.crate.length;
+        const out = G.unboxCrate(g, cat, used.uid);
+        closeModal();
+        ui.sel = null;
+        store.save(g);
+        audio.sfx('drop');
+        haptic('light');
+        if (out < n) note(`${n - out} 個は棚に置けず、電話の横の荷物に入りました`);
+        render();
+        return;
+      }
       const which: PopId | '' = used?.bag ? 'wallet' : effect === 'pot' ? 'craft' : '';
       if (!which || ui.sel?.grid !== 'shelf') {
         note(used && G.findItem(cat, used.itemId).wallet ? 'いま使っているウォレットではありません（品の窓の「装備する」で持ちかえられます）' : '棚に置くと、使えます');
@@ -932,6 +945,27 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       }, result === 'caught' ? 1700 : 1000);
       return;
     }
+    case 'parcel-help':
+      ui.parcelHelp = !ui.parcelHelp;
+      break;
+    case 'crate-open':
+      if (G.openCrate(g, n)) {
+        store.save(g);
+        audio.sfx('open');
+      }
+      break;
+    case 'crate-shelve':
+      if (G.shelveCrate(g, cat, n)) {
+        store.save(g);
+        audio.sfx('drop');
+        haptic('light');
+        if (g.parcel.length + g.crates.length === 0) closeModal();
+      } else {
+        audio.sfx('error');
+        nope(el);
+        note('棚に、箱を置く場所がありません');
+      }
+      break;
     case 'unpack': {
       const taken = arg === 'all' ? G.unpackAll(g, cat) : G.unpack(g, cat, n) ? 1 : 0;
       if (taken === 0) {
@@ -940,7 +974,7 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       }
       audio.sfx('drop');
       haptic('light');
-      if (g.parcel.length === 0) closeModal();
+      if (g.parcel.length + g.crates.length === 0) closeModal();
       else if (arg === 'all') note(`${taken} 個を受け取りました。残りは置く場所がありません`);
       break;
     }

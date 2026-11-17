@@ -36,6 +36,11 @@ export function load(): GameState | null {
     s.patrolSlot ??= 0;
     s.parcel ??= [];
     s.post ??= [];
+    s.crates ??= [];
+    for (const p of s.post) {
+      p.size ??= B.boxes.length - 1;
+      p.items.forEach((x, n) => Object.assign(x, { x: x.x ?? n, y: x.y ?? 0, rot: x.rot ?? 0 }));
+    }
     s.mchc ??= B.mchc.start;
     s.rate ??= B.mchc.base;
     s.rateWas ??= s.rate;

@@ -66,7 +66,7 @@ export function morningExtras(g: GameState): string {
   // lines of goods taken up since the shop last opened
   const lines = g.linesNew.length ? `<p class="news-order news-crowd"><span>取り扱い</span><b>${g.linesNew.map((mark) => MARK_JA[mark]).join('・')}の品を扱えるようになりました</b><em>売り客が持ちこみ、取り寄せにも入ります</em></p>` : '';
   const crowd = G.clienteleDue(g, cat) ? `<p class="news-order news-crowd"><span>客層</span><b>${HERO_CLASS_JA[g.clientele + 1]}のヒーローが来るようになりました</b><em>${RARITY_JA[g.clientele + 1]}の品を扱ってきた評判</em></p>` : '';
-  const parcel = g.parcel.length ? `<p class="news-order news-parcel"><span>荷物</span><b>ギルドから ${g.parcel.length} 個届いています</b><em>電話の下の箱から受け取る</em></p>` : '';
+  const parcel = g.crates.length ? `<p class="news-order news-parcel"><span>荷物</span><b>夜のショップから、箱が ${g.crates.length} つ届いています</b></p>` : g.parcel.length ? `<p class="news-order news-parcel"><span>荷物</span><b>ギルドから ${g.parcel.length} 個届いています</b><em>電話の下の箱から受け取る</em></p>` : '';
   const wanted = g.wanted ? `<p class="news-order news-wanted"><span>手配</span><b>${esc(cat.heroById.get(g.wanted.heroId)!.ja)}</b><em>賞金 ${num(g.wanted.bounty)} GUM</em></p>` : '';
   // a word of advice on the mornings when something new is in the shop (the things on the wall are on a wide screen only)
   const tips: Record<number, [string, string] | undefined> = {
