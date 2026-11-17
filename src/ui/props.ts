@@ -2,6 +2,7 @@
  * The things of the shop that are used by hand rather than through a menu (a wide screen shows them
  * beside the shelf): the bin — goods are dragged into it — and the bed — a click on it at night ends the day.
  */
+import { knows } from '../game/guide';
 import { MARK_JA, MARKS } from '../game/kinds';
 import { catalog as cat, HERO_CLASS_JA, PARAM_JA, RARITY_JA, CRATE_IDS } from '../game/catalog';
 import * as G from '../game/logic';
@@ -26,7 +27,9 @@ export function deckProps(g: GameState): string {
   const count = g.trash.length;
   const worn = SLOT_IDS.filter((slot) => g.equip[slot]).length;
   const out = night && !g.wentOut;
-  return `<button class="prop exit ${out ? 'ready' : ''} ${night && g.wentOut ? 'used' : ''}" id="door" data-act="door" data-sfx="none" title="${night ? (g.wentOut ? '今夜はもう外出しました' : '外へ出る（ショップ／クエスト）') : '閉店後にならないと、外出はできません'}" aria-label="ドア（閉店後に、ここから外出する）">
+  // (the door is there once the night shop has been spoken of)
+  const door = knows(g, 'shop');
+  return `<button class="prop exit ${door ? '' : 'untaught'} ${out ? 'ready' : ''} ${night && g.wentOut ? 'used' : ''}" id="door" data-act="door" data-sfx="none" title="${night ? (g.wentOut ? '今夜はもう外出しました' : '外へ出る（ショップ／クエスト）') : '閉店後にならないと、外出はできません'}" aria-label="ドア（閉店後に、ここから外出する）">
       <span class="exit-leaf"><i class="exit-win"></i><i class="exit-knob"></i></span><b>ドア</b></button>
     <button class="prop trash ${count ? 'full' : ''}" id="trash" data-act="trash" data-sfx="open" aria-label="ゴミ箱（品をドラッグして捨てる。中身は ${count} 個。クリックで中を見る）">
       ${BIN}<b>ゴミ箱</b>${count ? `<em>${count}</em>` : ''}</button>
@@ -80,12 +83,12 @@ export function stageProps(g: GameState): string {
         .join('')}</div>`
     : '';
   // (the telephone is a set that stands on the counter)
-  const phone = `<button class="phone" id="phone" data-act="phone" data-sfx="open" aria-label="電話（商人ギルドに頼みごとをする。信用 ${g.trust}）">${PHONE}<b>電話</b><small>信用 ${num(g.trust)}</small></button>`;
+  const phone = !knows(g, 'phone') ? '' : `<button class="phone" id="phone" data-act="phone" data-sfx="open" aria-label="電話（商人ギルドに頼みごとをする。信用 ${g.trust}）">${PHONE}<b>電話</b><small>信用 ${num(g.trust)}</small></button>`;
   return `<div class="sprops" id="sprops" data-ui>
-    <div class="case ${full ? 'full' : ''}" id="case"><b>ショーケース</b>
+    <div class="case ${full ? 'full' : ''} ${knows(g, 'case') ? '' : 'untaught'}" id="case"><b>ショーケース</b>
       <div class="case-grid" id="case-grid" data-grid="case" style="--cell:${CASE_CELL}px;width:${grid.cols * CASE_CELL}px;height:${grid.rows * CASE_CELL}px">${goods}<div class="preview" id="case-preview" data-live></div></div>
       ${sign}<small class="case-tip">${tip}</small></div>
-    <button class="monitor ${g.phase === 'open' && pending(g) ? 'stale' : ''}" id="monitor" data-act="forecast" data-sfx="open" aria-label="予測客のモニター（ショーケースが呼ぶ客の見込みを見る）"><i class="mon-screen"><u></u><u></u><u></u></i><b>予測客</b></button>
+    <button class="monitor ${knows(g, 'case') ? '' : 'untaught'} ${g.phase === 'open' && pending(g) ? 'stale' : ''}" id="monitor" data-act="forecast" data-sfx="open" aria-label="予測客のモニター（ショーケースが呼ぶ客の見込みを見る）"><i class="mon-screen"><u></u><u></u><u></u></i><b>予測客</b></button>
     ${wantedNotice(g)}
     ${g.parcel.length + g.crates.length ? `<button class="parcel" id="parcel" data-act="parcel" data-sfx="open" aria-label="届いた荷物（${g.crates.length + g.parcel.length} 個。クリックで受け取る）">${CRATE}<b>荷物</b><em>${g.parcel.length}</em></button>` : ''}
   </div>${phone}`;

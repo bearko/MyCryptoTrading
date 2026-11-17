@@ -1,3 +1,5 @@
+import { introScreen, memoModal } from './guide';
+import { lessonDue } from '../game/guide';
 import { dexModal } from './dex';
 import { leaveShopModal, shipModal } from './shop';
 import morphdom from 'morphdom';
@@ -51,6 +53,8 @@ function screenHtml(): string {
     if (ui.modal === 'dest') html += destModal();
     if (ui.modal === 'leave') html += leaveShopModal();
     if (ui.modal === 'ship' && ctx.s) html += shipModal(ctx.s);
+    if (ui.modal === 'memo') html += memoModal();
+    if (ui.modal === 'intro') html += introScreen();
     if (ui.modal === 'dex' && ctx.s) html += dexModal(ctx.s);
     if (ui.modal === 'gear') html += gearModal(g);
     if (ui.modal === 'pick') html += pickModal(g);
@@ -95,6 +99,14 @@ const drawn = new WeakSet<Node>();
  */
 function render(): void {
   const root = ctx.root;
+  // (the first days: a note comes at the moment its matter comes up, when nothing else is open)
+  if (ctx.s && ui.screen === 'game' && ui.modal === 'none') {
+    const due = lessonDue(ctx.s);
+    if (due) {
+      ui.memo = due;
+      ui.modal = 'memo';
+    }
+  }
   const next = root.cloneNode(false) as HTMLElement;
   next.innerHTML = screenHtml();
   morphdom(root, next, {

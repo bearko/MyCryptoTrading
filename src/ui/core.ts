@@ -3,7 +3,7 @@ import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState, SlotId } from '../game/state';
 
-export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'spill' | 'ship' | 'dex' | 'network' | 'parcel' | 'wanted' | 'calendar' | 'forecast' | 'casetold';
+export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'spill' | 'ship' | 'dex' | 'memo' | 'intro' | 'network' | 'parcel' | 'wanted' | 'calendar' | 'forecast' | 'casetold';
 
 /** Screen state that is not part of the saved game. */
 export interface Ui {
@@ -62,6 +62,9 @@ export interface Ui {
   gearHelp: boolean;
   /** the notes on the sending service are open */
   shipHelp: boolean;
+  /** the note being read, and how far the opening has been told (−1: not showing) */
+  memo: string | null;
+  intro: number;
   parcelHelp: boolean;
   /** the swap panel: which token is given, and how much of it */
   dex: { from: 'gum' | 'mchc'; amount: number };
@@ -107,6 +110,8 @@ export const ui: Ui = {
   gearFlash: null,
   gearHelp: false,
   shipHelp: false,
+  memo: null,
+  intro: -1,
   parcelHelp: false,
   dex: { from: 'gum', amount: 0 },
   stowTo: 'wallet',
