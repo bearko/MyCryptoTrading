@@ -445,6 +445,21 @@ describe('the first days are taught a thing at a time', () => {
     expect(Gd.lessonDue(s, catalog)).toBe('rent');
     Gd.learn(s, catalog, 'rent');
     expect(Gd.lessonDue(s, catalog)).toBeNull();
+    // the houses, once the regard of one has moved a rung; the dungeon, on an evening short of MCHC
+    s.phase = 'evening';
+    s.wentOut = true;
+    expect(Gd.lessonDue(s, catalog)).toBeNull();
+    s.favor.buyu = B.favorStep;
+    expect(Gd.lessonDue(s, catalog)).toBe('houses');
+    Gd.learn(s, catalog, 'houses');
+    s.day = 7;
+    s.wentOut = false;
+    s.mchc = B.mchc.start;
+    expect(Gd.lessonDue(s, catalog)).toBeNull();
+    s.mchc = 2;
+    expect(Gd.knows(s, 'quest')).toBe(false);
+    expect(Gd.lessonDue(s, catalog)).toBe('quest');
+    Gd.learn(s, catalog, 'quest');
     for (const l of Gd.LESSONS) expect(l.text.length).toBeGreaterThan(0);
   });
 });

@@ -702,3 +702,7 @@ button.hud-rep {
 html.calm .intro-text {
   animation: none;
 }
+
+.dest-card.untaught {
+  display: none;
+}

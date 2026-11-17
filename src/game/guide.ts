@@ -1,5 +1,7 @@
+import { B } from './balance';
 import { POT_ID, type Catalog } from './catalog';
 import { lineNo } from './craft';
+import { rankOf } from './factions';
 import { currentVisitor, forSale, givePot, matches } from './logic';
 import { facingSatoshi } from './mchc';
 import type { GameState } from './state';
@@ -9,7 +11,7 @@ import type { GameState } from './state';
  * (Fukuzawa Yukichi), and with some of them a thing for the shop. Until its note has come, that thing is not there.
  * A game with no `taught` list (an old save, a test, a bot) knows everything.
  */
-export type LessonId = 'sleep' | 'mchc' | 'shop' | 'case' | 'pot' | 'loupe' | 'hot' | 'rent' | 'phone';
+export type LessonId = 'sleep' | 'mchc' | 'shop' | 'case' | 'pot' | 'loupe' | 'hot' | 'rent' | 'phone' | 'houses' | 'quest';
 
 export const GUIDE_HERO = 10004;
 
@@ -34,6 +36,8 @@ export const LESSONS: Lesson[] = [
   { id: 'hot', title: '危ない品', text: ['いま持ちこまれた品には、訳ありのものが混じっている。出どころを言えない品だ。', '安く買えるが、見回りに見つかれば、棚から持っていかれる。見回りが改めるのは棚だけで、ウォレットの中までは見ない。'], hint: '訳ありの品は、売れるまでウォレットにしまっておく' },
   { id: 'rent', title: '家賃の日', text: ['今日は家賃の日だ。このあと、店の持ち主の伊能忠敬が取りに来る。', 'いま来ているのは引取の商人。手持ちが足りなければ、品を買い取ってもらうといい。値は定価より安くなるがね。', '家賃を払えば、次の週も店を続けられる。いつか店ごと買い取れば、もう家賃はいらない。それが君の当面の目標だ。'], hint: '売りたい品をカウンターへ。済んだらベルで見送る' },
   { id: 'phone', title: '人脈', text: ['家賃をひとつ越えたな。店に電話を引いておいた。', '商人ギルドに頼みごとができる。毎朝たまる「信用」でも払える。'], hint: 'カウンターの電話をクリック' },
+  { id: 'houses', title: '5 つの勢力', text: ['この世界には、まだ王がいない。かつて国を治めた者たちが 5 つの勢力に分かれて、新世界の王の座を争っている。', '店に来る客も、たいていはどこかの勢力の者だ。商いのしかたひとつで、勢力ごとの評価は上がりも下がりもする。', 'ここ Zentral は、どの勢力のものでもない土地だ。だが肩入れが過ぎれば、敵に回る勢力も出てくる。'], hint: '右の壁の「評判」をクリックすると、勢力ごとの評価が見られる' },
+  { id: 'quest', title: 'ダンジョン', text: ['MCHC が心もとないようだな。', 'ドアの先には、もうひとつ行き先がある。ダンジョンだ。エネミーという、この世界の化け物が棲んでいる。', 'エクステンションも GUM も、もとはあそこから掘り出されたものでね。身じたくをして、行ってみるといい。'], hint: '閉店後、ドアから「クエスト」へ。装備は右下の装備棚で' },
 ];
 
 /** What he says in a note: the same for most, but the one on replicas turns on how the first one went. */
@@ -41,6 +45,7 @@ export function lessonText(s: GameState, lesson: Lesson): string[] {
   // (said at the moment it came up, it begins from what has just happened)
   if (lesson.id === 'case' && s.phase === 'open') return ['いまの客は、欲しい品が見つからずに帰っていったな。', '壁にショーケースを取りつけておいた。飾った品を見て、それを欲しがる客が寄ってくる。いい品ほど、懐の深い客を呼ぶ。'];
   if (lesson.id === 'pot' && s.phase === 'evening') return ['同じような品が、いくつか売れ残っているな。', '合成の壺を届けておいた。品を 2 つ 3 つ入れると、1 つ上の品に生まれかわる。'];
+  if (lesson.id === 'quest' && s.mchc >= B.mchc.start / 2) return lesson.text.slice(1);
   if (lesson.id !== 'loupe' || !s.bait) return lesson.text;
   if (s.bait.at === 'caught') return ['やられたな。さっき売った品は、レプリカだった。', '客の信用を少し落としたが、高い授業料ではない。', LOUPE];
   if (s.bait.at === 'bought') return ['今朝いちばんに買った品を、よく見てごらん。あれはレプリカだ。', '客に売ってしまう前で、よかった。', LOUPE];
@@ -101,6 +106,10 @@ export function lessonDue(s: GameState, cat: Catalog): LessonId | null {
     if (s.bait.at === 'caught' || (s.bait.at === 'offered' && gone) || (s.bait.at === 'bought' && evening)) return 'loupe';
   }
   if (not('phone') && morning && s.day >= 8) return 'phone';
+  // the houses: when the regard of one of them has first moved a rung (from the fourth day)
+  if (not('houses') && s.day >= 4 && (morning || evening) && Object.values(s.favor).some((p) => rankOf(p) !== 0)) return 'houses';
+  // the dungeon: on an evening when there is too little MCHC for the night shop (from the fourth day; by the ninth evening at the latest)
+  if (not('quest') && !not('shop') && evening && !s.wentOut && s.day >= 4 && (s.mchc < B.mchc.start / 2 || s.day >= 9)) return 'quest';
   return null;
 }
 
