@@ -434,6 +434,17 @@ describe('the first days are taught a thing at a time', () => {
     expect(Gd.lessonDue(s, catalog)).toBe('pot');
     Gd.learn(s, catalog, 'pot');
     expect(s.stock.some((x) => x.itemId === POT_ID)).toBe(true);
+    // a hot good on the counter, and the day the rent is due
+    s.day = 6;
+    s.phase = 'open';
+    s.queue = [{ ...s.queue[0], kind: 'sell', done: false, special: undefined, offers: [{ itemId: cheap.id, cond: 1, ask: 3, hot: true }] }];
+    s.cursor = 0;
+    expect(Gd.lessonDue(s, catalog)).toBe('hot');
+    Gd.learn(s, catalog, 'hot');
+    s.queue[0].special = 'dealer';
+    expect(Gd.lessonDue(s, catalog)).toBe('rent');
+    Gd.learn(s, catalog, 'rent');
+    expect(Gd.lessonDue(s, catalog)).toBeNull();
     for (const l of Gd.LESSONS) expect(l.text.length).toBeGreaterThan(0);
   });
 });
