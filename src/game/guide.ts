@@ -9,7 +9,7 @@ import type { GameState } from './state';
  * (Fukuzawa Yukichi), and with some of them a thing for the shop. Until its note has come, that thing is not there.
  * A game with no `taught` list (an old save, a test, a bot) knows everything.
  */
-export type LessonId = 'sleep' | 'mchc' | 'shop' | 'case' | 'pot' | 'loupe' | 'phone';
+export type LessonId = 'sleep' | 'mchc' | 'shop' | 'case' | 'pot' | 'loupe' | 'hot' | 'rent' | 'phone';
 
 export const GUIDE_HERO = 10004;
 
@@ -31,6 +31,8 @@ export const LESSONS: Lesson[] = [
   { id: 'case', title: '飾る', text: ['壁にショーケースを取りつけておいた。', '飾った品を見て、それを欲しがる客が寄ってくる。いい品ほど、懐の深い客を呼ぶ。'], hint: '棚の品を、左の壁のショーケースへドラッグ' },
   { id: 'pot', title: '合成', text: ['合成の壺を届けておいた。棚に置いてある。', '品を 2 つ 3 つ入れると、1 つ上の品に生まれかわる。売れ残りの使い道にしなさい。'], hint: '棚の壺をクリック' },
   { id: 'loupe', title: '見抜く', text: ['近ごろ、レプリカを持ちこむ者がいると聞く。', LOUPE], hint: '客の品を、カウンターのルーペへドラッグ' },
+  { id: 'hot', title: '危ない品', text: ['いま持ちこまれた品には、訳ありのものが混じっている。出どころを言えない品だ。', '安く買えるが、見回りに見つかれば、棚から持っていかれる。見回りが改めるのは棚だけで、ウォレットの中までは見ない。'], hint: '訳ありの品は、売れるまでウォレットにしまっておく' },
+  { id: 'rent', title: '家賃の日', text: ['今日は家賃の日だ。このあと、店の持ち主の伊能忠敬が取りに来る。', 'いま来ているのは引取の商人。手持ちが足りなければ、品を買い取ってもらうといい。値は定価より安くなるがね。', '家賃を払えば、次の週も店を続けられる。いつか店ごと買い取れば、もう家賃はいらない。それが君の当面の目標だ。'], hint: '売りたい品をカウンターへ。済んだらベルで見送る' },
   { id: 'phone', title: '人脈', text: ['家賃をひとつ越えたな。店に電話を引いておいた。', '商人ギルドに頼みごとができる。毎朝たまる「信用」でも払える。'], hint: 'カウンターの電話をクリック' },
 ];
 
@@ -81,7 +83,13 @@ export function lessonDue(s: GameState, cat: Catalog): LessonId | null {
   const morning = s.phase === 'morning';
   if (not('sleep') && evening && s.day === 1) return 'sleep';
   if (not('mchc') && facingSatoshi(s)) return 'mchc';
+  // (the rent day comes once a week: its note is not put off either)
+  const v = currentVisitor(s);
+  const here = s.phase === 'open' && !!v && !v.done;
+  if (not('rent') && here && v!.special === 'dealer') return 'rent';
   if (!spaced) return not('loupe') && s.bait?.at === 'caught' ? 'loupe' : null;
+  // hot goods: when a caller first lays one on the counter
+  if (not('hot') && here && v!.kind === 'sell' && v!.offers.some((o) => o.hot)) return 'hot';
   if (not('shop') && evening && !s.wentOut && (s.day >= 2 || forSale(s).length <= 2)) return 'shop';
   // the showcase: when a buyer has gone away with nothing (from the third day; by the fifth morning at the latest)
   if (not('case') && s.day >= 3 && (wentWithout(s, cat) || (morning && s.day >= 5))) return 'case';
