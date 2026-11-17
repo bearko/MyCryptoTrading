@@ -1,5 +1,6 @@
 import { POT_ID, type Catalog } from './catalog';
-import { forSale, givePot } from './logic';
+import { lineNo } from './craft';
+import { currentVisitor, forSale, givePot, matches } from './logic';
 import { facingSatoshi } from './mchc';
 import type { GameState } from './state';
 
@@ -35,6 +36,9 @@ export const LESSONS: Lesson[] = [
 
 /** What he says in a note: the same for most, but the one on replicas turns on how the first one went. */
 export function lessonText(s: GameState, lesson: Lesson): string[] {
+  // (said at the moment it came up, it begins from what has just happened)
+  if (lesson.id === 'case' && s.phase === 'open') return ['いまの客は、欲しい品が見つからずに帰っていったな。', '壁にショーケースを取りつけておいた。飾った品を見て、それを欲しがる客が寄ってくる。いい品ほど、懐の深い客を呼ぶ。'];
+  if (lesson.id === 'pot' && s.phase === 'evening') return ['同じような品が、いくつか売れ残っているな。', '合成の壺を届けておいた。品を 2 つ 3 つ入れると、1 つ上の品に生まれかわる。'];
   if (lesson.id !== 'loupe' || !s.bait) return lesson.text;
   if (s.bait.at === 'caught') return ['やられたな。さっき売った品は、レプリカだった。', '客の信用を少し落としたが、高い授業料ではない。', LOUPE];
   if (s.bait.at === 'bought') return ['今朝いちばんに買った品を、よく見てごらん。あれはレプリカだ。', '客に売ってしまう前で、よかった。', LOUPE];
@@ -51,17 +55,38 @@ export function startGuided(s: GameState): void {
 }
 
 /** The note that is due now, if any: each comes at the moment its matter comes up. */
-export function lessonDue(s: GameState): LessonId | null {
+/** A buyer has just gone away with nothing, there being nothing in the shop of the kind asked for. */
+const wentWithout = (s: GameState, cat: Catalog): boolean => {
+  const v = currentVisitor(s);
+  return s.phase === 'open' && !!v && v.done && v.kind === 'buy' && !['dealer', 'landlord', 'courier', 'satoshi', 'patrol'].includes(v.special ?? '') && v.mood !== 'happy' && !forSale(s).some((x) => matches(cat, v.want, x.itemId));
+};
+
+/** Two or more cheap goods of one line lie unsold: the pot would make something of them. */
+const leftOver = (s: GameState, cat: Catalog): boolean => {
+  const lines = forSale(s)
+    .map((x) => cat.itemById.get(x.itemId)!)
+    .filter((i) => i.rarity <= 2 && !i.effect && !i.wallet)
+    .map((i) => `${lineNo(i)}:${i.rarity}`);
+  return lines.some((l, n) => lines.indexOf(l) !== n);
+};
+
+const when = (s: GameState): string => `${s.day}:${s.phase}`;
+
+export function lessonDue(s: GameState, cat: Catalog): LessonId | null {
   if (!s.taught) return null;
+  // (one note in a phase of a day, so that no two come on top of each other — but what is happening at the counter is not put off)
+  const spaced = s.taughtAt !== when(s);
   const not = (id: LessonId): boolean => !s.taught!.includes(id);
   const evening = s.phase === 'evening';
   const morning = s.phase === 'morning';
   if (not('sleep') && evening && s.day === 1) return 'sleep';
   if (not('mchc') && facingSatoshi(s)) return 'mchc';
+  if (!spaced) return not('loupe') && s.bait?.at === 'caught' ? 'loupe' : null;
   if (not('shop') && evening && !s.wentOut && (s.day >= 2 || forSale(s).length <= 2)) return 'shop';
-  // (for now these come by the day; each is to have its own moment)
-  if (not('case') && morning && s.day >= 3) return 'case';
-  if (not('pot') && morning && s.day >= 4) return 'pot';
+  // the showcase: when a buyer has gone away with nothing (from the third day; by the fifth morning at the latest)
+  if (not('case') && s.day >= 3 && (wentWithout(s, cat) || (morning && s.day >= 5))) return 'case';
+  // the pot: when like goods lie unsold at closing (from the third day; by the sixth morning at the latest)
+  if (not('pot') && s.day >= 3 && ((evening && leftOver(s, cat)) || (morning && s.day >= 6))) return 'pot';
   // (replicas: after the one led into — found out by its buyer, or passed up — or, if it was bought and not sold, at the day's end)
   if (not('loupe') && s.bait) {
     const gone = s.cursor !== s.bait.cursor || !!s.queue[s.cursor]?.done || s.phase !== 'open';
@@ -75,6 +100,7 @@ export function lessonDue(s: GameState): LessonId | null {
 export function learn(s: GameState, cat: Catalog, id: LessonId): void {
   if (!s.taught || s.taught.includes(id)) return;
   s.taught.push(id);
+  s.taughtAt = when(s);
   if (id === 'loupe' && s.bait?.at === 'bought') {
     // (it was bought and is still here: he points it out)
     const x = [...s.stock, ...s.showcase, ...s.wallet.items].find((it) => it.uid === s.bait!.uid);

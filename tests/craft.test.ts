@@ -394,26 +394,44 @@ describe('the first days are taught a thing at a time', () => {
     const s = G.newGame(77, catalog);
     // (not guided: everything is known, and no note is due)
     expect(Gd.knows(s, 'case')).toBe(true);
-    expect(Gd.lessonDue(s)).toBeNull();
+    expect(Gd.lessonDue(s, catalog)).toBeNull();
     Gd.startGuided(s);
     expect(s.stock.some((x) => x.itemId === POT_ID)).toBe(false);
     expect(Gd.knows(s, 'shop')).toBe(false);
-    expect(Gd.lessonDue(s)).toBeNull();
+    expect(Gd.lessonDue(s, catalog)).toBeNull();
     // the first evening: how the day ends — then, the shelf being thin, where to buy
     s.phase = 'evening';
-    expect(Gd.lessonDue(s)).toBe('sleep');
+    expect(Gd.lessonDue(s, catalog)).toBe('sleep');
     Gd.learn(s, catalog, 'sleep');
     s.stock = s.stock.filter((x) => x.bag);
-    expect(Gd.lessonDue(s)).toBe('shop');
+    // (no two notes in one evening: the next waits for the next day's)
+    expect(Gd.lessonDue(s, catalog)).toBeNull();
+    s.day = 2;
+    expect(Gd.lessonDue(s, catalog)).toBe('shop');
     Gd.learn(s, catalog, 'shop');
     expect(Gd.knows(s, 'shop')).toBe(true);
-    expect(Gd.lessonDue(s)).toBeNull();
+    expect(Gd.lessonDue(s, catalog)).toBeNull();
     // the pot comes with its note
-    s.day = 4;
+    // the showcase: when a buyer goes away with nothing (the shelf being bare)
+    s.day = 3;
     s.phase = 'morning';
-    expect(Gd.lessonDue(s)).toBe('case');
+    expect(Gd.lessonDue(s, catalog)).toBeNull();
+    G.openShop(s, catalog);
+    for (let n = 0; n < 30 && G.currentVisitor(s)?.kind !== 'buy'; n++) {
+      G.pass(s);
+      G.callNext(s, catalog);
+    }
+    expect(Gd.lessonDue(s, catalog)).toBeNull();
+    G.pass(s);
+    expect(Gd.lessonDue(s, catalog)).toBe('case');
+    expect(Gd.lessonText(s, Gd.LESSONS.find((l) => l.id === 'case')!)[0]).toContain('帰っていった');
     Gd.learn(s, catalog, 'case');
-    expect(Gd.lessonDue(s)).toBe('pot');
+    // the pot: when two like goods lie unsold at closing
+    const cheap = catalog.items.find((i) => i.rarity === 1 && !i.effect && !i.wallet)!;
+    G.addTo(s, catalog, 'shelf', cheap.id, 1, 0);
+    G.addTo(s, catalog, 'shelf', cheap.id, 1, 0);
+    s.phase = 'evening';
+    expect(Gd.lessonDue(s, catalog)).toBe('pot');
     Gd.learn(s, catalog, 'pot');
     expect(s.stock.some((x) => x.itemId === POT_ID)).toBe(true);
     for (const l of Gd.LESSONS) expect(l.text.length).toBeGreaterThan(0);
@@ -443,7 +461,7 @@ describe('the one small failure of the first days', () => {
     expect(Gd.knows(s, 'loupe')).toBe(false);
     expect(G.buy(s, catalog, [0])).toBe(true);
     expect(s.bait?.at).toBe('bought');
-    expect(Gd.lessonDue(s)).toBeNull();
+    expect(Gd.lessonDue(s, catalog)).toBeNull();
     G.pass(s);
     G.callNext(s, catalog);
     const buyer = G.currentVisitor(s)!;
@@ -452,17 +470,17 @@ describe('the one small failure of the first days', () => {
     expect(G.sell(s, catalog, [s.bait!.uid!], 0)).toBe('sold');
     expect(s.bait?.at).toBe('caught');
     expect(s.rep).toBeLessThan(rep + 3);
-    expect(Gd.lessonDue(s)).toBe('loupe');
+    expect(Gd.lessonDue(s, catalog)).toBe('loupe');
     expect(Gd.lessonText(s, Gd.LESSONS.find((l) => l.id === 'loupe')!)[0]).toContain('レプリカ');
     Gd.learn(s, catalog, 'loupe');
-    expect(Gd.lessonDue(s)).toBeNull();
+    expect(Gd.lessonDue(s, catalog)).toBeNull();
   });
 
   it('passed up: he says it was well judged, and the loupe comes all the same', async () => {
     const { s, Gd } = await start();
-    expect(Gd.lessonDue(s)).toBeNull();
+    expect(Gd.lessonDue(s, catalog)).toBeNull();
     G.pass(s);
-    expect(Gd.lessonDue(s)).toBe('loupe');
+    expect(Gd.lessonDue(s, catalog)).toBe('loupe');
     expect(Gd.lessonText(s, Gd.LESSONS.find((l) => l.id === 'loupe')!)[0]).toContain('いい判断');
   });
 });
