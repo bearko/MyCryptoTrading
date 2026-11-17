@@ -5,6 +5,7 @@
 - このリポジトリは「My Crypto Trading」。My Crypto Heroes の世界で交易店を営む、スマホ（縦持ち）向けの店舗経営・取引ゲーム。サイトを開くと `index.html` → `src/main.ts` → `src/ui/app.ts` で始まる。公開は Cloudflare Workers の静的配信（`wrangler.jsonc`）。本番のブランチは `main`。
 - **見た目・動き・音・エフェクトの基準は `docs/UI_DIRECTION.md`（アートバイブル）**。画面を作る・直すときは必ず読む。色は `src/styles/tokens.css` の変数だけを使い、操作には見た目・音（`src/ui/audio.ts`）・エフェクト（`src/ui/fx.ts`）・振動で必ず返す。
 - **世界観は `docs/GAME_DESIGN.md` の 1b**（CryptoWorld、どの勢力にも属さない階層 Zentral、ダンジョンとエネミー、恩人の福沢諭吉、大家の伊能忠敬、5 つの勢力）。せりふ・紙面・説明文・仕組みの名前は、これに合わせる。
+- **導入と、はじめの数日の手引き**（`src/game/guide.ts`、`src/ui/guide.ts`、設計は `docs/GAME_DESIGN.md` の 1c）：新しいゲームは「手引きあり」（状態の `taught`。無い・null のセーブやテストは全部知っている）で始まり、黒い画面の 2 行＋福沢諭吉の 3 言（`introScreen`、`ui.intro`）のあと、朝の紙面を飛ばして 1 日目がそのまま開く。**仕組みは、必要になったその時に「福沢諭吉のメモ」で 1 つずつ教える**（`LESSONS`・`lessonDue`・`learn`。`app.ts` の `render` が、何も開いていないときに出す＝`ui.memo`、`memoModal`）。**まだ教えていない物は店にない**（`knows(g, id)`：ドア＝`shop`、ショーケースとモニター＝`case`、電話＝`phone`、壺＝`pot` はメモと一緒に届く。CSS の `.untaught`）。説明を足すときは、長い文を出しっぱなしにせず、ここに 1 枚足す。座学はしない。
 - ゲームの全体像・ルール・今後の予定は `docs/GAME_DESIGN.md`。新しい機能はこの方向に沿って作り、ルールを変えたらこの文書も直す。
 - 構成：`src/game/` はルール（DOM に触らない・乱数は種つきで再現できる）、`src/ui/` は画面。経済の数字はすべて `src/game/balance.ts` に置く。`logic.ts`＝取引・マス目・1 日の進行、`night.ts`＝夜のショップ・ウォレット・装備、`quest.ts`＝ダンジョンと戦闘、`perks.ts`＝商才の一覧、`craft.ts`＝合成、`factions.ts`＝派閥。
 - 「つい続けてしまう」ための仕掛け（最初の 1 日の手引き・本日の注文・COMBO・特別な客・商才）は `docs/GAME_DESIGN.md` の 4.12。ルールは `logic.ts`、表示と演出は `src/ui/hooks.ts`・`src/styles/hooks.css`。GUM が入る道を増やしたら、必ず `npm run sim` で家賃と権利書の釣り合いを見直す。

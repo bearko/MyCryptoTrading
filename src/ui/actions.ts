@@ -1,3 +1,5 @@
+import { learn, startGuided, type LessonId } from '../game/guide';
+import { INTRO_STEPS } from './guide';
 import * as M from '../game/mchc';
 import { moveMany } from '../game/night';
 import { potCandidates } from './craft';
@@ -32,6 +34,12 @@ const render = (): void => ctx.render();
 const $ = <T extends HTMLElement = HTMLElement>(sel: string): T | null => ctx.root.querySelector<T>(sel);
 
 export function closeModal(): void {
+  // (a note shut any way has been read: what comes with it is handed over)
+  if (ui.modal === 'memo' && ui.memo && ctx.s) {
+    learn(ctx.s, cat, ui.memo as LessonId);
+    store.save(ctx.s);
+  }
+  ui.memo = null;
   ui.modal = 'none';
   ui.sel = null;
   ui.confirmDispose = false;
@@ -100,6 +108,11 @@ function enterGame(g: GameState | null): void {
     }
     closeModal();
     resetHud(g);
+    // (a guided game not yet begun: the opening is told first)
+    if (g && g.taught && g.taught.length === 0 && g.day === 1 && g.phase === 'morning') {
+      ui.intro = 0;
+      ui.modal = 'intro';
+    }
     resetScene();
     if (g && G.currentVisitor(g)) newCustomer();
     if (g) store.save(g);
@@ -559,6 +572,22 @@ function gearChange(g: GameState, change: () => N.EquipResult | boolean, slot: s
 function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLElement | null): void {
   const v = G.currentVisitor(g);
   switch (name) {
+    case 'memo-ok':
+      closeModal();
+      break;
+    case 'intro-skip':
+    case 'intro-next':
+      // the opening, a line at a click; after the last (or at a skip) the shop opens on its first day
+      ui.intro = name === 'intro-skip' ? INTRO_STEPS : ui.intro + 1;
+      if (ui.intro >= INTRO_STEPS) {
+        ui.intro = -1;
+        ui.modal = 'none';
+        if (g.phase === 'morning') {
+          openShop(g);
+          return;
+        }
+      }
+      break;
     case 'open':
       openShop(g);
       return;
@@ -1305,7 +1334,12 @@ export function act(name: string, arg: string | undefined, el: HTMLElement | nul
       audio.sfx('confirm');
       haptic('medium');
       store.clear();
-      enterGame(G.newGame((Date.now() ^ (Math.random() * 0x7fffffff)) | 0, cat));
+      {
+        // a new game is guided through its first days, and begins with the opening
+        const fresh = G.newGame((Date.now() ^ (Math.random() * 0x7fffffff)) | 0, cat);
+        startGuided(fresh);
+        enterGame(fresh);
+      }
       return;
     case 'resume':
       audio.sfx('confirm');

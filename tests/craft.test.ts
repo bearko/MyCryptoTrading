@@ -387,3 +387,35 @@ describe('MCHC', () => {
     expect(s.gum).toBe(gumNow);
   });
 });
+
+describe('the first days are taught a thing at a time', () => {
+  it('a guided game starts without the pot, and each note comes when its matter comes up', async () => {
+    const Gd = await import('../src/game/guide');
+    const s = G.newGame(77, catalog);
+    // (not guided: everything is known, and no note is due)
+    expect(Gd.knows(s, 'case')).toBe(true);
+    expect(Gd.lessonDue(s)).toBeNull();
+    Gd.startGuided(s);
+    expect(s.stock.some((x) => x.itemId === POT_ID)).toBe(false);
+    expect(Gd.knows(s, 'shop')).toBe(false);
+    expect(Gd.lessonDue(s)).toBeNull();
+    // the first evening: how the day ends — then, the shelf being thin, where to buy
+    s.phase = 'evening';
+    expect(Gd.lessonDue(s)).toBe('sleep');
+    Gd.learn(s, catalog, 'sleep');
+    s.stock = s.stock.filter((x) => x.bag);
+    expect(Gd.lessonDue(s)).toBe('shop');
+    Gd.learn(s, catalog, 'shop');
+    expect(Gd.knows(s, 'shop')).toBe(true);
+    expect(Gd.lessonDue(s)).toBeNull();
+    // the pot comes with its note
+    s.day = 4;
+    s.phase = 'morning';
+    expect(Gd.lessonDue(s)).toBe('case');
+    Gd.learn(s, catalog, 'case');
+    expect(Gd.lessonDue(s)).toBe('pot');
+    Gd.learn(s, catalog, 'pot');
+    expect(s.stock.some((x) => x.itemId === POT_ID)).toBe(true);
+    for (const l of Gd.LESSONS) expect(l.text.length).toBeGreaterThan(0);
+  });
+});

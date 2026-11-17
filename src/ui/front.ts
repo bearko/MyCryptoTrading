@@ -1,3 +1,4 @@
+import { knows } from '../game/guide';
 import { morningExtras } from './hooks';
 import { stageProps } from './props';
 import { B, WEEKDAYS } from '../game/balance';
@@ -75,7 +76,7 @@ function nightCard(g: GameState): string {
   const print = ui.printDay === g.day ? 'print' : '';
   return `<div class="night" id="night-${g.day}">
     <div class="night-top">
-      ${wide ? '' : `<button class="door ${g.wentOut ? 'used' : ''}" id="door" data-act="door" data-sfx="none" aria-label="${g.wentOut ? '今夜はもう外出しました' : '外へ出る（ショップ／クエスト）'}">
+      ${wide || !knows(g, 'shop') ? '' : `<button class="door ${g.wentOut ? 'used' : ''}" id="door" data-act="door" data-sfx="none" aria-label="${g.wentOut ? '今夜はもう外出しました' : '外へ出る（ショップ／クエスト）'}">
         <i class="door-glow"></i><span class="door-leaf"><i class="door-win"></i><i class="door-knob"></i></span><b>${g.wentOut ? '外出済み' : '外へ'}</b>
       </button>`}
       <article class="receipt paper ${print}" id="receipt">

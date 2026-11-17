@@ -280,6 +280,8 @@ export interface GameState {
   /** the wanted notice on the wall, if one is up */
   wanted: Wanted | null;
   parcel: Parcel[];
+  /** what the shop has been taught in its first days (see guide.ts); absent or null: everything */
+  taught?: string[] | null;
   /** MCHC held (the night shop takes nothing else), what one costs in GUM today, and what it cost yesterday */
   mchc: number;
   rate: number;
