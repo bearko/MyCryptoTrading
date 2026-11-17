@@ -24,7 +24,54 @@ export function goShop(s: GameState, cat: Catalog): boolean {
   const now = cat.itemById.get(s.wallet.itemId)!.rarity;
   const next = cat.wallets.find((w) => w.rarity === now + 1);
   if (next && rand(s) < B.shopWalletChance) goods.push({ itemId: next.id, cond: 1, price: itemValue(cat, next.id, 1), sold: false });
-  s.shop = { goods, tray: [] };
+  s.shop = { goods, tray: [], box: null };
+  layShop(s, cat);
+  return true;
+}
+
+/**
+ * Stands the shop's goods on its floor, each at its real size, in rows with room between them (so how much room
+ * a good will take in the wallet is plain before it is bought). A good that finds no room is not put out.
+ */
+export function layShop(s: GameState, cat: Catalog): void {
+  const shop = s.shop;
+  if (!shop || shop.goods.every((g) => g.x !== undefined)) return;
+  const gap = 2;
+  let x = 1;
+  let y = 1;
+  let tall = 0;
+  shop.goods = shop.goods.filter((g) => {
+    const size = cat.itemById.get(g.itemId)!.shape.split('x').map(Number);
+    if (x + size[0] > B.shopFloor - 1) {
+      x = 1;
+      y += tall + gap + 1;
+      tall = 0;
+    }
+    if (y + size[1] > B.shopFloor - 1) return false;
+    g.x = x;
+    g.y = y;
+    x += size[0] + gap;
+    tall = Math.max(tall, size[1]);
+    return true;
+  });
+}
+
+/** What a box costs: the box and the postage. A larger box in place of the one bought costs the difference. */
+export function boxCost(s: GameState, size: number): number {
+  const full = (n: number): number => B.boxes[n].price + B.boxes[n].post;
+  const now = s.shop?.box;
+  return full(size) - (now ? full(now.size) : 0);
+}
+
+/** Buys a box to send goods home in (or a larger one in place of it: what is in it stays where it lies). */
+export function buyBox(s: GameState, size: number): boolean {
+  const shop = s.shop;
+  if (s.phase !== 'shop' || !shop || !B.boxes[size] || (shop.box && size <= shop.box.size)) return false;
+  const cost = boxCost(s, size);
+  if (s.gum < cost) return false;
+  s.gum -= cost;
+  s.today.spend += cost;
+  shop.box = { size, items: shop.box?.items ?? [] };
   return true;
 }
 
@@ -40,25 +87,29 @@ export function shopBuy(s: GameState, index: number): boolean {
 }
 
 /** Puts a bought good from the tray into the wallet (first free spot). False when it does not fit. */
-export function stow(s: GameState, cat: Catalog, trayIndex: number): boolean {
+export function stow(s: GameState, cat: Catalog, trayIndex: number, to: 'wallet' | 'box' = 'wallet'): boolean {
   const loose = s.shop?.tray[trayIndex];
-  if (!loose || addTo(s, cat, 'wallet', loose.itemId, loose.cond, loose.paid) === null) return false;
+  if (!loose || addTo(s, cat, to, loose.itemId, loose.cond, loose.paid) === null) return false;
   s.shop!.tray.splice(trayIndex, 1);
   return true;
 }
 
 /** Takes a good back out of the wallet onto the tray (to make room for another). */
 export function unstow(s: GameState, uid: number): boolean {
-  const index = s.wallet.items.findIndex((x) => x.uid === uid);
+  // (out of the wallet, or out of the box)
+  const from = s.wallet.items.some((x) => x.uid === uid) ? s.wallet.items : (s.shop?.box?.items ?? []);
+  const index = from.findIndex((x) => x.uid === uid);
   if (s.phase !== 'shop' || !s.shop || index < 0) return false;
-  const [x] = s.wallet.items.splice(index, 1);
+  const [x] = from.splice(index, 1);
   s.shop.tray.push({ itemId: x.itemId, cond: x.cond, paid: x.paid });
   return true;
 }
 
-/** Goes home. Whatever was bought and is not in the wallet is left behind. */
+/** Goes home. Whatever was bought and is not in the wallet is left behind; what lies in the box is sent, and comes at the end of the next day. */
 export function goHome(s: GameState, cat: Catalog): void {
   if (s.phase !== 'shop' && s.phase !== 'quest') return;
+  const boxed = s.shop?.box?.items ?? [];
+  if (boxed.length > 0) s.post.push({ due: s.day + 1, items: boxed.map((x) => ({ itemId: x.itemId, cond: x.cond, paid: x.paid })) });
   s.shop = null;
   s.quest = null;
   s.phase = 'evening';

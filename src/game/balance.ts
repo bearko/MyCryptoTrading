@@ -215,7 +215,15 @@ export const B = {
   // (the first wallet is small on purpose: a night at the shop cannot bring back much until a larger one is found)
   walletSizes: [[4, 3], [4, 3], [5, 4], [6, 5], [8, 6], [10, 8]],
   /** the night shop: how many goods, and their price against market value */
-  shopCount: 6,
+  shopCount: 12,
+  /** the night shop's floor: goods stand on it at their real size */
+  shopFloor: 24,
+  /** boxes to send home what the wallet cannot carry: the box and the postage are both paid (it comes a day later) */
+  boxes: [
+    { ja: '小', cols: 4, rows: 4, price: 15, post: 25 },
+    { ja: '中', cols: 5, rows: 4, price: 20, post: 35 },
+    { ja: '大', cols: 6, rows: 5, price: 30, post: 50 },
+  ],
   shopRate: [0.8, 0.96],
   /** chance that the shop also has the next wallet up */
   shopWalletChance: 0.35,

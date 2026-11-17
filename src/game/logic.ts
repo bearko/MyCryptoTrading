@@ -8,7 +8,7 @@ import { factionById, factionOfName, holds, noFavor, rankOf, rivalOf, FACTIONS, 
 import { favourites, HOUSE_KINDS, HOUSE_MARKS, type Kind, type Mark } from './kinds';
 import { hasService, repayNightly, supplyBlock, trustDaily, type SupplyId } from './network';
 import { PERKS, type PerkId } from './perks';
-import { emptySummary, type DayEvent, type DayOrder, type GameState, type Offer, type StockItem, type Visitor, type Want } from './state';
+import { emptySummary, type DayEvent, type DayOrder, type GameState, type LooseItem, type Offer, type StockItem, type Visitor, type Want } from './state';
 
 const clamp = (v: number, min: number, max: number): number => Math.min(max, Math.max(min, v));
 
@@ -121,10 +121,10 @@ export interface Grid {
   rows: number;
   items: StockItem[];
 }
-export type GridId = 'shelf' | 'wallet' | 'case' | 'trash';
+export type GridId = 'shelf' | 'wallet' | 'case' | 'trash' | 'box';
 
 /** The goods lying on a grid. */
-export const itemsOf = (s: GameState, id: GridId): StockItem[] => (id === 'shelf' ? s.stock : id === 'wallet' ? s.wallet.items : id === 'trash' ? s.trash : s.showcase);
+export const itemsOf = (s: GameState, id: GridId): StockItem[] => (id === 'shelf' ? s.stock : id === 'wallet' ? s.wallet.items : id === 'trash' ? s.trash : id === 'box' ? (s.shop?.box?.items ?? []) : s.showcase);
 /** Everything a buyer can be sold: what is on the shelf and what is in the showcase. */
 export const forSale = (s: GameState): StockItem[] => [...s.stock.filter((x) => !x.bag), ...s.showcase];
 /** How wide the showcase is, in columns. */
@@ -138,6 +138,10 @@ export function walletSize(s: GameState, cat: Catalog): { cols: number; rows: nu
 export function gridOf(s: GameState, cat: Catalog, id: GridId): Grid {
   if (id === 'case') return { cols: caseCols(s), rows: B.caseDepth, items: s.showcase };
   if (id === 'trash') return { cols: B.trashCols, rows: B.trashRows, items: s.trash };
+  if (id === 'box') {
+    const box = s.shop?.box;
+    return box ? { cols: B.boxes[box.size].cols, rows: B.boxes[box.size].rows, items: box.items } : { cols: 0, rows: 0, items: [] };
+  }
   return id === 'shelf' ? { cols: s.rows * B.shelfColsPerLevel, rows: B.shelfDepth, items: s.stock } : { ...walletSize(s, cat), items: s.wallet.items };
 }
 
@@ -469,6 +473,7 @@ export function newGame(seed: number, cat: Catalog): GameState {
     services: [],
     supply: null,
     parcel: [],
+    post: [],
     wanted: null,
     loan: null,
     patrolDay: false,
@@ -820,9 +825,13 @@ export function callNext(s: GameState, cat: Catalog): void {
   if (now?.special === 'landlord' && !now.done) return;
   if (s.cursor + 1 >= s.visitorsToday + s.callers) {
     // a rent day: after the day's line, the dealer calls, and last of all the landlord (neither counts as a customer)
-    if (isRentDay(s) && s.callers < 2) {
+    // (first of the callers: the keeper of the night shop, with a box sent the night before)
+    const due = s.post.filter((p) => p.due <= s.day);
+    const came = (who: Visitor['special']): boolean => s.queue.some((v) => v.special === who);
+    const next = due.length > 0 ? courier(s, cat, due.flatMap((p) => p.items)) : !isRentDay(s) ? null : !came('dealer') ? dealer(s, cat) : !came('landlord') ? landlord(s, cat) : null;
+    if (next) {
       s.callers += 1;
-      s.queue.push(s.callers === 1 ? dealer(s, cat) : landlord(s, cat));
+      s.queue.push(next);
       s.cursor += 1;
       return;
     }
@@ -842,6 +851,13 @@ function caller(s: GameState, cat: Catalog, heroId: number): Visitor {
 /** The dealer: buys whatever is put before him, under the list price, until his purse is empty. */
 function dealer(s: GameState, cat: Catalog): Visitor {
   return { ...caller(s, cat, B.dealerHero), special: 'dealer', want: { type: 'any' }, budget: Math.max(B.dealerFloor, Math.round(s.rent * B.dealerPurse)), line: `引き取りに来たよ。何でも買うが、値は定価の ${Math.round(B.dealerCut * 100)}% 引きだ。` };
+}
+
+/** The keeper of the night shop, with the box sent home the night before: it is set down by the telephone. */
+function courier(s: GameState, cat: Catalog, goods: LooseItem[]): Visitor {
+  s.post = s.post.filter((p) => p.due > s.day);
+  s.parcel.push(...goods);
+  return { ...caller(s, cat, B.dealerHero), special: 'courier', want: { type: 'rarity', min: 9 }, budget: 0, line: `お届け物だよ。${goods.length} 個、電話の横に置いておくからね。` };
 }
 
 /** The landlord: comes for the rent, and sells the shop to a keeper who can pay for it. */
@@ -1181,6 +1197,10 @@ export function pass(s: GameState): void {
   v.done = true;
   if (v.special === 'dealer') {
     v.line = 'では、また家賃の日に。';
+    return;
+  }
+  if (v.special === 'courier') {
+    v.line = 'じゃ、また夜の店で。';
     return;
   }
   if (v.special === 'patrol') {

@@ -35,6 +35,7 @@ export function load(): GameState | null {
     s.patrolDay ??= false;
     s.patrolSlot ??= 0;
     s.parcel ??= [];
+    s.post ??= [];
     // saves from before the bin and the wide shelf (the shelf is repacked when the game is entered)
     s.trash ??= [];
     s.trashGum ??= 0;

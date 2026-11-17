@@ -15,8 +15,8 @@ import { btn, esc, num } from './html';
  * unusual customers (the routine broken), and 商才 (the shop growing its own way).
  */
 
-export const SPECIAL_JA = { rich: '大富豪', hurry: '急ぎの旅人', collector: '収集家', patrol: '見回り', dealer: '引取の商人', landlord: '大家' } as const;
-const SPECIAL_SUB = { rich: '予算は桁ちがい。売れるだけ売ろう', hurry: '破格の言い値。値切りは聞いてくれない', collector: 'レア以上の品に大金を出す', patrol: '棚の品を改めていく' , dealer: `何でも買うが、定価の ${Math.round(B.dealerCut * 100)}% 引き。予算まで`, landlord: '家賃の日。払うか、店を買い取るか' } as const;
+export const SPECIAL_JA = { rich: '大富豪', hurry: '急ぎの旅人', collector: '収集家', patrol: '見回り', dealer: '引取の商人', landlord: '大家', courier: '配達' } as const;
+const SPECIAL_SUB = { rich: '予算は桁ちがい。売れるだけ売ろう', hurry: '破格の言い値。値切りは聞いてくれない', collector: 'レア以上の品に大金を出す', patrol: '棚の品を改めていく' , dealer: `何でも買うが、定価の ${Math.round(B.dealerCut * 100)}% 引き。予算まで`, landlord: '家賃の日。払うか、店を買い取るか', courier: '昨夜の箱を届けに来た。荷物は電話の横に' } as const;
 
 export function orderText(o: DayOrder): string {
   if (o.kind === 'sellParam') return `${PARAM_JA[o.param ?? 'phy']}の品を ${o.need} 個売る`;

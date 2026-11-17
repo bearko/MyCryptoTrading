@@ -3,7 +3,7 @@ import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState, SlotId } from '../game/state';
 
-export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'spill' | 'network' | 'parcel' | 'wanted' | 'calendar' | 'forecast' | 'casetold';
+export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'spill' | 'ship' | 'network' | 'parcel' | 'wanted' | 'calendar' | 'forecast' | 'casetold';
 
 /** Screen state that is not part of the saved game. */
 export interface Ui {
@@ -37,9 +37,9 @@ export interface Ui {
   popOrder: PopId[];
   /** the goods put in the pot (uids; the first is the base) */
   /** the goods picked out together by dragging a box round them (all on one grid) */
-  marked: { grid: 'shelf' | 'wallet' | 'case' | 'trash'; uids: number[] } | null;
+  marked: { grid: 'shelf' | 'wallet' | 'case' | 'trash' | 'box'; uids: number[] } | null;
   /** several goods that did not all fit where they were dropped: which would, and which would stay */
-  spill: { from: 'shelf' | 'wallet' | 'case' | 'trash'; to: 'shelf' | 'wallet' | 'case' | 'trash'; fit: number[]; left: number[] } | null;
+  spill: { from: 'shelf' | 'wallet' | 'case' | 'trash' | 'box'; to: 'shelf' | 'wallet' | 'case' | 'trash' | 'box'; fit: number[]; left: number[] } | null;
   craft: number[];
   /** which of the pot's candidates is picked out */
   craftPick: number;
@@ -60,6 +60,10 @@ export interface Ui {
   gearFlash: string | null;
   /** the gear window's words of explanation are shown (the ? button) */
   gearHelp: boolean;
+  /** the notes on the sending service are open */
+  shipHelp: boolean;
+  /** where a bought good goes at a click, at the night shop */
+  stowTo: 'wallet' | 'box';
   /** the regard window: the rung picked out, and whether its words of explanation are shown */
   rung: { house: FactionId; at: number } | null;
   housesHelp: boolean;
@@ -99,6 +103,8 @@ export const ui: Ui = {
   gearBefore: null,
   gearFlash: null,
   gearHelp: false,
+  shipHelp: false,
+  stowTo: 'wallet',
   rung: null,
   housesHelp: false,
   ask: '',
