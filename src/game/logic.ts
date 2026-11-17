@@ -610,6 +610,18 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
     const ask = Math.max(1, Math.round(itemValue(cat, item.id, 1) * 0.6));
     return { ...base, temper: 0, patience: B.temperPatience[0], kind: 'sell', offers: [{ itemId: item.id, cond: 1, ask }], want: { type: 'any' }, budget: 0, line: lines.sellOpen(s, 0) };
   }
+  // A guided game is led into one small failure: on the first day replicas come, the first caller brings one, cheap.
+  // If it is bought, the next caller wants it — and finds out. (Until then, no other replica comes.)
+  if (untaught(s) && s.day >= B.fakeFromDay && !s.bait && nth === 0) {
+    const item = pick(s, goodsOf(s, cat, 2).filter((i) => !i.effect));
+    s.bait = { at: 'offered', cursor: s.queue.length };
+    return { ...base, temper: 0, patience: B.temperPatience[0], faction: null, kind: 'sell', offers: [{ itemId: item.id, cond: 2, ask: Math.max(1, Math.round(itemValue(cat, item.id, 2) * B.baitAsk)), fake: true, bait: true }], want: { type: 'any' }, budget: 0, line: '急ぎで手放したくてね。この値なら、悪い話じゃないだろう？' };
+  }
+  const baited = s.bait?.at === 'bought' ? forSale(s).find((x) => x.uid === s.bait!.uid) : undefined;
+  if (untaught(s) && baited && nth === s.bait!.cursor + 1) {
+    const want: Want = { type: 'param', param: cat.itemById.get(baited.itemId)!.params[0] };
+    return { ...base, temper: 0, patience: B.temperPatience[0], faction: null, kind: 'buy', want, budget: Math.round(itemValue(cat, baited.itemId, baited.cond) * B.retail * 1.6), line: lines.buyOpen(s, want) };
+  }
   // (the first day's buyer is after an ordinary good of the shop's — not its pot or its wallet)
   const firstGoods = s.stock.filter((x) => !x.bag && !cat.itemById.get(x.itemId)?.effect);
   if (s.day === 1 && nth === 1 && firstGoods.length > 0) {
@@ -661,7 +673,7 @@ function rollVisitor(s: GameState, cat: Catalog): Visitor {
     }
     const shady = house === 'muhou' ? B.house.muhouShady : 1;
     // some of it is not what it seems: a replica, priced a little low
-    if (s.day >= B.fakeFromDay) {
+    if (s.day >= B.fakeFromDay && !untaught(s)) {
       for (const o of offers) {
         if (house === 'eichi' || rand(s) >= B.fakeOdds[cat.itemById.get(o.itemId)!.rarity] * shady * (1 + rungs(s, 'fakes'))) continue;
         o.fake = true;
@@ -757,6 +769,9 @@ export const looksLeft = (s: GameState): number => Math.max(0, Math.max(1, B.loo
  * Looks at a seller's good through the loupe: the real thing, or a replica. A seller found out takes
  * whatever a replica is worth.
  */
+/** A guided game that has not yet been taught of replicas (see guide.ts). */
+const untaught = (s: GameState): boolean => !!s.taught && !s.taught.includes('loupe');
+
 export function examineOffer(s: GameState, cat: Catalog, index: number): '' | 'real' | 'fake' {
   const v = currentVisitor(s);
   const o = v?.kind === 'sell' && !v.done ? v.offers[index] : undefined;
@@ -1068,6 +1083,7 @@ export function buy(s: GameState, cat: Catalog, picks: readonly number[]): boole
     const uid = addTo(s, cat, 'shelf', o.itemId, o.cond, paid);
     const got = uid === null ? undefined : s.stock.find((x) => x.uid === uid);
     if (got && o.fake) got.fake = true;
+    if (got && o.bait && s.bait) s.bait = { ...s.bait, at: 'bought', uid: got.uid };
     if (got && o.seen) got.seen = true;
     if (got && o.hot) got.hot = true;
   });
@@ -1215,7 +1231,9 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
     s.last = { bonus, orderReward: 0 };
     s.gum += quote.paid + bonus;
     // a replica sold as the real thing: the buyer may find out
-    const found = forSale(s).some((x) => uids.includes(x.uid) && x.fake && !x.seen) && rand(s) < B.fakeFound;
+    // (the first replica of a guided game is always found out — once, and it costs little)
+    const lesson = s.bait?.at === 'bought' && uids.includes(s.bait.uid!) && forSale(s).some((x) => x.uid === s.bait!.uid && !x.seen);
+    const found = lesson || (forSale(s).some((x) => uids.includes(x.uid) && x.fake && !x.seen) && rand(s) < B.fakeFound);
     s.stock = s.stock.filter((x) => !uids.includes(x.uid));
     s.showcase = s.showcase.filter((x) => !uids.includes(x.uid));
     s.today.revenue += quote.paid + bonus;
@@ -1240,8 +1258,9 @@ export function sell(s: GameState, cat: Catalog, uids: readonly number[], tier: 
       v.line = tier < 0 ? lines.kindPrice(v.temper) : lines.moreBuyer(v.temper);
     }
     if (found) {
-      addRep(s, -B.fakeRep);
-      if (v.faction) moveFavor(s, v.faction, -B.fakeFavor);
+      addRep(s, -(lesson ? B.baitRep : B.fakeRep));
+      if (v.faction && !lesson) moveFavor(s, v.faction, -B.fakeFavor);
+      if (lesson) s.bait = { ...s.bait!, at: 'caught' };
       v.line = '……待て。これはレプリカじゃないか！';
       v.mood = 'annoyed';
       s.lastFake = true;

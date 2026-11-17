@@ -1,4 +1,3 @@
-import { B } from './balance';
 import { POT_ID, type Catalog } from './catalog';
 import { forSale, givePot } from './logic';
 import { facingSatoshi } from './mchc';
@@ -12,6 +11,8 @@ import type { GameState } from './state';
 export type LessonId = 'sleep' | 'mchc' | 'shop' | 'case' | 'pot' | 'loupe' | 'phone';
 
 export const GUIDE_HERO = 10004;
+
+const LOUPE = 'カウンターにルーペを置いておく。安すぎる品は、買う前にのぞいてみなさい。';
 
 export interface Lesson {
   id: LessonId;
@@ -28,9 +29,17 @@ export const LESSONS: Lesson[] = [
   { id: 'shop', title: '仕入れ', text: ['棚がさびしくなってきたな。', '店を閉めたあとは、左のドアから夜の店へ仕入れに行ける。払いは MCHC。持ち帰れるのは、ウォレットに入るぶんだけだ。'], hint: '閉店後、左下のドアをクリック' },
   { id: 'case', title: '飾る', text: ['壁にショーケースを取りつけておいた。', '飾った品を見て、それを欲しがる客が寄ってくる。いい品ほど、懐の深い客を呼ぶ。'], hint: '棚の品を、左の壁のショーケースへドラッグ' },
   { id: 'pot', title: '合成', text: ['合成の壺を届けておいた。棚に置いてある。', '品を 2 つ 3 つ入れると、1 つ上の品に生まれかわる。売れ残りの使い道にしなさい。'], hint: '棚の壺をクリック' },
-  { id: 'loupe', title: '見抜く', text: ['近ごろ、レプリカを持ちこむ者がいると聞く。', 'カウンターにルーペを置いておく。安すぎる品は、買う前にのぞいてみなさい。'], hint: '客の品を、カウンターのルーペへドラッグ' },
+  { id: 'loupe', title: '見抜く', text: ['近ごろ、レプリカを持ちこむ者がいると聞く。', LOUPE], hint: '客の品を、カウンターのルーペへドラッグ' },
   { id: 'phone', title: '人脈', text: ['家賃をひとつ越えたな。店に電話を引いておいた。', '商人ギルドに頼みごとができる。毎朝たまる「信用」でも払える。'], hint: 'カウンターの電話をクリック' },
 ];
+
+/** What he says in a note: the same for most, but the one on replicas turns on how the first one went. */
+export function lessonText(s: GameState, lesson: Lesson): string[] {
+  if (lesson.id !== 'loupe' || !s.bait) return lesson.text;
+  if (s.bait.at === 'caught') return ['やられたな。さっき売った品は、レプリカだった。', '客の信用を少し落としたが、高い授業料ではない。', LOUPE];
+  if (s.bait.at === 'bought') return ['今朝いちばんに買った品を、よく見てごらん。あれはレプリカだ。', '客に売ってしまう前で、よかった。', LOUPE];
+  return ['あの品を見送ったのは、いい判断だった。安すぎる話には、たいてい裏がある。', 'あれはレプリカだ。これからも、ああいう品は持ちこまれる。', LOUPE];
+}
 
 /** True when the shop has been taught this (so the thing that goes with it is there). */
 export const knows = (s: GameState, id: LessonId): boolean => !s.taught || s.taught.includes(id);
@@ -53,7 +62,11 @@ export function lessonDue(s: GameState): LessonId | null {
   // (for now these come by the day; each is to have its own moment)
   if (not('case') && morning && s.day >= 3) return 'case';
   if (not('pot') && morning && s.day >= 4) return 'pot';
-  if (not('loupe') && morning && s.day >= B.fakeFromDay) return 'loupe';
+  // (replicas: after the one led into — found out by its buyer, or passed up — or, if it was bought and not sold, at the day's end)
+  if (not('loupe') && s.bait) {
+    const gone = s.cursor !== s.bait.cursor || !!s.queue[s.cursor]?.done || s.phase !== 'open';
+    if (s.bait.at === 'caught' || (s.bait.at === 'offered' && gone) || (s.bait.at === 'bought' && evening)) return 'loupe';
+  }
   if (not('phone') && morning && s.day >= 8) return 'phone';
   return null;
 }
@@ -62,6 +75,11 @@ export function lessonDue(s: GameState): LessonId | null {
 export function learn(s: GameState, cat: Catalog, id: LessonId): void {
   if (!s.taught || s.taught.includes(id)) return;
   s.taught.push(id);
+  if (id === 'loupe' && s.bait?.at === 'bought') {
+    // (it was bought and is still here: he points it out)
+    const x = [...s.stock, ...s.showcase, ...s.wallet.items].find((it) => it.uid === s.bait!.uid);
+    if (x) x.seen = true;
+  }
   if (id === 'pot') {
     s.potGiven = false;
     givePot(s, cat);

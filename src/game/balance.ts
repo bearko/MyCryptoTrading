@@ -302,6 +302,9 @@ export const B = {
    * day; and what selling one as the real thing costs when the buyer finds out (the odds, reputation, regard).
    */
   fakeFromDay: 5,
+  /** the first replica of a guided game: what it is offered at (of its worth), and the regard its buyer's finding out costs */
+  baitAsk: 0.5,
+  baitRep: 1,
   fakeOdds: [0, 0.03, 0.05, 0.12, 0.18, 0.2],
   fakeValue: 0.3,
   fakeAsk: 0.88,
