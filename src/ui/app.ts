@@ -1,5 +1,6 @@
 import { introScreen, memoModal } from './guide';
 import { lessonDue } from '../game/guide';
+import { catalog as cat } from '../game/catalog';
 import { dexModal } from './dex';
 import { leaveShopModal, shipModal } from './shop';
 import morphdom from 'morphdom';
@@ -101,7 +102,7 @@ function render(): void {
   const root = ctx.root;
   // (the first days: a note comes at the moment its matter comes up, when nothing else is open)
   if (ctx.s && ui.screen === 'game' && ui.modal === 'none') {
-    const due = lessonDue(ctx.s);
+    const due = lessonDue(ctx.s, cat);
     if (due) {
       ui.memo = due;
       ui.modal = 'memo';
