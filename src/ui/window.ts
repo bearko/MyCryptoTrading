@@ -1,3 +1,4 @@
+import { satoshiSlip } from './dex';
 import { B } from '../game/balance';
 import { catalog as cat, COND_JA, RARITY_JA } from '../game/catalog';
 import { wantText } from '../game/lines';
@@ -163,6 +164,7 @@ export function customerWindow(g: GameState, v: Visitor): string {
     <i class="teeth" aria-hidden="true"></i>
   </div>`;
   }
+  if (v.special === 'satoshi') return satoshiSlip(g, v, hero.ja);
   if (v.special === 'courier') {
     // the keeper of the night shop, with last night's box: nothing to trade
     return `<div class="win paper small kind-buy rent-win" id="win" data-ui style="left:${ui.win.x}px;top:${ui.win.y}px">

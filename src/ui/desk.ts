@@ -42,7 +42,7 @@ function cardFor(el: HTMLElement): { key: string; html: string } | null {
   if (o) {
     const item = G.findItem(cat, o.itemId);
     const fits = !!G.findSlotIn(G.gridOf(s, cat, 'wallet'), cat, o.itemId);
-    return { key: `s${onFloor!.dataset.good}:${s.wallet.items.length}`, html: `${itemCard(o.itemId, o.cond)}<p class="tip-skill"><b>${o.price} GUM</b>${fits ? 'ウォレットに入ります' : 'いまのウォレットには入りません'}</p><p class="tip-skill"><b>${esc(item.skill)}</b>${esc(item.skillText)}</p>` };
+    return { key: `s${onFloor!.dataset.good}:${s.wallet.items.length}`, html: `${itemCard(o.itemId, o.cond)}<p class="tip-skill"><b>${o.price} MCHC</b>${fits ? 'ウォレットに入ります' : 'いまのウォレットには入りません'}</p><p class="tip-skill"><b>${esc(item.skill)}</b>${esc(item.skillText)}</p>` };
   }
   const inBox = el.closest<HTMLElement>('.bgood[data-boxed]');
   const boxed = inBox ? s.shop?.box?.items.find((it) => it.uid === Number(inBox.dataset.boxed)) : undefined;

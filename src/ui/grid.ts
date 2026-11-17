@@ -6,7 +6,7 @@ import { SLOT_IDS, type SlotId } from '../game/state';
 import { craftsLeft } from '../game/craft';
 import { craftBoard } from './craft';
 import { atHome, ctx, deckWidth, hasMouse, isWide, popsOn, shownGrid, shownTab, ui, type PopId } from './core';
-import { esc, tone } from './html';
+import { esc, num, tone } from './html';
 import { ICON } from './icons';
 
 /** Where the picture sits on an odd-shaped footprint: over its heaviest part. */
@@ -134,7 +134,9 @@ export function popups(g: GameState): string {
       return `<div class="grid" id="grid-trash" data-grid="trash" style="--cell:${cell}px;width:${bin.cols * cell}px;height:${bin.rows * cell}px">${bin.items.map((x) => gridItem(x)).join('')}<div class="preview" id="preview-trash" data-live></div></div><p class="pop-note">夜、眠るときに回収されます。それまでは取り出せます。</p>`;
     }
     const grid = G.gridOf(g, cat, 'wallet');
-    return `<div class="grid" id="grid-wallet" data-grid="wallet" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${grid.items.map((x) => gridItem(x)).join('')}<div class="preview" id="preview-wallet" data-live></div></div>`;
+    // (the wallet's head: what it holds of each token, and the way into the exchange)
+    const purse = `<div class="purse" id="purse"><span class="purse-n"><img src="${cat.icons.gum}" alt="GUM" draggable="false" /><b>${num(g.gum)}</b><small>GUM</small></span><span class="purse-n"><img src="${cat.icons.mchc}" alt="MCHC" draggable="false" /><b>${num(g.mchc)}</b><small>MCHC</small></span>${g.services.includes('dex') ? '<button class="purse-swap" data-act="dex" data-sfx="open" aria-label="DEX を開く（スワップ）">⇅<small>Swap</small></button>' : ''}</div>`;
+    return `${purse}<div class="grid" id="grid-wallet" data-grid="wallet" style="--cell:${cell}px;width:${grid.cols * cell}px;height:${grid.rows * cell}px">${grid.items.map((x) => gridItem(x)).join('')}<div class="preview" id="preview-wallet" data-live></div></div>`;
   };
   const note = (id: PopId): string => (id === 'wallet' || id === 'trash' ? usedOf(g, id) : id === 'gear' ? `${SLOT_IDS.filter((slot) => g.equip[slot]).length}/6` : `あと ${craftsLeft(g)} 回`);
   return ui.popOrder

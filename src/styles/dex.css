@@ -1,0 +1,284 @@
+/* ---------- MCHC: the token's coin beside a number, and the swap panel (the exchange, and the Tuesday caller) */
+.mchc-n {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.mchc-n img,
+.tok img,
+.purse-n img,
+.hud-mchc img {
+  width: 1.1em;
+  height: 1.1em;
+  object-fit: contain;
+}
+.hud-mchc {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 10px;
+  padding: 1px 8px;
+  border: 2px solid var(--ink-3);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--f-display);
+  font-size: 0.875rem;
+}
+.hud-mchc i {
+  font-style: normal;
+}
+.news-mchc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 0.6875rem;
+}
+.news-mchc span {
+  padding: 0 5px;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 700;
+}
+.news-mchc i {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--hot);
+}
+.rate-move {
+  font-style: normal;
+  color: var(--mute);
+}
+.rate-move.up {
+  color: var(--hot);
+}
+.rate-move.down {
+  color: var(--cool);
+}
+/* the wallet's head */
+.purse {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border: 2px solid var(--ink-3);
+  background: var(--ink);
+  color: var(--paper);
+}
+.purse-n {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--f-display);
+}
+.purse-n img {
+  align-self: center;
+}
+.purse-n small {
+  color: var(--mute);
+  font-size: 0.625rem;
+}
+.purse-swap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  margin-left: auto;
+  padding: 2px 10px;
+  border: 2px solid var(--ink);
+  background: var(--pink);
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+.purse-swap small {
+  font-size: 0.6875rem;
+}
+/* the swap */
+.swap {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+.swap-box {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: var(--paper-2, var(--paper));
+  color: var(--ink);
+}
+.swap-box > small {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+.swap-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.swap-n {
+  font-family: var(--f-display);
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+.swap-n.zero {
+  opacity: 0.35;
+}
+.tok {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 6px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+.tok-mchc {
+  background: var(--pink);
+}
+.tok-gum {
+  background: var(--gum);
+}
+.swap-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: 0.6875rem;
+}
+.swap-chips {
+  display: inline-flex;
+  gap: 4px;
+}
+.swap-chip {
+  min-width: 34px;
+  min-height: 28px;
+  padding: 0 6px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.swap-chip:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.swap-flip {
+  justify-self: center;
+  width: 36px;
+  height: 36px;
+  margin: -14px 0;
+  z-index: 1;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+.swap-flip:disabled {
+  cursor: default;
+}
+.swap-rate {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 10px;
+  margin: 2px 2px 4px;
+  font-size: 0.6875rem;
+}
+.swap-medals small {
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+.swap-medal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 6px;
+  padding: 4px 0 12px;
+}
+.swap-medal {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 3px solid var(--rar, var(--ink));
+  background: linear-gradient(135deg, var(--ta) var(--s1, 50%), var(--tb) var(--s1, 50%) var(--s2, 100%), var(--tc, var(--tb)) var(--s2, 100%));
+  cursor: pointer;
+}
+.swap-medal img {
+  width: 36px;
+  height: 36px;
+  image-rendering: pixelated;
+}
+.swap-medal em {
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  translate: -50% 0;
+  padding: 0 4px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.625rem;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.swap-medal:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.dex-box {
+  width: min(400px, 94vw);
+}
+.swap-win {
+  width: 340px;
+}
+.gtile-txt {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.sgood em .mchc-n img {
+  width: 0.95em;
+  height: 0.95em;
+}
+/* (in the caller's slip the panel is kept short: the slip ends at the counter) */
+.swap-win .swap {
+  gap: 4px;
+}
+.swap-win .swap-box {
+  padding: 5px 10px;
+  border-width: 2px;
+  border-radius: 10px;
+}
+.swap-win .swap-n {
+  font-size: 1.25rem;
+}
+.swap-win .swap-flip {
+  width: 28px;
+  height: 28px;
+  margin: -12px 0;
+  border-width: 2px;
+}
+.swap-win .btn {
+  min-height: 40px;
+}
+.swap-win .hint {
+  display: none;
+}
+.swap-win .swap-medal-row {
+  padding-bottom: 14px;
+}

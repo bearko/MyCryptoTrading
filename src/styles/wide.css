@@ -345,6 +345,20 @@
     width: 20px;
     height: 20px;
   }
+  /* a second, smaller board under the rent line: MCHC */
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .hud-gum .hud-mchc {
+    position: absolute;
+    left: -3px;
+    top: calc(100% + 28px);
+    margin: 0;
+    border: 3px solid var(--ink);
+    background: #0a0a0f;
+    color: var(--pink);
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .hud-gum .hud-mchc img {
+    width: 16px;
+    height: 16px;
+  }
   /* a slip of paper under them: the rent */
   #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .rent {
     left: 82px;

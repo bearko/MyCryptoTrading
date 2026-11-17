@@ -215,14 +215,37 @@ export const B = {
   // (the first wallet is small on purpose: a night at the shop cannot bring back much until a larger one is found)
   walletSizes: [[4, 3], [4, 3], [5, 4], [6, 5], [8, 6], [10, 8]],
   /** the night shop: how many goods, and their price against market value */
+  /**
+   * MCHC: the token the night shop takes. It is had for GUM or medals — from the caller who comes each Tuesday,
+   * or at any time through the exchange (a favour of the guild, for a fee). What it costs in GUM moves every day.
+   */
+  mchc: {
+    start: 20,
+    /** GUM for one MCHC: where the price rests, how far it may go, how much it moves in a day, how hard it is drawn back */
+    base: 2,
+    min: 1.2,
+    max: 3.4,
+    swing: 0.12,
+    pull: 0.12,
+    /** the Tuesday caller: who he is, the day of the week (1 = Monday), and the MCHC he carries (and more each week) */
+    hero: 2025,
+    weekday: 2,
+    purse: 120,
+    purseWeek: 30,
+    /** a medal is worth this much more to those who deal in MCHC */
+    medal: 1.15,
+    /** the exchange keeps this share of every swap */
+    dexFee: 0.04,
+  },
   shopCount: 12,
   /** the night shop's floor: goods stand on it at their real size */
   shopFloor: 24,
   /** boxes to send home what the wallet cannot carry: the box and the postage are both paid (it comes a day later) */
   boxes: [
-    { ja: '小', cols: 4, rows: 4, price: 15, post: 25 },
-    { ja: '中', cols: 5, rows: 4, price: 20, post: 35 },
-    { ja: '大', cols: 6, rows: 5, price: 30, post: 50 },
+    // (in MCHC, like everything at the night shop)
+    { ja: '小', cols: 4, rows: 4, price: 8, post: 12 },
+    { ja: '中', cols: 5, rows: 4, price: 10, post: 18 },
+    { ja: '大', cols: 6, rows: 5, price: 15, post: 25 },
   ],
   shopRate: [0.8, 0.96],
   /** chance that the shop also has the next wallet up */

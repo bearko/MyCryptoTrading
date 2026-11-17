@@ -36,6 +36,9 @@ export function load(): GameState | null {
     s.patrolSlot ??= 0;
     s.parcel ??= [];
     s.post ??= [];
+    s.mchc ??= B.mchc.start;
+    s.rate ??= B.mchc.base;
+    s.rateWas ??= s.rate;
     // saves from before the bin and the wide shelf (the shelf is repacked when the game is entered)
     s.trash ??= [];
     s.trashGum ??= 0;

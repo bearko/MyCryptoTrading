@@ -293,14 +293,14 @@ describe('game rules', () => {
 
   it('a night at the shop: bought goods come home only in the wallet, and tomorrow opens late', () => {
     const s = G.newGame(21, catalog);
-    s.gum = 1_000_000;
+    s.mchc = 1_000_000;
     s.phase = 'evening';
     expect(N.goShop(s, catalog)).toBe(true);
     expect(N.goShop(s, catalog)).toBe(false); // one outing a night
-    const gum = s.gum;
+    const gum = s.mchc;
     expect(N.shopBuy(s, 0)).toBe(true);
     expect(N.shopBuy(s, 1)).toBe(true);
-    expect(s.gum).toBe(gum - s.shop!.goods[0].price - s.shop!.goods[1].price);
+    expect(s.mchc).toBe(gum - s.shop!.goods[0].price - s.shop!.goods[1].price);
     expect(s.shop!.tray).toHaveLength(2);
     expect(N.stow(s, catalog, 0)).toBe(true);
     expect(s.wallet.items).toHaveLength(1);
