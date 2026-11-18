@@ -1186,6 +1186,55 @@ html.calm .inv-fx {
 .prop.exit:not(.ready) {
   cursor: default;
 }
+/* the evening the night shop is first spoken of: the door calls, with a ring of light and an arrow over it */
+.prop.exit.beckon {
+  position: relative;
+  z-index: 12;
+}
+.prop.exit.beckon .exit-leaf {
+  border-color: var(--gum);
+  animation: door-beckon 1.1s ease-in-out infinite;
+}
+.prop.exit.beckon b {
+  animation: bed-call 1.1s ease-in-out infinite;
+}
+.prop.exit.beckon::before {
+  content: '▼';
+  position: absolute;
+  left: 50%;
+  top: -34px;
+  color: var(--gum);
+  font-family: var(--f-display);
+  font-size: 1.5rem;
+  line-height: 1;
+  text-shadow: 2px 2px 0 var(--ink);
+  transform: translateX(-50%);
+  animation: door-arrow 0.9s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes door-beckon {
+  0%,
+  100% {
+    box-shadow: 3px 3px 0 var(--ink), 0 0 0 3px var(--gum), 0 0 18px 6px color-mix(in srgb, var(--gum) 70%, transparent);
+  }
+  50% {
+    box-shadow: 3px 3px 0 var(--ink), 0 0 0 6px var(--gum), 0 0 36px 16px color-mix(in srgb, var(--gum) 45%, transparent);
+    transform: translateY(-4px);
+  }
+}
+@keyframes door-arrow {
+  50% {
+    transform: translate(-50%, 8px);
+  }
+}
+html.calm .prop.exit.beckon .exit-leaf,
+html.calm .prop.exit.beckon b,
+html.calm .prop.exit.beckon::before {
+  animation: none;
+}
+html.calm .prop.exit.beckon .exit-leaf {
+  box-shadow: 3px 3px 0 var(--ink), 0 0 0 4px var(--gum);
+}
 .win-btn.gone {
   display: none;
 }
@@ -1515,4 +1564,148 @@ html.calm .inv-fx {
 }
 .crate-row .btn {
   flex: 0 0 auto;
+}
+
+/* his note, left on the counter's right end until it is read, and the binder the read notes are kept in */
+.memo-note,
+.binder {
+  position: absolute;
+  top: 6px;
+  z-index: 7;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--paper);
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out);
+}
+.memo-note {
+  right: 64px;
+}
+.binder {
+  right: 8px;
+}
+.memo-note svg,
+.binder svg {
+  display: block;
+  height: auto;
+  image-rendering: pixelated;
+  filter: drop-shadow(2px 3px 0 var(--ink-50));
+}
+.memo-note svg {
+  width: 48px;
+}
+.binder svg {
+  width: 40px;
+}
+.memo-note .p-ink,
+.binder .p-ink {
+  fill: var(--ink);
+}
+.memo-note .p-paper,
+.binder .p-paper {
+  fill: var(--paper);
+}
+.memo-note .p-fill {
+  fill: var(--gum);
+}
+.binder .p-fill {
+  fill: var(--violet);
+}
+.memo-note b,
+.binder b {
+  padding: 0 6px;
+  background: var(--ink);
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+.memo-note b {
+  background: var(--gum);
+  color: var(--ink);
+}
+.binder em {
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  min-width: 20px;
+  padding: 0 4px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-num);
+  font-style: normal;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  text-align: center;
+}
+.binder.empty em {
+  display: none;
+}
+.memo-note:hover,
+.binder:hover {
+  transform: translateY(-2px);
+}
+.memo-note:active,
+.binder:active {
+  transform: translateY(2px);
+}
+/* (the note calls: it bobs, and a ring of light breathes round it) */
+.memo-note svg {
+  animation: memo-call 1.1s ease-in-out infinite;
+}
+@keyframes memo-call {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+    filter: drop-shadow(2px 3px 0 var(--ink-50)) drop-shadow(0 0 4px var(--gum));
+  }
+  50% {
+    transform: translateY(-5px) rotate(2deg);
+    filter: drop-shadow(2px 3px 0 var(--ink-50)) drop-shadow(0 0 12px var(--gum));
+  }
+}
+html.calm .memo-note svg {
+  animation: none;
+  filter: drop-shadow(2px 3px 0 var(--ink-50)) drop-shadow(0 0 6px var(--gum));
+}
+
+/* the binder's window: one row a note, in the order they came */
+.binder-list {
+  display: grid;
+  gap: 6px;
+}
+.binder-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.binder-row:hover {
+  background: var(--gum);
+}
+.binder-row i {
+  font-family: var(--f-num);
+  font-style: normal;
+  min-width: 1.6em;
+  text-align: center;
+}
+.binder-row span {
+  display: grid;
+}
+.binder-row small {
+  font-size: 0.75rem;
+  opacity: 0.75;
 }

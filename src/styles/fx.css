@@ -409,6 +409,13 @@
   background: var(--ink);
   will-change: opacity;
 }
+/* falling asleep: pure dark, the room's light going out; waking: a white glare */
+.fx-fade--sleep {
+  background: var(--ink);
+}
+.fx-fade--wake {
+  background: var(--paper);
+}
 
 /* The ambient motes sit over the UI (the layer is outside the game root), so they stay faint. */
 .fx-ambient {

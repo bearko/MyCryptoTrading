@@ -1,4 +1,4 @@
-import { knows } from '../game/guide';
+import { mustShop } from '../game/guide';
 import { morningExtras } from './hooks';
 import { stageProps } from './props';
 import { B, WEEKDAYS } from '../game/balance';
@@ -6,7 +6,7 @@ import { PARAM_JA } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState, Visitor } from '../game/state';
 import { isWide, ui } from './core';
-import { counterBar, farTray } from './counter';
+import { counterBar, deskNotes, farTray } from './counter';
 import { btn, esc, GLYPH, gum } from './html';
 import { ICON } from './icons';
 import { scene } from './scene';
@@ -76,7 +76,7 @@ function nightCard(g: GameState): string {
   const print = ui.printDay === g.day ? 'print' : '';
   return `<div class="night" id="night-${g.day}">
     <div class="night-top">
-      ${wide || !knows(g, 'shop') ? '' : `<button class="door ${g.wentOut ? 'used' : ''}" id="door" data-act="door" data-sfx="none" aria-label="${g.wentOut ? '今夜はもう外出しました' : '外へ出る（ショップ／クエスト）'}">
+      ${wide ? '' : `<button class="door ${g.wentOut ? 'used' : ''} ${mustShop(g) ? 'beckon' : ''}" id="door" data-act="door" data-sfx="none" aria-label="${g.wentOut ? '今夜はもう外出しました' : '外へ出る（ショップ／クエスト）'}">
         <i class="door-glow"></i><span class="door-leaf"><i class="door-win"></i><i class="door-knob"></i></span><b>${g.wentOut ? '外出済み' : '外へ'}</b>
       </button>`}
       <article class="receipt paper ${print}" id="receipt">
@@ -113,8 +113,8 @@ export function front(g: GameState, v: Visitor | null, opening: boolean): string
   if (g.phase === 'open' && v) {
     // the street outside follows the day: the light turns towards evening as the line of customers runs out
     const sky = { dusk: g.visitorsToday > 1 ? Math.min(1, g.cursor / (g.visitorsToday - 1)) * 0.75 : 0, rain: g.event.id === 'rain' };
-    return `<div class="front open" id="front" data-ui>${scene(v, opening, { ...farTray(v), html: farTray(v).html + WALLS }, sky)}${counterBar(g, v)}${shutter('up', false)}${stageProps(g)}</div>`;
+    return `<div class="front open" id="front" data-ui>${scene(v, opening, { ...farTray(v), html: farTray(v).html + WALLS }, sky)}${counterBar(g, v)}${shutter('up', false)}${stageProps(g)}${deskNotes(g)}</div>`;
   }
   const night = g.phase === 'evening';
-  return `<div class="front shut ${night ? 'is-night' : 'is-morning'}" id="front" data-ui>${scene(null, false)}${counterBar(g, null)}${shutter('down', night)}${WALLS}${night ? nightCard(g) : morningCard(g)}${stageProps(g)}</div>`;
+  return `<div class="front shut ${night ? 'is-night' : 'is-morning'}" id="front" data-ui>${scene(null, false)}${counterBar(g, null)}${shutter('down', night)}${WALLS}${night ? nightCard(g) : morningCard(g)}${stageProps(g)}${deskNotes(g)}</div>`;
 }

@@ -562,6 +562,19 @@
     left: calc(var(--goods-x) + var(--goods-w) / 2 + 10px);
     top: 8px;
   }
+  /* (in the counter's empty right end, past the bell: the note lying there, then the binder; over the shutter) */
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .front > :is(.memo-note, .binder) {
+    top: auto;
+    right: auto;
+    bottom: 12px;
+    z-index: 12;
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .front > .memo-note {
+    left: calc(var(--goods-x) + var(--goods-w) / 2 + 96px);
+  }
+  #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .front > .binder {
+    left: calc(var(--goods-x) + var(--goods-w) / 2 + 170px);
+  }
   #app:is([data-phase='morning'], [data-phase='open'], [data-phase='evening']) .far {
     left: var(--goods-x);
     box-sizing: border-box;

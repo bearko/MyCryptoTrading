@@ -1,5 +1,7 @@
-import { introScreen, memoModal } from './guide';
-import { lessonDue } from '../game/guide';
+import { binderModal, introScreen, memoModal } from './guide';
+import { placeMemo } from '../game/guide';
+import * as store from '../game/save';
+import { note } from './toast';
 import { catalog as cat } from '../game/catalog';
 import { dexModal } from './dex';
 import { leaveShopModal, shipModal } from './shop';
@@ -55,6 +57,7 @@ function screenHtml(): string {
     if (ui.modal === 'leave') html += leaveShopModal();
     if (ui.modal === 'ship' && ctx.s) html += shipModal(ctx.s);
     if (ui.modal === 'memo') html += memoModal();
+    if (ui.modal === 'binder') html += binderModal();
     if (ui.modal === 'intro') html += introScreen();
     if (ui.modal === 'dex' && ctx.s) html += dexModal(ctx.s);
     if (ui.modal === 'gear') html += gearModal(g);
@@ -100,13 +103,11 @@ const drawn = new WeakSet<Node>();
  */
 function render(): void {
   const root = ctx.root;
-  // (the first days: a note comes at the moment its matter comes up, when nothing else is open)
-  if (ctx.s && ui.screen === 'game' && ui.modal === 'none') {
-    const due = lessonDue(ctx.s, cat);
-    if (due) {
-      ui.memo = due;
-      ui.modal = 'memo';
-    }
+  // (the first days: a note is left on the counter at the moment its matter comes up — it waits there to be read)
+  let left: string | null = null;
+  if (ctx.s && ui.screen === 'game' && ['morning', 'open', 'evening'].includes(ctx.s.phase)) {
+    left = placeMemo(ctx.s, cat);
+    if (left) store.save(ctx.s);
   }
   const next = root.cloneNode(false) as HTMLElement;
   next.innerHTML = screenHtml();
@@ -137,6 +138,13 @@ function render(): void {
     if (g.phase === 'open') hookEffects(g);
     sceneEffects(g, ui.lateKey === ui.custKey);
     if (ui.modal === 'gear') gearEffects(g);
+  }
+  if (left && g) {
+    // (the note is set down: a rustle of paper, a few stars over it, and a word of where it is)
+    const paper = root.querySelector('#memo-note');
+    if (paper) fx.burst('stars', paper, { count: 10 });
+    audio.sfx('event');
+    note(g.phase === 'morning' ? 'カウンターに、福沢諭吉のメモが置いてある' : '福沢諭吉が、カウンターにメモを置いていった');
   }
 }
 

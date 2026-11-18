@@ -1,4 +1,4 @@
-import { knows } from '../game/guide';
+import { filed, knows } from '../game/guide';
 import { B } from '../game/balance';
 import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
@@ -23,6 +23,22 @@ function offerTile(v: Visitor, index: number): string {
   const item = G.findItem(cat, o.itemId);
   return `<div class="offer" id="offer-${offerKey(v, index)}" style="${tone(item)}" data-offer="${index}" role="button" aria-label="${esc(item.ja)} ${o.ask} GUM">
     <img src="${item.img}" alt="" draggable="false" />${glyphs(item)}${o.hot ? '<span class="hot-tag">訳あり</span>' : ''}${o.seen ? `<span class="seen ${o.fake ? 'fake' : 'real'}">${o.fake ? 'レプリカ' : '本物'}</span>` : ''}<span class="ptag">${num(o.ask)}</span></div>`;
+}
+
+// (a folded sheet of paper, a corner turned up; and a ring binder standing, its rings on the spine)
+const MEMO = `<svg viewBox="0 0 40 32" aria-hidden="true"><path class="p-ink" d="M2 6h32l4 4v20H2z"/><path class="p-paper" d="M5 9h28l2 2v16H5z"/><path class="p-ink" d="M9 14h20v2H9zM9 19h16v2H9zM9 24h12v2H9z"/><path class="p-fill" d="M30 2l6 6-4 2-4-4z"/></svg>`;
+const BINDER = `<svg viewBox="0 0 40 44" aria-hidden="true"><path class="p-ink" d="M4 2h32v40H4z"/><path class="p-fill" d="M7 5h26v34H7z"/><path class="p-paper" d="M13 12h17v10H13z"/><path class="p-ink" d="M15 15h13v2H15zM15 18h9v2h-9z"/><path class="p-ink" d="M2 8h7v4H2zM2 20h7v4H2zM2 32h7v4H2z"/><path class="p-paper" d="M3 9h5v2H3zM3 21h5v2H3zM3 33h5v2H3z"/></svg>`;
+
+/**
+ * At the counter's right end, past the bell: his note, while one lies there unread, and the binder the read notes
+ * are kept in. (Set in the front, not in the counter, so that they stay in sight over the shutter when it is down.)
+ */
+export function deskNotes(g: GameState): string {
+  const memo = g.memoOut
+    ? `<button class="memo-note" id="memo-note" data-act="memo-read" data-sfx="open" aria-label="福沢諭吉のメモ（クリックで読む。読むとバインダーにとじられる）">${MEMO}<b>メモ</b></button>`
+    : '';
+  const kept = filed(g).length;
+  return `${memo}<button class="binder ${kept ? '' : 'empty'}" id="binder" data-act="binder" data-sfx="open" aria-label="バインダー（読んだメモ ${kept} 枚。クリックで見返す）">${BINDER}<b>バインダー</b><em>${kept}</em></button>`;
 }
 
 /** True when the bell is the next thing to do: the customer is done, or the shop has nothing for them. */

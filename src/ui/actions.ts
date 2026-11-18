@@ -1,4 +1,4 @@
-import { learn, startGuided, type LessonId } from '../game/guide';
+import { knows, learn, mustShop, MUST_SHOP_LINE, startGuided, type LessonId } from '../game/guide';
 import { INTRO_STEPS } from './guide';
 import * as M from '../game/mchc';
 import { moveMany } from '../game/night';
@@ -33,13 +33,27 @@ let nextTimer = 0;
 const render = (): void => ctx.render();
 const $ = <T extends HTMLElement = HTMLElement>(sel: string): T | null => ctx.root.querySelector<T>(sel);
 
+/** A note goes into the binder: the binder hops and the sheet's count is said. */
+function filedFx(): void {
+  const b = $('#binder');
+  if (!b) return;
+  anim(b, [{ transform: 'translateY(0) scale(1)' }, { transform: 'translateY(-8px) scale(1.12)' }, { transform: 'translateY(0) scale(1)' }], { duration: 420, easing: 'ease-out' });
+  fx.burst('sparks', b, { count: 8 });
+  audio.sfx('equip');
+  note('メモをバインダーにとじた（いつでも見返せます）');
+}
+
 export function closeModal(): void {
   // (a note shut any way has been read: what comes with it is handed over)
   if (ui.modal === 'memo' && ui.memo && ctx.s) {
+    const fresh = ctx.s.memoOut === ui.memo;
     learn(ctx.s, cat, ui.memo as LessonId);
     store.save(ctx.s);
+    // (read off the counter: it goes into the binder)
+    if (fresh) window.setTimeout(() => filedFx(), 30);
   }
   ui.memo = null;
+  ui.memoBack = false;
   ui.modal = 'none';
   ui.sel = null;
   ui.confirmDispose = false;
@@ -64,7 +78,7 @@ function newCustomer(): void {
 }
 
 /** A change of scene: the screen is swapped under an ink wipe, and input waits until it is over. */
-function sceneChange(swap: () => void, kind: 'slash' | 'bars' | 'iris' = 'slash'): Promise<void> {
+function sceneChange(swap: () => void, kind: 'slash' | 'bars' | 'iris' | 'sleep' = 'slash'): Promise<void> {
   return locked(async () => {
     let done = false;
     const once = (): void => {
@@ -72,7 +86,7 @@ function sceneChange(swap: () => void, kind: 'slash' | 'bars' | 'iris' = 'slash'
       done = true;
       swap();
     };
-    await within(fx.transition(once, kind), 1600);
+    await within(fx.transition(once, kind), kind === 'sleep' ? 3200 : 1600);
     // a transition that never called back must not leave the old screen up
     once();
   });
@@ -528,10 +542,26 @@ function buyDeed(g: GameState, button: HTMLElement | null): void {
 }
 
 function endDay(g: GameState): void {
+  // (a note of his lies unread on the counter: it is read before sleeping)
+  if (g.memoOut) {
+    nope(document.getElementById('bed'));
+    nope(document.getElementById('memo-note'));
+    note('カウンターに先生のメモがある。読んでから休もう');
+    return;
+  }
+  // (the evening the night shop is first spoken of: not to bed before going out)
+  if (mustShop(g)) {
+    nope(document.getElementById('bed'));
+    nope(document.getElementById('door'));
+    note(MUST_SHOP_LINE);
+    return;
+  }
   const before = g.gum;
-  audio.sfx('confirm');
+  // (falling asleep: the lights fade out to a soft sound; waking: they are on at once, with a bright one)
+  audio.sfx('doze');
   void sceneChange(() => {
     G.endDay(g);
+    audio.sfx('wake', { delay: display.still ? 0 : 0.42 });
     ui.gridView = 'shelf';
     ui.printDay = 0;
     store.save(g);
@@ -542,12 +572,12 @@ function endDay(g: GameState): void {
       return;
     }
     if (g.gum < before) {
-      audio.sfx('rent', { delay: 0.3 });
+      audio.sfx('rent', { delay: 0.75 });
       haptic('medium');
     }
-    audio.sfx('event', { delay: 0.45 });
-    if (g.lateOpen) audio.sfx('stamp', { delay: 0.95 });
-  }, 'bars');
+    audio.sfx('event', { delay: 0.85 });
+    if (g.lateOpen) audio.sfx('stamp', { delay: 1.35 });
+  }, 'sleep');
 }
 
 // ---------------------------------------------------------------- everything else
@@ -572,8 +602,27 @@ function gearChange(g: GameState, change: () => N.EquipResult | boolean, slot: s
 function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLElement | null): void {
   const v = G.currentVisitor(g);
   switch (name) {
-    case 'memo-ok':
+    case 'memo-ok': {
+      // (a note taken out of the binder goes back into it, and the binder stays open)
+      const back = ui.memoBack;
       closeModal();
+      if (back) ui.modal = 'binder';
+      break;
+    }
+    case 'memo-read':
+      // his note on the counter: reading it files it in the binder
+      if (!g.memoOut) return;
+      ui.memo = g.memoOut;
+      ui.memoBack = false;
+      ui.modal = 'memo';
+      break;
+    case 'binder':
+      ui.modal = 'binder';
+      break;
+    case 'binder-read':
+      ui.memo = arg;
+      ui.memoBack = true;
+      ui.modal = 'memo';
       break;
     case 'intro-skip':
     case 'intro-next':
@@ -1121,6 +1170,12 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
         // (the door is there all day, and opens once the shop is shut)
         nope(el);
         note('閉店後にならないと、外出はできません');
+        return;
+      }
+      if (!knows(g, 'shop')) {
+        // (a guided game, before the night shop has been spoken of: nowhere to go yet)
+        nope(el);
+        note('今夜は、出かける用事はないな');
         return;
       }
       if (N.canGoOut(g)) {

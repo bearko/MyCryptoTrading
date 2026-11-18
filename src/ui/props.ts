@@ -2,7 +2,7 @@
  * The things of the shop that are used by hand rather than through a menu (a wide screen shows them
  * beside the shelf): the bin — goods are dragged into it — and the bed — a click on it at night ends the day.
  */
-import { knows } from '../game/guide';
+import { knows, mustShop } from '../game/guide';
 import { MARK_JA, MARKS } from '../game/kinds';
 import { catalog as cat, HERO_CLASS_JA, PARAM_JA, RARITY_JA, CRATE_IDS } from '../game/catalog';
 import * as G from '../game/logic';
@@ -26,16 +26,17 @@ export function deckProps(g: GameState): string {
   const night = g.phase === 'evening';
   const count = g.trash.length;
   const worn = SLOT_IDS.filter((slot) => g.equip[slot]).length;
-  const out = night && !g.wentOut;
-  // (the door is there once the night shop has been spoken of)
-  const door = knows(g, 'shop');
-  return `<button class="prop exit ${door ? '' : 'untaught'} ${out ? 'ready' : ''} ${night && g.wentOut ? 'used' : ''}" id="door" data-act="door" data-sfx="none" title="${night ? (g.wentOut ? '今夜はもう外出しました' : '外へ出る（ショップ／クエスト）') : '閉店後にならないと、外出はできません'}" aria-label="ドア（閉店後に、ここから外出する）">
+  // (the door is always there — a shop has a door — but it leads out only once the night shop has been spoken of)
+  const out = night && !g.wentOut && knows(g, 'shop');
+  // (the evening the night shop is first spoken of, the door calls louder and the bed does not)
+  const call = mustShop(g);
+  return `<button class="prop exit ${out ? 'ready' : ''} ${call ? 'beckon' : ''} ${night && g.wentOut ? 'used' : ''}" id="door" data-act="door" data-sfx="none" title="${night ? (g.wentOut ? '今夜はもう外出しました' : '外へ出る（ショップ／クエスト）') : '閉店後にならないと、外出はできません'}" aria-label="ドア（閉店後に、ここから外出する）">
       <span class="exit-leaf"><i class="exit-win"></i><i class="exit-knob"></i></span><b>ドア</b></button>
     <button class="prop trash ${count ? 'full' : ''}" id="trash" data-act="trash" data-sfx="open" aria-label="ゴミ箱（品をドラッグして捨てる。中身は ${count} 個。クリックで中を見る）">
       ${BIN}<b>ゴミ箱</b>${count ? `<em>${count}</em>` : ''}</button>
     <button class="prop rack ${ui.pops.gear.open ? 'open' : ''}" id="rack" data-act="gear" aria-label="装備棚（クリックで装備の窓を開く・閉じる。身につけている品 ${worn} 個）">
       ${RACK}<b>装備棚</b><small>${worn}/6</small></button>
-    <button class="prop bed ${night ? 'ready' : ''}" id="bed" data-act="bed" data-sfx="none" aria-label="寝床（店を閉めたあと、クリックで眠って翌日へ）">
+    <button class="prop bed ${night && !call && !g.memoOut ? 'ready' : ''}" id="bed" data-act="bed" data-sfx="none" aria-label="寝床（店を閉めたあと、クリックで眠って翌日へ）">
       ${BED}<b>寝床</b></button>`;
 }
 

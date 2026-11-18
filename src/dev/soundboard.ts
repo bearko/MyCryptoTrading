@@ -18,6 +18,8 @@ const SFX_NOTES: Record<SfxName, string> = {
   rotate: '回転',
   shutterUp: '開店（シャッター）',
   shutterDown: '閉店（シャッター）',
+  doze: '眠りに入る',
+  wake: 'ぱっと起きる',
   step: '客の足音（1 歩）',
   voice: 'せりふ（1 文字）',
   bell: 'ベル',

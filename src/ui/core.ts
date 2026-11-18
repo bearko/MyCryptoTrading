@@ -3,7 +3,7 @@ import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState, SlotId } from '../game/state';
 
-export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'spill' | 'ship' | 'dex' | 'memo' | 'intro' | 'network' | 'parcel' | 'wanted' | 'calendar' | 'forecast' | 'casetold';
+export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'spill' | 'ship' | 'dex' | 'memo' | 'binder' | 'intro' | 'network' | 'parcel' | 'wanted' | 'calendar' | 'forecast' | 'casetold';
 
 /** Screen state that is not part of the saved game. */
 export interface Ui {
@@ -64,6 +64,8 @@ export interface Ui {
   shipHelp: boolean;
   /** the note being read, and how far the opening has been told (−1: not showing) */
   memo: string | null;
+  /** the note being read was taken out of the binder (closing it goes back to the binder) */
+  memoBack: boolean;
   intro: number;
   parcelHelp: boolean;
   /** the swap panel: which token is given, and how much of it */
@@ -111,6 +113,7 @@ export const ui: Ui = {
   gearHelp: false,
   shipHelp: false,
   memo: null,
+  memoBack: false,
   intro: -1,
   parcelHelp: false,
   dex: { from: 'gum', amount: 0 },

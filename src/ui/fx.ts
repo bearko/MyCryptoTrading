@@ -1721,7 +1721,7 @@ function doHitStop(ms: number): void {
 // Screen wipes
 // ---------------------------------------------------------------------------------------------
 
-type WipeKind = 'slash' | 'bars' | 'iris';
+type WipeKind = 'slash' | 'bars' | 'iris' | 'sleep';
 let wipeState: 'idle' | 'cover' | 'reveal' = 'idle';
 let wipeSwaps: Array<() => void> = [];
 let wipeWaiters: Array<() => void> = [];
@@ -1745,12 +1745,26 @@ function startWipe(kind: WipeKind, center: Target | undefined): void {
   if (!box) return;
   box.classList.add('is-busy');
   const calm = isCalm();
-  const cover = calm ? 60 : 260;
-  const reveal = calm ? 60 : 260;
+  // (falling asleep: the lights fade out slowly, and stay out a moment; waking: they are on at once)
+  const sleep = kind === 'sleep';
+  const cover = sleep ? (calm ? 600 : 1500) : calm ? 60 : 260;
+  const reveal = sleep ? (calm ? 120 : 520) : calm ? 60 : 260;
+  const dark = sleep ? (calm ? 150 : 420) : calm ? 0 : 30;
   /** Starts the way out; called once the screen is covered and swapped. */
   let open: () => void = () => {};
 
-  if (calm) {
+  if (sleep) {
+    // the room dims as eyes close: slow at first, then gone to black
+    const sheet = div('fx-fade fx-fade--sleep', box);
+    sheet.animate([{ opacity: 0 }, { opacity: 0.55, offset: 0.55 }, { opacity: 1 }], { duration: cover, easing: 'ease-in', fill: 'both' });
+    open = () => {
+      // eyes open: the dark is gone in an instant, and a white glare fades off the morning
+      sheet.remove();
+      if (calm) return;
+      const glare = div('fx-fade fx-fade--wake', box);
+      glare.animate([{ opacity: 0.9 }, { opacity: 0 }], { duration: reveal, easing: 'ease-out', fill: 'both' });
+    };
+  } else if (calm) {
     const sheet = div('fx-fade', box);
     sheet.animate([{ opacity: 0 }, { opacity: 1 }], { duration: cover, fill: 'both' });
     open = () => sheet.animate([{ opacity: 1 }, { opacity: 0 }], { duration: reveal, fill: 'both' });
@@ -1863,7 +1877,7 @@ function startWipe(kind: WipeKind, center: Target | undefined): void {
           for (const w of waiters) w();
         }, reveal + 20);
       },
-      calm ? 0 : 30,
+      dark,
     );
   }, cover + 10);
 }
@@ -2035,7 +2049,7 @@ export const fx = {
    * `swap` runs exactly once. Called again while closing, the new swap shares the same cover;
    * called while opening, it waits and gets a wipe of its own.
    */
-  transition(swap: () => void, kind: 'slash' | 'bars' | 'iris' = 'slash', opts?: { at?: Target }): Promise<void> {
+  transition(swap: () => void, kind: WipeKind = 'slash', opts?: { at?: Target }): Promise<void> {
     return doTransition(swap, kind, opts?.at);
   },
   /** Slow drifting particles behind everything: dust by day, fireflies at night, embers in the dungeon. */

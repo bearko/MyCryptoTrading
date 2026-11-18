@@ -1102,6 +1102,11 @@
   animation: tag-swing 2.4s ease-in-out infinite;
   transform-origin: 50% 0;
 }
+.door.beckon .door-glow {
+  inset: -24px -20px -12px -24px;
+  background: radial-gradient(ellipse at 50% 60%, var(--gum), color-mix(in srgb, var(--gum) 40%, transparent) 45%, transparent 70%);
+  animation-duration: 1.1s;
+}
 .door.used .door-glow,
 .door.used .door-win {
   animation: none;
