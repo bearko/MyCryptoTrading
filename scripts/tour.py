@@ -81,6 +81,15 @@ class Play:
     async def memo(self, line):
         # (the note is left on the counter: it is clicked, read, and filed in the binder)
         await self.pg.wait_for_timeout(900)
+        if await self.has('#cameo'):
+            # (while the shop is open he comes in and says it himself, then leaves the note)
+            await self.say('営業中は、福沢諭吉が店に来て、自分の口で話します')
+            for _ in range(6):
+                if not await self.has('#cameo'):
+                    break
+                await self.pg.wait_for_timeout(1700)
+                await self.click('#cameo', 0.5)
+            await self.pg.wait_for_timeout(700)
         await self.say(line)
         await self.click('#memo-note', 1.0)
         await self.shot()
@@ -144,7 +153,7 @@ async def s_sleep(p):
 
 async def s_mchc(p):
     await p.click('[data-act=open]', 2.8)
-    if not await p.until('#memo-note'):
+    if not await p.until('#cameo, #memo-note'):
         return await p.say('（この回は、サトシ・ナカモトまで進めませんでした）')
     await p.memo('2 日目は火曜。その日の客のあとに、サトシ・ナカモトが来ます')
     await p.say('GUM を MCHC に替えます。夜のショップは MCHC しか使えません')
@@ -171,7 +180,7 @@ async def s_shop(p):
 
 async def s_case(p):
     await p.click('[data-act=open]', 2.8)
-    if not await p.until('#memo-note'):
+    if not await p.until('#cameo, #memo-note'):
         return await p.say('（この回は、手ぶらで帰る買い客が来ませんでした）')
     await p.memo('3 日目。欲しい品がなくて、買い客が手ぶらで帰った直後です')
     await p.say('左の壁に、ショーケースと予測客のモニターが取りつけられました')
@@ -217,7 +226,7 @@ async def s_fake(p):
         await p.click(f'#{uid} .inv-cell', 0.9, modifiers=['Alt'])
     if await p.has('[data-act=sell]'):
         await p.click('[data-act=sell]', 2.8)
-    if await p.has('#memo-note'):
+    if await p.has('#cameo, #memo-note'):
         await p.memo('売ったとたんに見抜かれました。評判が 1 下がり、そこでメモが届きます')
         await p.say('一度だけの、小さな失敗。カウンターにルーペが置かれました')
     else:
@@ -229,14 +238,14 @@ async def s_pass(p):
     await p.key('Space', 1.0)
     await p.say('同じ 5 日目。こんどは買わずに、ベルで見送ります')
     await p.key('b', 2.6)
-    if await p.has('#memo-note'):
+    if await p.has('#cameo, #memo-note'):
         await p.memo('見送った場合は、その判断を認める言葉になります')
     await p.say('どちらの道でも、ルーペはここで手に入ります')
 
 
 async def s_hot(p):
     await p.key('Space', 1.2)
-    if not await p.has('#memo-note'):
+    if not await p.has('#cameo, #memo-note'):
         return await p.say('（この回は、訳ありの品のメモが出ませんでした）')
     await p.memo('6 日目から。訳ありの品が、はじめてカウンターに置かれた時です')
     await p.say('安いけれど、見回りに見つかると棚から没収されます')
@@ -244,7 +253,7 @@ async def s_hot(p):
 
 async def s_rent(p):
     await p.click('[data-act=open]', 2.8)
-    if not await p.until('#memo-note'):
+    if not await p.until('#cameo, #memo-note'):
         return await p.say('（この回は、引取の商人まで進めませんでした）')
     await p.memo('7 日目は家賃の日。客のあとに、まず引取の商人が来ます')
     await p.say('手持ちが足りなければ、ここで品を買い取ってもらえます')

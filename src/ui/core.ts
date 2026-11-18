@@ -66,6 +66,10 @@ export interface Ui {
   memo: string | null;
   /** the note being read was taken out of the binder (closing it goes back to the binder) */
   memoBack: boolean;
+  /** he has come into the shop to speak of the note he is about to leave (while it is open): which note, and the line he is on */
+  cameo: { id: string; line: number } | null;
+  /** the note has just been set down: its little flourish is owed once */
+  memoDrop: boolean;
   intro: number;
   parcelHelp: boolean;
   /** the swap panel: which token is given, and how much of it */
@@ -114,6 +118,8 @@ export const ui: Ui = {
   shipHelp: false,
   memo: null,
   memoBack: false,
+  cameo: null,
+  memoDrop: false,
   intro: -1,
   parcelHelp: false,
   dex: { from: 'gum', amount: 0 },

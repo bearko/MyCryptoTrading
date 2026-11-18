@@ -706,3 +706,70 @@ html.calm .intro-text {
 .dest-card.untaught {
   display: none;
 }
+
+/* he comes into the open shop to say it himself: his figure at the left of the scene, and his words */
+.cameo {
+  position: absolute;
+  left: calc(var(--wall-l, 0px) + 12px);
+  bottom: 96px;
+  z-index: 13;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: min(560px, 62%);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  animation: cameo-in 0.35s var(--ease-out, ease-out) both;
+}
+.cameo-face {
+  flex: 0 0 auto;
+  width: 132px;
+  height: 132px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(3px 4px 0 var(--ink));
+}
+.cameo-say {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 26px;
+  padding: 10px 14px;
+  border: 3px solid var(--ink);
+  background: var(--paper);
+  box-shadow: 4px 4px 0 var(--ink);
+  font-weight: 700;
+  line-height: 1.6;
+  animation: cameo-say 0.25s ease-out both;
+}
+.cameo-say b {
+  justify-self: start;
+  padding: 0 8px;
+  background: var(--gum);
+  font-size: 0.75rem;
+}
+.cameo-say small {
+  justify-self: end;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  opacity: 0.6;
+}
+@keyframes cameo-in {
+  from {
+    opacity: 0;
+    translate: -40px 0;
+  }
+}
+@keyframes cameo-say {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+html.calm .cameo,
+html.calm .cameo-say {
+  animation: none;
+}

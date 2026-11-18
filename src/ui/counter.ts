@@ -34,7 +34,8 @@ const BINDER = `<svg viewBox="0 0 40 44" aria-hidden="true"><path class="p-ink" 
  * are kept in. (Set in the front, not in the counter, so that they stay in sight over the shutter when it is down.)
  */
 export function deskNotes(g: GameState): string {
-  const memo = g.memoOut
+  // (while he is still speaking of it, the note is not on the counter yet)
+  const memo = g.memoOut && !ui.cameo
     ? `<button class="memo-note" id="memo-note" data-act="memo-read" data-sfx="open" aria-label="福沢諭吉のメモ（クリックで読む。読むとバインダーにとじられる）">${MEMO}<b>メモ</b></button>`
     : '';
   const kept = filed(g).length;
