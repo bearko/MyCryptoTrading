@@ -169,7 +169,7 @@ function onKey(event: KeyboardEvent): void {
       break;
     case ' ':
       // the line moves on: a greeting gives way to the slip, a line being typed is shown whole, a finished line is put away
-      if (!modal) done = press('#greet-skip') || advanceLine();
+      if (!modal) done = press('#cameo') || press('#greet-skip') || advanceLine();
       break;
     case 'b':
     case 'B':

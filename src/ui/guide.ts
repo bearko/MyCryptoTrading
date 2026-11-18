@@ -3,6 +3,7 @@ import { filed, GUIDE_HERO, LESSONS, lessonText } from '../game/guide';
 import { ctx } from './core';
 import { ui } from './core';
 import { btn, esc } from './html';
+import type { GameState } from '../game/state';
 
 const face = (): string => cat.heroById.get(GUIDE_HERO)?.img ?? '';
 
@@ -17,6 +18,27 @@ export function memoModal(): string {
     <div class="actions">${btn('memo-ok', ui.memoBack ? 'バインダーに戻す' : 'わかった（バインダーにとじる）', { cls: 'primary', sfx: ui.memoBack ? 'close' : 'confirm' })}</div>
   </div></div>`;
 }
+
+/**
+ * He comes into the open shop to say it himself: his figure at the left of the scene, his words in a bubble, a
+ * click (or Space) for the next. After the last he goes, and the note is left on the counter.
+ */
+export function cameo(g: GameState): string {
+  const lesson = LESSONS.find((l) => l.id === ui.cameo?.id);
+  if (!ui.cameo || !lesson) return '';
+  const lines = lessonText(g, lesson);
+  const at = Math.min(ui.cameo.line, lines.length - 1);
+  return `<button class="cameo" id="cameo" data-act="cameo-next" data-sfx="tap" aria-label="福沢諭吉の話をつづける">
+    <img class="cameo-face" src="${face()}" alt="" draggable="false" />
+    <span class="cameo-say" id="cameo-say-${at}"><b>福沢諭吉</b>${esc(lines[at])}<small>${at + 1}/${lines.length}・クリックでつづける</small></span>
+  </button>`;
+}
+
+/** How many lines he has to say of a note. */
+export const cameoLines = (g: GameState): number => {
+  const lesson = LESSONS.find((l) => l.id === ui.cameo?.id);
+  return lesson ? lessonText(g, lesson).length : 0;
+};
 
 /** The binder on the counter: every note read so far, to be read again at any time. */
 export function binderModal(): string {

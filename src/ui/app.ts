@@ -108,6 +108,18 @@ function render(): void {
   if (ctx.s && ui.screen === 'game' && ['morning', 'open', 'evening'].includes(ctx.s.phase)) {
     left = placeMemo(ctx.s, cat);
     if (left) store.save(ctx.s);
+    // (while the shop is open he comes in and says it himself, and leaves the note as he goes; morning and night, it is simply there)
+    if (left && ctx.s.phase === 'open') {
+      ui.cameo = { id: left, line: 0 };
+      left = null;
+      audio.sfx('door');
+    }
+    if (ui.memoDrop) {
+      ui.memoDrop = false;
+      left = ctx.s.memoOut ?? null;
+    }
+    // (the note he came about is no longer waiting, or the day is over: he is not kept standing there)
+    if (ui.cameo && (ctx.s.memoOut !== ui.cameo.id || ctx.s.phase !== 'open')) ui.cameo = null;
   }
   const next = root.cloneNode(false) as HTMLElement;
   next.innerHTML = screenHtml();

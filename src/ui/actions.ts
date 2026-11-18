@@ -1,5 +1,5 @@
 import { knows, learn, mustShop, MUST_SHOP_LINE, startGuided, type LessonId } from '../game/guide';
-import { INTRO_STEPS } from './guide';
+import { cameoLines, INTRO_STEPS } from './guide';
 import * as M from '../game/mchc';
 import { moveMany } from '../game/night';
 import { potCandidates } from './craft';
@@ -609,6 +609,15 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       if (back) ui.modal = 'binder';
       break;
     }
+    case 'cameo-next':
+      // he says the next line; after the last he goes, leaving the note on the counter
+      if (!ui.cameo) return;
+      ui.cameo.line += 1;
+      if (ui.cameo.line >= cameoLines(g)) {
+        ui.cameo = null;
+        ui.memoDrop = true;
+      }
+      break;
     case 'memo-read':
       // his note on the counter: reading it files it in the binder
       if (!g.memoOut) return;
