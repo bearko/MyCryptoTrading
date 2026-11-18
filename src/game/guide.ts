@@ -55,6 +55,16 @@ export function lessonText(s: GameState, lesson: Lesson): string[] {
 /** True when the shop has been taught this (so the thing that goes with it is there). */
 export const knows = (s: GameState, id: LessonId): boolean => !s.taught || s.taught.includes(id);
 
+/**
+ * The evening the night shop is first spoken of: until the player has been out, the door calls and the bed will not
+ * let them sleep (the note told them to go). Only that evening — a later night may be slept through as it likes.
+ */
+export const mustShop = (s: GameState): boolean =>
+  !!s.taught && s.taught.includes('shop') && s.taughtAt === when(s) && s.phase === 'evening' && !s.wentOut;
+
+/** Said when the bed is tried before the first trip to the night shop. */
+export const MUST_SHOP_LINE = '先生がショップに行くように言っていたな……';
+
 /** A new game begins guided: nothing has been taught yet, and the pot comes later, with its note. */
 export function startGuided(s: GameState): void {
   s.taught = [];
@@ -113,8 +123,23 @@ export function lessonDue(s: GameState, cat: Catalog): LessonId | null {
   return null;
 }
 
+/**
+ * The note that is due is left on the counter (he leaves it overnight, or as he goes): it waits there until it is
+ * read, and no other comes while it does. Returns the note just left, if any.
+ */
+export function placeMemo(s: GameState, cat: Catalog): LessonId | null {
+  if (!s.taught || s.memoOut) return null;
+  const due = lessonDue(s, cat);
+  if (due) s.memoOut = due;
+  return due;
+}
+
+/** The notes read so far, in the order they are taught (the binder keeps them). A game without the guide has them all. */
+export const filed = (s: GameState): Lesson[] => LESSONS.filter((l) => !s.taught || (s.taught.includes(l.id) && s.memoOut !== l.id));
+
 /** The note has been read: the shop knows it now, and what comes with it is handed over. */
 export function learn(s: GameState, cat: Catalog, id: LessonId): void {
+  if (s.memoOut === id) s.memoOut = null;
   if (!s.taught || s.taught.includes(id)) return;
   s.taught.push(id);
   s.taughtAt = when(s);

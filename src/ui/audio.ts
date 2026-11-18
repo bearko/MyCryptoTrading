@@ -22,7 +22,7 @@ import assetJson from '../generated/audio.json';
 export type SfxName =
   | 'tap' | 'confirm' | 'cancel' | 'open' | 'close' | 'error'
   | 'pick' | 'drop' | 'dropBad' | 'rotate'
-  | 'shutterUp' | 'shutterDown' | 'step' | 'voice' | 'bell' | 'door'
+  | 'shutterUp' | 'shutterDown' | 'doze' | 'wake' | 'step' | 'voice' | 'bell' | 'door'
   | 'buy' | 'coin' | 'coinBig' | 'haggleOk' | 'refuse' | 'angry'
   | 'receipt' | 'stamp' | 'rent' | 'event' | 'equip'
   | 'stairs' | 'found' | 'encounter' | 'hit' | 'hitBig' | 'heal' | 'buff' | 'debuff' | 'status' | 'run' | 'miss'
@@ -496,6 +496,26 @@ const SOUNDS: Record<SfxName, Sound> = {
     s.noise(slam + 0.21, { f: 700, q: 3, vol: 0.18, a: 0.002, d: 0.04 });
   },
 
+  /** Falling asleep: a slow breath out, and three soft notes that sink and fade, as the light goes. */
+  doze(s, t, p) {
+    s.noise(t, { type: 'lowpass', f: 900, to: 220, vol: 0.35, a: 0.35, hold: 0.3, d: 0.9 });
+    const notes = [76, 72, 69];
+    notes.forEach((n, i) => {
+      const at = t + 0.1 + i * 0.38;
+      s.tone(at, { f: midi(n) * p, type: 'triangle', lp: 1800, vol: 0.32 - i * 0.06, a: 0.06, hold: 0.12, d: 0.9 });
+      s.tone(at, { f: midi(n) * p * 0.5, vol: 0.12, a: 0.12, d: 0.8, detune: 6 });
+    });
+    s.tone(t + 1.1, { f: midi(57) * p, to: midi(55) * p, vol: 0.18, a: 0.2, d: 0.6 });
+  },
+
+  /** Waking with a start: a bright glint that jumps up, and a ring of morning. */
+  wake(s, t, p) {
+    s.noise(t, { type: 'highpass', f: 4200, vol: 0.28, a: 0.001, d: 0.08 });
+    s.tone(t, { f: midi(79) * p, to: midi(91) * p, glide: 0.07, type: 'triangle', vol: 0.36, a: 0.001, hold: 0.02, d: 0.12 });
+    s.bell(t + 0.07, midi(84) * p, 0.7, 0.3, CHIME);
+    s.bell(t + 0.12, midi(91) * p, 0.55, 0.16, CHIME);
+  },
+
   /** One footstep of a customer; left and right feet differ a little. */
   step(s, t, p) {
     memory.foot = !memory.foot;
@@ -869,6 +889,8 @@ const META: Record<SfxName, Meta> = {
   rotate: { level: 0.96, len: 0.12 },
   shutterUp: { level: 0.73, len: 1.2 },
   shutterDown: { level: 1.13, len: 0.95 },
+  doze: { level: 0.7, len: 1.8, vary: 0 },
+  wake: { level: 0.8, len: 0.8, vary: 0.01 },
   step: { level: 0.52, len: 0.1 },
   voice: { level: 0.67, len: 0.07 },
   bell: { level: 0.31, len: 1.6, vary: 0.01 },

@@ -79,11 +79,13 @@ class Play:
         self.still = await self.pg.screenshot(type='jpeg', quality=72)
 
     async def memo(self, line):
+        # (the note is left on the counter: it is clicked, read, and filed in the binder)
         await self.pg.wait_for_timeout(900)
-        await self.shot()
         await self.say(line)
+        await self.click('#memo-note', 1.0)
+        await self.shot()
         await self.pg.wait_for_timeout(1800)
-        await self.click('[data-act=memo-ok]', 1.0)
+        await self.click('[data-act=memo-ok]', 1.4)
 
     async def last_good(self):
         return await self.pg.evaluate("(() => { const a = [...document.querySelectorAll('#grid-shelf .inv-item:not(.special):not(.crate)')]; return a.length ? a[a.length - 1].id : '' })()")
@@ -130,15 +132,19 @@ async def s_intro(p):
 
 
 async def s_sleep(p):
-    await p.memo('1 日目の客が帰ると、最初の「福沢諭吉のメモ」が届きます')
-    await p.say('メモを閉じると、寝床が光っています')
-    await p.click('#bed', 3.5)
-    await p.say('眠ると 1 日の締めが出て、次の日へ進みます')
+    await p.memo('1 日目の客が帰ると、カウンターに「福沢諭吉のメモ」が置かれます')
+    await p.say('読んだメモは、カウンターの右のバインダーにとじられます')
+    await p.click('#binder', 1.2)
+    await p.say('バインダーから、いつでも見返せます')
+    await p.click('[data-act=modal-close]', 0.8)
+    await p.say('寝床が光っています')
+    await p.say('眠ると明かりが落ちて、ぱっと明るくなって次の日へ', hold=0.6)
+    await p.click('#bed', 4.2)
 
 
 async def s_mchc(p):
     await p.click('[data-act=open]', 2.8)
-    if not await p.until('#modal-memo'):
+    if not await p.until('#memo-note'):
         return await p.say('（この回は、サトシ・ナカモトまで進めませんでした）')
     await p.memo('2 日目は火曜。その日の客のあとに、サトシ・ナカモトが来ます')
     await p.say('GUM を MCHC に替えます。夜のショップは MCHC しか使えません')
@@ -148,8 +154,10 @@ async def s_mchc(p):
 
 
 async def s_shop(p):
-    await p.memo('2 日目の閉店後。仕入れのメモと一緒に、ドアが届きます')
-    await p.say('左下にドアが現れました。クリックで外出です')
+    await p.memo('2 日目の閉店後。仕入れのメモが置かれます')
+    await p.say('ドアが光って、矢印が出ています')
+    await p.click('#bed', 1.2)
+    await p.say('先にショップへ行くまで、まだ眠れません')
     await p.click('#door', 1.0)
     await p.say('行き先は、まだ「ショップ」だけ。ダンジョンは後で教わります')
     await p.click('[data-act=go-shop]', 3.2)
@@ -163,7 +171,7 @@ async def s_shop(p):
 
 async def s_case(p):
     await p.click('[data-act=open]', 2.8)
-    if not await p.until('#modal-memo'):
+    if not await p.until('#memo-note'):
         return await p.say('（この回は、手ぶらで帰る買い客が来ませんでした）')
     await p.memo('3 日目。欲しい品がなくて、買い客が手ぶらで帰った直後です')
     await p.say('左の壁に、ショーケースと予測客のモニターが取りつけられました')
@@ -209,7 +217,7 @@ async def s_fake(p):
         await p.click(f'#{uid} .inv-cell', 0.9, modifiers=['Alt'])
     if await p.has('[data-act=sell]'):
         await p.click('[data-act=sell]', 2.8)
-    if await p.has('#modal-memo'):
+    if await p.has('#memo-note'):
         await p.memo('売ったとたんに見抜かれました。評判が 1 下がり、そこでメモが届きます')
         await p.say('一度だけの、小さな失敗。カウンターにルーペが置かれました')
     else:
@@ -221,14 +229,14 @@ async def s_pass(p):
     await p.key('Space', 1.0)
     await p.say('同じ 5 日目。こんどは買わずに、ベルで見送ります')
     await p.key('b', 2.6)
-    if await p.has('#modal-memo'):
+    if await p.has('#memo-note'):
         await p.memo('見送った場合は、その判断を認める言葉になります')
     await p.say('どちらの道でも、ルーペはここで手に入ります')
 
 
 async def s_hot(p):
     await p.key('Space', 1.2)
-    if not await p.has('#modal-memo'):
+    if not await p.has('#memo-note'):
         return await p.say('（この回は、訳ありの品のメモが出ませんでした）')
     await p.memo('6 日目から。訳ありの品が、はじめてカウンターに置かれた時です')
     await p.say('安いけれど、見回りに見つかると棚から没収されます')
@@ -236,7 +244,7 @@ async def s_hot(p):
 
 async def s_rent(p):
     await p.click('[data-act=open]', 2.8)
-    if not await p.until('#modal-memo'):
+    if not await p.until('#memo-note'):
         return await p.say('（この回は、引取の商人まで進めませんでした）')
     await p.memo('7 日目は家賃の日。客のあとに、まず引取の商人が来ます')
     await p.say('手持ちが足りなければ、ここで品を買い取ってもらえます')
@@ -278,10 +286,15 @@ async def s_quest(p):
 
 def dup(st):
     """Two like common goods left on the shelf."""
-    two = [x for x in st['stock'] if not x.get('bag') and ITEMS.get(x['itemId'], {}).get('shape') == '2x2']
-    cheap = next(i for i in CAT['items'] if i['rarity'] == 1 and i['shape'] == '2x2')
-    for x in two[:2]:
-        x['itemId'] = cheap['id']
+    # (two goods of one shape, whatever shape the new game's stock has two of, made into the same cheap good)
+    goods = [x for x in st['stock'] if not x.get('bag') and x['itemId'] in ITEMS and not ITEMS[x['itemId']].get('effect')]
+    for shape in sorted({ITEMS[x['itemId']]['shape'] for x in goods}, key=lambda s: s != '2x2'):
+        two = [x for x in goods if ITEMS[x['itemId']]['shape'] == shape][:2]
+        cheap = next((i for i in CAT['items'] if i['rarity'] == 1 and i['shape'] == shape and not i.get('effect') and not i.get('wallet') and not i.get('limited')), None)
+        if len(two) == 2 and cheap:
+            for x in two:
+                x['itemId'] = cheap['id']
+            return
 
 
 def bare(st):
@@ -300,9 +313,9 @@ MIDDAY = ['hot']
 
 SCENES = [
     ('intro', '導入と、最初の売買', '読ませるのは 5 行だけ。30 秒以内に自分の手で 1 回売り買いできるか。', lambda st: None, s_intro),
-    ('sleep', '一日の終わり（1 日目の閉店）', '最初のメモ。寝床に目が行くか。', lambda st: base(st, 1, 'evening', []), s_sleep),
+    ('sleep', '一日の終わり（1 日目の閉店）', '最初のメモ（カウンターに置かれ、読むとバインダーへ）。寝床に目が行くか。眠りと目覚めの演出。', lambda st: base(st, 1, 'evening', []), s_sleep),
     ('mchc', '両替（2 日目・火曜）', 'サトシ・ナカモトの来店と、MCHC の初登場。', lambda st: base(st, 2, 'morning', ALL[:1]), s_mchc),
-    ('shop', '仕入れ（2 日目の夜）', 'ドアが届く。夜のショップと、ウォレットの小ささ。', lambda st: base(st, 2, 'evening', ALL[:2], mchc=70), s_shop),
+    ('shop', '仕入れ（2 日目の夜）', 'ドアに目が行くか（行くまで眠れない）。夜のショップと、ウォレットの小ささ。', lambda st: base(st, 2, 'evening', ALL[:2], mchc=70), s_shop),
     ('case', '飾る（3 日目）', '買い客が手ぶらで帰った直後に、ショーケースが届く。', lambda st: (base(st, 3, 'morning', ALL[:3]), bare(st)), s_case),
     ('pot', '合成（3 日目の閉店）', '似た品が売れ残った時に、壺が届く。', lambda st: (base(st, 3, 'evening', ALL[:4]), st.update({'wentOut': True}), dup(st)), s_pot),
     ('fake', '見抜く：買ってしまった場合（5 日目）', '一度だけの失敗。損の小ささと、納得感。', lambda st: base(st, 5, 'morning', ALL[:5], gum=900), s_fake),

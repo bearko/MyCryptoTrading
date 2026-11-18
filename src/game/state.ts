@@ -286,6 +286,8 @@ export interface GameState {
   taught?: string[] | null;
   /** when the last note was read (day and phase): no more than one comes in a phase of a day */
   taughtAt?: string;
+  /** the note left on the counter and not yet read (it waits there; once read, it is filed in the binder) */
+  memoOut?: string | null;
   /** the first replica of a guided game: offered by the caller at `cursor`, then bought (as `uid`), then found out by its buyer */
   bait?: { at: 'offered' | 'bought' | 'caught'; cursor: number; uid?: number } | null;
   /** MCHC held (the night shop takes nothing else), what one costs in GUM today, and what it cost yesterday */

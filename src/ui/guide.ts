@@ -1,5 +1,5 @@
 import { catalog as cat } from '../game/catalog';
-import { GUIDE_HERO, LESSONS, lessonText } from '../game/guide';
+import { filed, GUIDE_HERO, LESSONS, lessonText } from '../game/guide';
 import { ctx } from './core';
 import { ui } from './core';
 import { btn, esc } from './html';
@@ -14,7 +14,20 @@ export function memoModal(): string {
     <div class="memo-head"><img class="memo-face" src="${face()}" alt="" draggable="false" /><span><small>福沢諭吉のメモ</small><b class="pix">${esc(lesson.title)}</b></span></div>
     ${(ctx.s ? lessonText(ctx.s, lesson) : lesson.text).map((t) => `<p class="memo-text">${esc(t)}</p>`).join('')}
     <p class="memo-hint">${esc(lesson.hint)}</p>
-    <div class="actions">${btn('memo-ok', 'わかった', { cls: 'primary', sfx: 'confirm' })}</div>
+    <div class="actions">${btn('memo-ok', ui.memoBack ? 'バインダーに戻す' : 'わかった（バインダーにとじる）', { cls: 'primary', sfx: ui.memoBack ? 'close' : 'confirm' })}</div>
+  </div></div>`;
+}
+
+/** The binder on the counter: every note read so far, to be read again at any time. */
+export function binderModal(): string {
+  const notes = ctx.s ? filed(ctx.s) : [];
+  const rows = notes
+    .map((l, i) => `<button class="binder-row" data-act="binder-read" data-arg="${l.id}" data-sfx="open"><i>${i + 1}</i><span><b class="pix">${esc(l.title)}</b><small>${esc(l.hint)}</small></span></button>`)
+    .join('');
+  return `<div class="modal" id="modal-binder" data-ui><div class="modal-box tall memo binder-box">
+    <div class="memo-head"><img class="memo-face" src="${face()}" alt="" draggable="false" /><span><small>福沢諭吉のメモ</small><b class="pix">バインダー</b></span></div>
+    <div class="modal-scroll binder-list">${rows || '<p class="hint">まだ、とじたメモはありません。</p>'}</div>
+    <div class="actions one">${btn('modal-close', '閉じる', { cls: 'primary' })}</div>
   </div></div>`;
 }
 

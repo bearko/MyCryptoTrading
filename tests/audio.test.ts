@@ -50,7 +50,7 @@ describe('sound without a browser', () => {
   });
 
   it('has a sound for every name in the feedback table and a track for every scene', () => {
-    expect(new Set(SFX_NAMES).size).toBe(41);
+    expect(new Set(SFX_NAMES).size).toBe(43);
     expect([...BGM_NAMES].sort()).toEqual(['battle', 'boss', 'day', 'dungeon', 'ending', 'night', 'shop', 'title']);
   });
 });
