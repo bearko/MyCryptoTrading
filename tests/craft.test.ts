@@ -400,14 +400,18 @@ describe('the first days are taught a thing at a time', () => {
     expect(Gd.knows(s, 'shop')).toBe(false);
     expect(Gd.lessonDue(s, catalog)).toBeNull();
     // the first evening: how the day ends — then, the shelf being thin, where to buy
+    // (nothing is found lying there after closing: what belongs to the day's end he says himself, as its last caller)
+    const closing = (): string | null => Gd.lessonDue(s, catalog, true);
     s.phase = 'evening';
-    expect(Gd.lessonDue(s, catalog)).toBe('sleep');
-    Gd.learn(s, catalog, 'sleep');
-    s.stock = s.stock.filter((x) => x.bag);
-    // (no two notes in one evening: the next waits for the next day's)
     expect(Gd.lessonDue(s, catalog)).toBeNull();
+    expect(closing()).toBe('sleep');
+    Gd.learn(s, catalog, 'sleep');
+    s.closeNote = 1;
+    s.stock = s.stock.filter((x) => x.bag);
+    // (one such note a day: the next waits for the next day's closing)
+    expect(closing()).toBeNull();
     s.day = 2;
-    expect(Gd.lessonDue(s, catalog)).toBe('shop');
+    expect(closing()).toBe('shop');
     Gd.learn(s, catalog, 'shop');
     expect(Gd.knows(s, 'shop')).toBe(true);
     expect(Gd.lessonDue(s, catalog)).toBeNull();
@@ -431,7 +435,7 @@ describe('the first days are taught a thing at a time', () => {
     G.addTo(s, catalog, 'shelf', cheap.id, 1, 0);
     G.addTo(s, catalog, 'shelf', cheap.id, 1, 0);
     s.phase = 'evening';
-    expect(Gd.lessonDue(s, catalog)).toBe('pot');
+    expect(closing()).toBe('pot');
     Gd.learn(s, catalog, 'pot');
     expect(s.stock.some((x) => x.itemId === POT_ID)).toBe(true);
     // a hot good on the counter, and the day the rent is due
@@ -448,17 +452,17 @@ describe('the first days are taught a thing at a time', () => {
     // the houses, once the regard of one has moved a rung; the dungeon, on an evening short of MCHC
     s.phase = 'evening';
     s.wentOut = true;
-    expect(Gd.lessonDue(s, catalog)).toBeNull();
+    expect(closing()).toBeNull();
     s.favor.buyu = B.favorStep;
-    expect(Gd.lessonDue(s, catalog)).toBe('houses');
+    expect(closing()).toBe('houses');
     Gd.learn(s, catalog, 'houses');
     s.day = 7;
     s.wentOut = false;
     s.mchc = B.mchc.start;
-    expect(Gd.lessonDue(s, catalog)).toBeNull();
+    expect(closing()).toBeNull();
     s.mchc = 2;
     expect(Gd.knows(s, 'quest')).toBe(false);
-    expect(Gd.lessonDue(s, catalog)).toBe('quest');
+    expect(closing()).toBe('quest');
     Gd.learn(s, catalog, 'quest');
     for (const l of Gd.LESSONS) expect(l.text.length).toBeGreaterThan(0);
   });
@@ -508,5 +512,40 @@ describe('the one small failure of the first days', () => {
     G.pass(s);
     expect(Gd.lessonDue(s, catalog)).toBe('loupe');
     expect(Gd.lessonText(s, Gd.LESSONS.find((l) => l.id === 'loupe')!)[0]).toContain('いい判断');
+  });
+});
+
+describe('he comes as the last caller of the day', () => {
+  it('on the first day he comes after the line, leaves the note on how the day ends, and only then the shop closes', async () => {
+    const Gd = await import('../src/game/guide');
+    const s = G.newGame(123, catalog);
+    Gd.startGuided(s);
+    G.openShop(s, catalog);
+    let seen = 0;
+    for (let n = 0; n < 40 && (s.phase as string) === 'open'; n++) {
+      const v = G.currentVisitor(s)!;
+      if (v.special === 'teacher') {
+        seen += 1;
+        // while he stands there the note is due; it is left once, and he is not due again
+        expect(Gd.placeMemo(s, catalog)).toBe('sleep');
+        expect(s.closeNote).toBe(1);
+        Gd.learn(s, catalog, 'sleep');
+        expect(Gd.placeMemo(s, catalog)).toBeNull();
+      } else expect(Gd.placeMemo(s, catalog)).toBeNull();
+      G.pass(s);
+      G.callNext(s, catalog);
+    }
+    expect(seen).toBe(1);
+    expect(s.phase).toBe('evening');
+    // after closing nothing more turns up on the counter
+    expect(Gd.placeMemo(s, catalog)).toBeNull();
+    // a game that is not guided has no such caller
+    const plain = G.newGame(123, catalog);
+    G.openShop(plain, catalog);
+    for (let n = 0; n < 40 && (plain.phase as string) === 'open'; n++) {
+      expect(G.currentVisitor(plain)?.special).not.toBe('teacher');
+      G.pass(plain);
+      G.callNext(plain, catalog);
+    }
   });
 });

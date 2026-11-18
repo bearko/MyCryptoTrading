@@ -98,7 +98,7 @@ export interface Visitor {
   /** deals closed with this customer (a customer who leaves with none breaks the streak) */
   deals: number;
   /** an unusual customer: 大富豪 / 急ぎの旅人 / 収集家 */
-  special?: 'rich' | 'hurry' | 'collector' | 'patrol' | 'dealer' | 'landlord' | 'courier' | 'satoshi';
+  special?: 'rich' | 'hurry' | 'collector' | 'patrol' | 'dealer' | 'landlord' | 'courier' | 'satoshi' | 'teacher';
   /** a patrol: the hot goods it took from the shelf, and the fine */
   seized?: number[];
   fine?: number;
@@ -288,6 +288,9 @@ export interface GameState {
   taughtAt?: string;
   /** the note left on the counter and not yet read (it waits there; once read, it is filed in the binder) */
   memoOut?: string | null;
+  /** the day he last came before closing with a note (one such a day), and the day the night shop was spoken of */
+  closeNote?: number;
+  shopDay?: number;
   /** the first replica of a guided game: offered by the caller at `cursor`, then bought (as `uid`), then found out by its buyer */
   bait?: { at: 'offered' | 'bought' | 'caught'; cursor: number; uid?: number } | null;
   /** MCHC held (the night shop takes nothing else), what one costs in GUM today, and what it cost yesterday */

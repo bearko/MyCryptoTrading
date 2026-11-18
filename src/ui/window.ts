@@ -165,6 +165,15 @@ export function customerWindow(g: GameState, v: Visitor): string {
   </div>`;
   }
   if (v.special === 'satoshi') return satoshiSlip(g, v, hero.ja);
+  if (v.special === 'teacher') {
+    // the one who teaches, come before closing: there is nothing to trade, only to listen
+    return `<div class="win paper small kind-buy rent-win" id="win" data-ui style="left:${ui.win.x}px;top:${ui.win.y}px">
+    <div class="win-bar"><span class="win-kind"><span>先生</span></span><i class="win-grip" aria-hidden="true"></i></div>
+    <div class="win-who"><b>${esc(hero.ja)}</b><em class="temper t0">恩人</em></div>
+    <div class="win-body"><p class="hint">${ui.cameo ? '話を聞きましょう（クリックか Space でつづき）。' : '話は済みました。ベルを鳴らして、見送ります。'}</p></div>
+    <i class="teeth" aria-hidden="true"></i>
+  </div>`;
+  }
   if (v.special === 'courier') {
     // the keeper of the night shop, with last night's box: nothing to trade
     return `<div class="win paper small kind-buy rent-win" id="win" data-ui style="left:${ui.win.x}px;top:${ui.win.y}px">

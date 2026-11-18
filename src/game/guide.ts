@@ -2,7 +2,7 @@ import { B } from './balance';
 import { POT_ID, type Catalog } from './catalog';
 import { lineNo } from './craft';
 import { rankOf } from './factions';
-import { currentVisitor, forSale, givePot, matches } from './logic';
+import { closing, currentVisitor, forSale, givePot, matches } from './logic';
 import { facingSatoshi } from './mchc';
 import type { GameState } from './state';
 
@@ -13,7 +13,7 @@ import type { GameState } from './state';
  */
 export type LessonId = 'sleep' | 'mchc' | 'shop' | 'case' | 'pot' | 'loupe' | 'hot' | 'rent' | 'phone' | 'houses' | 'quest';
 
-export const GUIDE_HERO = 10004;
+export const GUIDE_HERO = B.guideHero;
 
 const LOUPE = 'カウンターにルーペを置いておく。安すぎる品は、買う前にのぞいてみなさい。';
 
@@ -60,7 +60,7 @@ export const knows = (s: GameState, id: LessonId): boolean => !s.taught || s.tau
  * let them sleep (the note told them to go). Only that evening — a later night may be slept through as it likes.
  */
 export const mustShop = (s: GameState): boolean =>
-  !!s.taught && s.taught.includes('shop') && s.taughtAt === when(s) && s.phase === 'evening' && !s.wentOut;
+  !!s.taught && s.taught.includes('shop') && s.shopDay === s.day && s.phase === 'evening' && !s.wentOut;
 
 /** Said when the bed is tried before the first trip to the night shop. */
 export const MUST_SHOP_LINE = '先生がショップに行くように言っていたな……';
@@ -89,12 +89,23 @@ const leftOver = (s: GameState, cat: Catalog): boolean => {
 
 const when = (s: GameState): string => `${s.day}:${s.phase}`;
 
-export function lessonDue(s: GameState, cat: Catalog): LessonId | null {
+/** He stands at the counter as the day's last caller. */
+export const teacherHere = (s: GameState): boolean => {
+  const v = currentVisitor(s);
+  return s.phase === 'open' && !!v && v.special === 'teacher' && !v.done;
+};
+
+/**
+ * The note that is due. What belongs to the day's end (how to sleep, where to buy, the pot, the dungeon…) is not
+ * found lying there after closing: he comes as the last caller and says it — `closing` is that moment (he is at
+ * the counter; or, asked beforehand, whether he should come).
+ */
+export function lessonDue(s: GameState, cat: Catalog, closingNow = teacherHere(s)): LessonId | null {
   if (!s.taught) return null;
   // (one note in a phase of a day, so that no two come on top of each other — but what is happening at the counter is not put off)
-  const spaced = s.taughtAt !== when(s);
+  const evening = closingNow && s.closeNote !== s.day;
+  const spaced = evening || s.taughtAt !== when(s);
   const not = (id: LessonId): boolean => !s.taught!.includes(id);
-  const evening = s.phase === 'evening';
   const morning = s.phase === 'morning';
   if (not('sleep') && evening && s.day === 1) return 'sleep';
   if (not('mchc') && facingSatoshi(s)) return 'mchc';
@@ -112,7 +123,7 @@ export function lessonDue(s: GameState, cat: Catalog): LessonId | null {
   if (not('pot') && s.day >= 3 && ((evening && leftOver(s, cat)) || (morning && s.day >= 6))) return 'pot';
   // (replicas: after the one led into — found out by its buyer, or passed up — or, if it was bought and not sold, at the day's end)
   if (not('loupe') && s.bait) {
-    const gone = s.cursor !== s.bait.cursor || !!s.queue[s.cursor]?.done || s.phase !== 'open';
+    const gone = s.cursor !== s.bait.cursor || !!s.queue[s.cursor]?.done;
     if (s.bait.at === 'caught' || (s.bait.at === 'offered' && gone) || (s.bait.at === 'bought' && evening)) return 'loupe';
   }
   if (not('phone') && morning && s.day >= 8) return 'phone';
@@ -131,6 +142,7 @@ export function placeMemo(s: GameState, cat: Catalog): LessonId | null {
   if (!s.taught || s.memoOut) return null;
   const due = lessonDue(s, cat);
   if (due) s.memoOut = due;
+  if (due && teacherHere(s)) s.closeNote = s.day;
   return due;
 }
 
@@ -143,6 +155,7 @@ export function learn(s: GameState, cat: Catalog, id: LessonId): void {
   if (!s.taught || s.taught.includes(id)) return;
   s.taught.push(id);
   s.taughtAt = when(s);
+  if (id === 'shop') s.shopDay = s.day;
   if (id === 'loupe' && s.bait?.at === 'bought') {
     // (it was bought and is still here: he points it out)
     const x = [...s.stock, ...s.showcase, ...s.wallet.items].find((it) => it.uid === s.bait!.uid);
@@ -153,3 +166,10 @@ export function learn(s: GameState, cat: Catalog, id: LessonId): void {
     givePot(s, cat);
   }
 }
+
+// (the rules ask here whether he should come before closing: when a note of the day's end is due, and none lies unread)
+closing.due = (s, cat) => {
+  if (!s.taught || s.memoOut || s.closeNote === s.day) return false;
+  const due = lessonDue(s, cat, true);
+  return !!due && due !== lessonDue(s, cat, false);
+};
