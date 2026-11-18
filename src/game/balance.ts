@@ -301,6 +301,8 @@ export const B = {
    * what a seller found out will take for it (a share of the replica's worth); the looks through the loupe a
    * day; and what selling one as the real thing costs when the buyer finds out (the odds, reputation, regard).
    */
+  /** the one who took the player in, and teaches the first days */
+  guideHero: 10004,
   fakeFromDay: 5,
   /** the first replica of a guided game: what it is offered at (of its worth), and the regard its buyer's finding out costs */
   baitAsk: 0.5,

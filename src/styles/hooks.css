@@ -773,3 +773,11 @@ html.calm .cameo,
 html.calm .cameo-say {
   animation: none;
 }
+
+.cameo.as-guest .cameo-face {
+  display: none;
+}
+.cameo.as-guest {
+  left: calc(var(--goods-x, 50%) - 40px);
+  bottom: 150px;
+}

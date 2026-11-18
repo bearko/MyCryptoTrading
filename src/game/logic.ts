@@ -849,9 +849,11 @@ export function callNext(s: GameState, cat: Catalog): void {
     const came = (who: Visitor['special']): boolean => s.queue.some((v) => v.special === who);
     const tuesday = (s.day - 1) % 7 === B.mchc.weekday - 1;
     const next = tuesday && !came('satoshi') ? satoshi(s, cat) : due.length > 0 ? courier(s, cat) : !isRentDay(s) ? null : !came('dealer') ? dealer(s, cat) : !came('landlord') ? landlord(s, cat) : null;
-    if (next) {
+    // (last of all, in a guided game: the one who teaches, when there is something to say before the shop closes)
+    const last = next ?? (!came('teacher') && closing.due?.(s, cat) ? teacher(s, cat) : null);
+    if (last) {
       s.callers += 1;
-      s.queue.push(next);
+      s.queue.push(last);
       s.cursor += 1;
       return;
     }
@@ -866,6 +868,14 @@ export function callNext(s: GameState, cat: Catalog): void {
 function caller(s: GameState, cat: Catalog, heroId: number): Visitor {
   const hero = cat.heroById.get(heroId)!;
   return { ...rollVisitor(s, cat), heroId: hero.id, faction: null, kind: 'buy', offers: [], bundleRate: 0, temper: 0, patience: 9, haggled: true, wanted: false, mood: 'neutral' };
+}
+
+/** Whether the one who teaches has something to say before closing: set by the guide (which knows the notes). */
+export const closing: { due: ((s: GameState, cat: Catalog) => boolean) | null } = { due: null };
+
+/** He comes as the day's last caller, says what he has to say, and leaves a note. He is not to be rung away before he has done. */
+function teacher(s: GameState, cat: Catalog): Visitor {
+  return { ...caller(s, cat, B.guideHero), special: 'teacher', want: { type: 'rarity', min: 9 }, budget: 0, line: '店じまいの前に、ひとつ話しておこう。' };
 }
 
 /** The dealer: buys whatever is put before him, under the list price, until his purse is empty. */
@@ -1288,6 +1298,10 @@ export function pass(s: GameState): void {
   }
   if (v.special === 'satoshi') {
     v.line = 'では、また火曜日に。';
+    return;
+  }
+  if (v.special === 'teacher') {
+    v.line = 'では、しっかりやりなさい。';
     return;
   }
   if (v.special === 'courier') {

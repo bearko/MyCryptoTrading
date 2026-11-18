@@ -1,4 +1,5 @@
 import { catalog as cat } from '../game/catalog';
+import * as G from '../game/logic';
 import { filed, GUIDE_HERO, LESSONS, lessonText } from '../game/guide';
 import { ctx } from './core';
 import { ui } from './core';
@@ -28,7 +29,9 @@ export function cameo(g: GameState): string {
   if (!ui.cameo || !lesson) return '';
   const lines = lessonText(g, lesson);
   const at = Math.min(ui.cameo.line, lines.length - 1);
-  return `<button class="cameo" id="cameo" data-act="cameo-next" data-sfx="tap" aria-label="福沢諭吉の話をつづける">
+  // (when he is the caller at the counter, the words are his own: no second figure of him)
+  const guest = G.currentVisitor(g)?.special === 'teacher';
+  return `<button class="cameo ${guest ? 'as-guest' : ''}" id="cameo" data-act="cameo-next" data-sfx="tap" aria-label="福沢諭吉の話をつづける">
     <img class="cameo-face" src="${face()}" alt="" draggable="false" />
     <span class="cameo-say" id="cameo-say-${at}"><b>福沢諭吉</b>${esc(lines[at])}<small>${at + 1}/${lines.length}・クリックでつづける</small></span>
   </button>`;

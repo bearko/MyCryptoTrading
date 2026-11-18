@@ -83,7 +83,8 @@ class Play:
         await self.pg.wait_for_timeout(900)
         if await self.has('#cameo'):
             # (while the shop is open he comes in and says it himself, then leaves the note)
-            await self.say('営業中は、福沢諭吉が店に来て、自分の口で話します')
+            if await self.has('.cameo:not(.as-guest)'):
+                await self.say('営業中は、福沢諭吉が店に来て、自分の口で話します')
             for _ in range(6):
                 if not await self.has('#cameo'):
                     break
@@ -141,12 +142,15 @@ async def s_intro(p):
 
 
 async def s_sleep(p):
-    await p.memo('1 日目の客が帰ると、カウンターに「福沢諭吉のメモ」が置かれます')
+    await p.key('Space', 1.2)
+    await p.say('1 日目の最後の客として、福沢諭吉が来ます')
+    await p.memo('話しおえると、カウンターにメモを置いていきます')
     await p.say('読んだメモは、カウンターの右のバインダーにとじられます')
     await p.click('#binder', 1.2)
     await p.say('バインダーから、いつでも見返せます')
     await p.click('[data-act=modal-close]', 0.8)
-    await p.say('寝床が光っています')
+    await p.key('b', 4.5)
+    await p.say('見送ると閉店。寝床が光っています')
     await p.say('眠ると明かりが落ちて、ぱっと明るくなって次の日へ', hold=0.6)
     await p.click('#bed', 4.2)
 
@@ -163,7 +167,10 @@ async def s_mchc(p):
 
 
 async def s_shop(p):
-    await p.memo('2 日目の閉店後。仕入れのメモが置かれます')
+    await p.key('Space', 1.2)
+    await p.say('2 日目の最後に、福沢諭吉が仕入れの話をしに来ます')
+    await p.memo('話しおえると、仕入れのメモを置いていきます')
+    await p.key('b', 4.5)
     await p.say('ドアが光って、矢印が出ています')
     await p.click('#bed', 1.2)
     await p.say('先にショップへ行くまで、まだ眠れません')
@@ -188,7 +195,10 @@ async def s_case(p):
 
 
 async def s_pot(p):
-    await p.memo('閉店のとき、似た品が売れ残っていると、壺のメモが届きます')
+    await p.key('Space', 1.2)
+    await p.say('似た品が売れ残った日は、最後に福沢諭吉が壺を持ってきます')
+    await p.memo('話しおえると、メモを置いていきます')
+    await p.key('b', 4.5)
     await p.say('棚に「合成の壺」が置かれました。クリックで開きます')
     if await p.has('#grid-shelf .inv-item.special:not(.crate)'):
         loc = p.pg.locator('#grid-shelf .inv-item.special')
@@ -287,7 +297,10 @@ async def s_houses(p):
 
 
 async def s_quest(p):
-    await p.memo('閉店後に MCHC が足りない時。もう 1 つの行き先を教わります')
+    await p.key('Space', 1.2)
+    await p.say('MCHC が足りない日の最後に、もう 1 つの行き先を教わります')
+    await p.memo('話しおえると、メモを置いていきます')
+    await p.key('b', 4.5)
     await p.click('#door', 1.2)
     await p.shot()
     await p.say('ドアの行き先に「クエスト」が増えました')
@@ -318,22 +331,30 @@ def hot_caller(st):
     v.pop('special', None)
 
 
-MIDDAY = ['hot']
+def teacher_last(st):
+    """The day's line is over and he has come as its last caller (the scene begins as he stands at the counter)."""
+    v = st['queue'][st['cursor']]
+    gone = dict(v, special='satoshi', done=True)
+    here = dict(v, special='teacher', heroId=10004, kind='buy', offers=[], done=False, faction=None, budget=0, want={'type': 'rarity', 'min': 9}, line='店じまいの前に、ひとつ話しておこう。')
+    st.update({'queue': [gone, here], 'cursor': 1, 'visitorsToday': 0, 'callers': 2})
+
+
+MIDDAY = ['hot', 'sleep', 'shop', 'pot', 'quest']
 
 SCENES = [
     ('intro', '導入と、最初の売買', '読ませるのは 5 行だけ。30 秒以内に自分の手で 1 回売り買いできるか。', lambda st: None, s_intro),
-    ('sleep', '一日の終わり（1 日目の閉店）', '最初のメモ（カウンターに置かれ、読むとバインダーへ）。寝床に目が行くか。眠りと目覚めの演出。', lambda st: base(st, 1, 'evening', []), s_sleep),
+    ('sleep', '一日の終わり（1 日目の最後の客）', '福沢諭吉が最後の客として来て話し、メモを置いていく（読むとバインダーへ）。寝床に目が行くか。眠りと目覚めの演出。', lambda st: (base(st, 1, 'open', []), teacher_last(st)), s_sleep),
     ('mchc', '両替（2 日目・火曜）', 'サトシ・ナカモトの来店と、MCHC の初登場。', lambda st: base(st, 2, 'morning', ALL[:1]), s_mchc),
-    ('shop', '仕入れ（2 日目の夜）', 'ドアに目が行くか（行くまで眠れない）。夜のショップと、ウォレットの小ささ。', lambda st: base(st, 2, 'evening', ALL[:2], mchc=70), s_shop),
+    ('shop', '仕入れ（2 日目の最後の客 → 夜）', 'ドアに目が行くか（行くまで眠れない）。夜のショップと、ウォレットの小ささ。', lambda st: (base(st, 2, 'open', ALL[:2], mchc=70), teacher_last(st)), s_shop),
     ('case', '飾る（3 日目）', '買い客が手ぶらで帰った直後に、ショーケースが届く。', lambda st: (base(st, 3, 'morning', ALL[:3]), bare(st)), s_case),
-    ('pot', '合成（3 日目の閉店）', '似た品が売れ残った時に、壺が届く。', lambda st: (base(st, 3, 'evening', ALL[:4]), st.update({'wentOut': True}), dup(st)), s_pot),
+    ('pot', '合成（3 日目の最後の客）', '似た品が売れ残った時に、壺が届く。', lambda st: (base(st, 3, 'open', ALL[:4]), dup(st), teacher_last(st)), s_pot),
     ('fake', '見抜く：買ってしまった場合（5 日目）', '一度だけの失敗。損の小ささと、納得感。', lambda st: base(st, 5, 'morning', ALL[:5], gum=900), s_fake),
     ('pass', '見抜く：見送った場合（5 日目）', '買わなかった人にも、同じ所でルーペが届く。', lambda st: base(st, 5, 'morning', ALL[:5]), s_pass),
     ('hot', '危ない品（6 日目から）', '訳ありの品と、見回り。', lambda st: (base(st, 6, 'open', ALL[:6]), hot_caller(st)), s_hot),
     ('rent', '家賃の日（7 日目）', '引取の商人 → 伊能忠敬。当面の目標が伝わるか。', lambda st: base(st, 7, 'morning', ALL[:7], gum=2400), s_rent),
     ('phone', '人脈（8 日目の朝）', '電話が届く。', lambda st: base(st, 8, 'morning', ALL[:8], gum=1200), s_phone),
     ('houses', '5 つの勢力', '評価が動いたあとに、世界のようすを伝える。', lambda st: (base(st, 8, 'morning', ALL[:9]), st['favor'].update({'buyu': 45})), s_houses),
-    ('quest', 'ダンジョン', 'MCHC が足りない夜に、もう 1 つの行き先。', lambda st: base(st, 8, 'evening', ALL[:10], mchc=2), s_quest),
+    ('quest', 'ダンジョン', 'MCHC が足りない夜に、もう 1 つの行き先。', lambda st: (base(st, 8, 'open', ALL[:10], mchc=2), teacher_last(st)), s_quest),
 ]
 
 

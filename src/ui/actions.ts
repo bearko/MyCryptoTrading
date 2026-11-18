@@ -650,6 +650,12 @@ function gameAct(g: GameState, name: string, n: number, arg: string, el: HTMLEle
       openShop(g);
       return;
     case 'bell':
+      // (he is not rung away while he is speaking)
+      if (ui.cameo) {
+        nope(document.getElementById('cameo'));
+        note('話の途中だ。最後まで聞こう');
+        return;
+      }
       ringBell(g, v);
       return;
     case 'hero':
