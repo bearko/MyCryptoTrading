@@ -1,0 +1,43 @@
+{
+  "name": "My Crypto Trading",
+  "short_name": "MC Trading",
+  "lang": "ja",
+  "description": "My Crypto Heroes の世界で交易店を営み、値切りと目利きで家賃を乗り越えて店を買い取る経営ゲーム（非公式二次創作）",
+  "start_url": "./",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f0d16",
+  "theme_color": "#0f0d16",
+  "categories": [
+    "games"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "og.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "交易店のカウンター"
+    }
+  ]
+}

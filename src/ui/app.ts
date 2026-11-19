@@ -21,11 +21,12 @@ import { recipesModal } from './craft';
 import { spillModal, caseToldModal, deckProps, forecastModal, networkModal, calendarModal, parcelModal, trashModal, wantedModal } from './props';
 import { mountDesk } from './desk';
 import { hookEffects, housesModal, perkModal } from './hooks';
-import { destModal, ending, helpModal, inspectModal, menuModal, overModal, settingsModal } from './modals';
+import { aboutModal, destModal, ending, helpModal, inspectModal, menuModal, overModal, settingsModal } from './modals';
 import { nope } from './motion';
 import { questEffects, questScreen } from './quest';
 import { bubbleHtml, sceneEffects } from './scene';
 import { display } from './settings';
+import { watchInstall } from './install';
 import { shopScreen } from './shop';
 import { title } from './title';
 import { clampWindow, customerWindow } from './window';
@@ -75,6 +76,7 @@ function screenHtml(): string {
   if (ui.modal === 'casetold') html += caseToldModal();
   if (ui.modal === 'spill') html += spillModal();
   if (ui.modal === 'help') html += helpModal();
+  if (ui.modal === 'about') html += aboutModal();
   if (ui.modal === 'settings') html += settingsModal();
   return html;
 }
@@ -179,6 +181,7 @@ export function mount(el: HTMLElement): void {
   ctx.render = render;
   ctx.act = (name, arg) => act(name, arg);
   display.init();
+  watchInstall();
   fx.mount(el);
 
   // sound is allowed only after a gesture
