@@ -106,7 +106,8 @@ export function lessonDue(s: GameState, cat: Catalog, closingNow = teacherHere(s
   const evening = closingNow && s.closeNote !== s.day;
   const spaced = evening || s.taughtAt !== when(s);
   const not = (id: LessonId): boolean => !s.taught!.includes(id);
-  const morning = s.phase === 'morning';
+  // (what he leaves overnight lies outside the shutter: it is found when the shop opens, before the first caller is seen to)
+  const morning = atDawn(s);
   if (not('sleep') && evening && s.day === 1) return 'sleep';
   if (not('mchc') && facingSatoshi(s)) return 'mchc';
   // (the rent day comes once a week: its note is not put off either)
@@ -138,10 +139,19 @@ export function lessonDue(s: GameState, cat: Catalog, closingNow = teacherHere(s
  * The note that is due is left on the counter (he leaves it overnight, or as he goes): it waits there until it is
  * read, and no other comes while it does. Returns the note just left, if any.
  */
+/** The shop has just opened: the first caller is at the counter, not yet seen to (and no overnight note has been found today). */
+export const atDawn = (s: GameState): boolean => s.phase === 'open' && s.cursor === 0 && !!currentVisitor(s) && !currentVisitor(s)!.done && s.dawnNote !== s.day;
+
+const OVERNIGHT: LessonId[] = ['case', 'pot', 'phone', 'houses'];
+
 export function placeMemo(s: GameState, cat: Catalog): LessonId | null {
   if (!s.taught || s.memoOut) return null;
+  const dawn = atDawn(s);
   const due = lessonDue(s, cat);
   if (due) s.memoOut = due;
+  // (left overnight, it lies on the outer counter, where callers lay their goods; he does not come in to speak of it)
+  s.memoOutside = !!due && dawn && OVERNIGHT.includes(due);
+  if (s.memoOutside) s.dawnNote = s.day;
   if (due && teacherHere(s)) s.closeNote = s.day;
   return due;
 }
@@ -154,7 +164,9 @@ export function learn(s: GameState, cat: Catalog, id: LessonId): void {
   if (s.memoOut === id) s.memoOut = null;
   if (!s.taught || s.taught.includes(id)) return;
   s.taught.push(id);
-  s.taughtAt = when(s);
+  // (a note left overnight does not use up the day's one note while the shop is open)
+  s.taughtAt = s.memoOutside ? `${s.day}:morning` : when(s);
+  s.memoOutside = false;
   if (id === 'shop') s.shopDay = s.day;
   if (id === 'loupe' && s.bait?.at === 'bought') {
     // (it was bought and is still here: he points it out)

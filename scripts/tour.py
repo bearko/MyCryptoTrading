@@ -277,8 +277,9 @@ async def s_rent(p):
 
 
 async def s_phone(p):
-    await p.memo('8 日目の朝。電話のメモが届きます')
+    await p.say('8 日目の朝。シャッターの内側には、何も置かれていません')
     await p.click('[data-act=open]', 3.0)
+    await p.memo('店を開けると、外のカウンター（客が品を置く台の左）に、夜のうちに置かれたメモがあります')
     await p.say('カウンターの上に電話が置かれました。商人ギルドに頼みごとができます')
     if await p.has('#phone'):
         await p.click('#phone', 1.4)
@@ -287,8 +288,8 @@ async def s_phone(p):
 
 
 async def s_houses(p):
-    await p.memo('どこかの勢力の評価が、はじめて 1 段動いたあとに届きます')
     await p.click('[data-act=open]', 3.0)
+    await p.memo('どこかの勢力の評価がはじめて 1 段動いた翌朝、店を開けると外のカウンターにメモがあります')
     await p.say('右の壁の「評判」から、勢力ごとの評価が見られます')
     if await p.has('#hud-rep'):
         await p.click('#hud-rep', 1.6)

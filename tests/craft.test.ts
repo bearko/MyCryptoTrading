@@ -548,4 +548,20 @@ describe('he comes as the last caller of the day', () => {
       G.callNext(plain, catalog);
     }
   });
+  it('finds a note left overnight on the outer counter when the shop opens, not behind the shutter', async () => {
+    const Gd = await import('../src/game/guide');
+    const s = G.newGame(77, catalog);
+    Gd.startGuided(s);
+    s.taught = ['sleep', 'mchc', 'shop', 'case', 'pot', 'loupe', 'hot', 'rent'];
+    s.day = 8;
+    s.phase = 'morning';
+    expect(Gd.placeMemo(s, catalog)).toBeNull();
+    G.openShop(s, catalog);
+    expect(Gd.placeMemo(s, catalog)).toBe('phone');
+    expect(s.memoOutside).toBe(true);
+    Gd.learn(s, catalog, 'phone');
+    expect(s.memoOutside).toBe(false);
+    expect(s.taughtAt).toBe('8:morning');
+  });
+
 });

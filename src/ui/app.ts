@@ -109,7 +109,7 @@ function render(): void {
     left = placeMemo(ctx.s, cat);
     if (left) store.save(ctx.s);
     // (while the shop is open he comes in and says it himself, and leaves the note as he goes; morning and night, it is simply there)
-    if (left && ctx.s.phase === 'open') {
+    if (left && ctx.s.phase === 'open' && !ctx.s.memoOutside) {
       ui.cameo = { id: left, line: 0 };
       left = null;
       audio.sfx('door');
@@ -156,7 +156,7 @@ function render(): void {
     const paper = root.querySelector('#memo-note');
     if (paper) fx.burst('stars', paper, { count: 10 });
     audio.sfx('event');
-    note(g.phase === 'morning' ? 'カウンターに、福沢諭吉のメモが置いてある' : '福沢諭吉が、カウンターにメモを置いていった');
+    note(g.memoOutside ? '店の外のカウンターに、福沢諭吉のメモが置いてある' : '福沢諭吉が、カウンターにメモを置いていった');
   }
 }
 
