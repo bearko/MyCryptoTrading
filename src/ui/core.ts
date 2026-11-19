@@ -3,7 +3,7 @@ import { catalog as cat } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState, SlotId } from '../game/state';
 
-export type Modal = 'none' | 'help' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'spill' | 'ship' | 'dex' | 'memo' | 'binder' | 'intro' | 'network' | 'parcel' | 'wanted' | 'calendar' | 'forecast' | 'casetold';
+export type Modal = 'none' | 'help' | 'about' | 'settings' | 'inspect' | 'menu' | 'over' | 'dest' | 'leave' | 'gear' | 'pick' | 'houses' | 'recipes' | 'trash' | 'spill' | 'ship' | 'dex' | 'memo' | 'binder' | 'intro' | 'network' | 'parcel' | 'wanted' | 'calendar' | 'forecast' | 'casetold';
 
 /** Screen state that is not part of the saved game. */
 export interface Ui {

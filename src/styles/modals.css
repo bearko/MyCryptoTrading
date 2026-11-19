@@ -411,3 +411,18 @@
 .settings-more {
   margin-top: 12px;
 }
+
+/* about the game (from the title) */
+.about {
+  display: grid;
+  gap: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.about p {
+  margin: 0;
+}
+.about a {
+  color: inherit;
+  font-weight: 700;
+}

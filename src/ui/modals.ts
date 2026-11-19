@@ -10,6 +10,7 @@ import { atHome, ctx, ui } from './core';
 import { btn, esc, gum, itemCard, itemDetail, itemTile, num } from './html';
 import { ICON } from './icons';
 import { display } from './settings';
+import { version } from '../../package.json';
 
 const selected = (g: GameState) => (ui.sel ? (G.gridOf(g, cat, ui.sel.grid).items.find((x) => x.uid === ui.sel!.uid) ?? null) : null);
 
@@ -129,6 +130,22 @@ export function helpModal(): string {
     <p class="credit">素材：My Crypto Heroes（© MCH Co.,Ltd.）。本作は非公式の二次創作です。</p>
     </div>
     <div class="actions one">${btn(ctx.s && ui.screen === 'game' ? 'settings' : 'modal-close', ctx.s && ui.screen === 'game' ? '戻る' : '閉じる', { cls: 'ghost' })}</div>
+  </div></div>`;
+}
+
+/** About the game: what it is, whose materials it uses, and where the other games are. Opened from the title. */
+export function aboutModal(): string {
+  return `<div class="modal" id="modal-about" data-ui><div class="modal-box">
+    <h2 class="modal-title"><small>ABOUT</small>このゲームについて</h2>
+    <div class="about">
+      <p><b>My Crypto Trading</b>　ver ${version}</p>
+      <p>My Crypto Heroes の世界で交易店を営む、店舗経営・取引ゲームです。ブラウザで無料で遊べます。いまは PC の画面を前提に作っています（スマホは簡易版）。</p>
+      <p>本作は、ファンによる<b>非公式の二次創作</b>です。My Crypto Heroes の運営・開発元とは関係がありません。</p>
+      <p>素材：My Crypto Heroes（© MCH Co.,Ltd.）のヒーロー・エクステンションなどの画像と名称。</p>
+      <p>制作：bearko　／　ほかのゲーム：<a href="https://bearko.games/" target="_blank" rel="noopener">bearko.games</a></p>
+      <p>セーブは、このブラウザの中だけに保存されます（サーバーには送りません）。</p>
+    </div>
+    <div class="actions one">${btn('modal-close', '閉じる', { cls: 'ghost' })}</div>
   </div></div>`;
 }
 
