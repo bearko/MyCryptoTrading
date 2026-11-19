@@ -35,11 +35,18 @@ const BINDER = `<svg viewBox="0 0 40 44" aria-hidden="true"><path class="p-ink" 
  */
 export function deskNotes(g: GameState): string {
   // (while he is still speaking of it, the note is not on the counter yet)
-  const memo = g.memoOut && !ui.cameo
+  const memo = g.memoOut && !ui.cameo && !g.memoOutside
     ? `<button class="memo-note" id="memo-note" data-act="memo-read" data-sfx="open" aria-label="福沢諭吉のメモ（クリックで読む。読むとバインダーにとじられる）">${MEMO}<b>メモ</b></button>`
     : '';
   const kept = filed(g).length;
   return `${memo}<button class="binder ${kept ? '' : 'empty'}" id="binder" data-act="binder" data-sfx="open" aria-label="バインダー（読んだメモ ${kept} 枚。クリックで見返す）">${BINDER}<b>バインダー</b><em>${kept}</em></button>`;
+}
+
+/** A note left overnight: it lies on the outer counter, outside the shutter, where callers lay what they bring. */
+export function outsideNote(g: GameState): string {
+  return g.memoOut && g.memoOutside
+    ? `<button class="memo-note outside" id="memo-note" data-act="memo-read" data-sfx="open" aria-label="福沢諭吉のメモ（店の外のカウンターに置いてある。クリックで読む）">${MEMO}<b>メモ</b></button>`
+    : '';
 }
 
 /** True when the bell is the next thing to do: the customer is done, or the shop has nothing for them. */

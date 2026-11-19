@@ -1709,3 +1709,12 @@ html.calm .memo-note svg {
   font-size: 0.75rem;
   opacity: 0.75;
 }
+
+/* a note left overnight: on the outer counter (the customers' side, outside the shutter), at its left end */
+.memo-note.outside {
+  top: auto;
+  right: auto;
+  left: calc(var(--goods-x, 50%) - var(--goods-w, 420px) / 2 + 6px);
+  bottom: 6px;
+  z-index: 6;
+}

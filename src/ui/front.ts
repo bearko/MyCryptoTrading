@@ -6,7 +6,7 @@ import { PARAM_JA } from '../game/catalog';
 import * as G from '../game/logic';
 import type { GameState, Visitor } from '../game/state';
 import { isWide, ui } from './core';
-import { counterBar, deskNotes, farTray } from './counter';
+import { counterBar, deskNotes, farTray, outsideNote } from './counter';
 import { cameo } from './guide';
 import { btn, esc, GLYPH, gum } from './html';
 import { ICON } from './icons';
@@ -114,7 +114,7 @@ export function front(g: GameState, v: Visitor | null, opening: boolean): string
   if (g.phase === 'open' && v) {
     // the street outside follows the day: the light turns towards evening as the line of customers runs out
     const sky = { dusk: g.visitorsToday > 1 ? Math.min(1, g.cursor / (g.visitorsToday - 1)) * 0.75 : 0, rain: g.event.id === 'rain' };
-    return `<div class="front open" id="front" data-ui>${scene(v, opening, { ...farTray(v), html: farTray(v).html + WALLS }, sky)}${counterBar(g, v)}${shutter('up', false)}${stageProps(g)}${deskNotes(g)}${cameo(g)}</div>`;
+    return `<div class="front open" id="front" data-ui>${scene(v, opening, { ...farTray(v), html: farTray(v).html + outsideNote(g) + WALLS }, sky)}${counterBar(g, v)}${shutter('up', false)}${stageProps(g)}${deskNotes(g)}${cameo(g)}</div>`;
   }
   const night = g.phase === 'evening';
   return `<div class="front shut ${night ? 'is-night' : 'is-morning'}" id="front" data-ui>${scene(null, false)}${counterBar(g, null)}${shutter('down', night)}${WALLS}${night ? nightCard(g) : morningCard(g)}${stageProps(g)}${deskNotes(g)}</div>`;

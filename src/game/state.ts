@@ -288,6 +288,9 @@ export interface GameState {
   taughtAt?: string;
   /** the note left on the counter and not yet read (it waits there; once read, it is filed in the binder) */
   memoOut?: string | null;
+  /** the waiting note was left overnight on the counter outside the shutter (found when the shop opens); the day such a note last came */
+  memoOutside?: boolean;
+  dawnNote?: number;
   /** the day he last came before closing with a note (one such a day), and the day the night shop was spoken of */
   closeNote?: number;
   shopDay?: number;
