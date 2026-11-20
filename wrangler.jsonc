@@ -1,8 +1,6 @@
 {
   "name": "mycryptotrading",
   "compatibility_date": "2026-10-06",
-  // 公開先。デプロイのときに、Cloudflare が DNS と証明書を用意する（bearko.games は同じアカウントのゾーン）
-  "routes": [{ "pattern": "trading.bearko.games", "custom_domain": true }],
   "assets": {
     // Built by `npm run build` (vite) before deploy. Static files only (no Worker code)
     "directory": "./dist"
