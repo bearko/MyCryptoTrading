@@ -10,6 +10,7 @@ import { atHome, ctx, ui } from './core';
 import { btn, esc, gum, itemCard, itemDetail, itemTile, num } from './html';
 import { ICON } from './icons';
 import { display } from './settings';
+import { platformOn } from './platform';
 import { version } from '../../package.json';
 
 const selected = (g: GameState) => (ui.sel ? (G.gridOf(g, cat, ui.sel.grid).items.find((x) => x.uid === ui.sel!.uid) ?? null) : null);
@@ -169,6 +170,7 @@ export function settingsModal(): string {
       ${toggle('set-haptic', '振動', '対応している端末で、操作に合わせて震えます', hapticSettings.enabled)}
       ${toggle('set-big', '文字を大きく', '全体の文字を 1.15 倍にします', display.bigText)}
       <div class="actions ${inGame ? 'two' : 'one'} settings-more">${btn('help', '遊びかた', { cls: 'small', sfx: 'open' })}${inGame ? btn('reset', ui.confirmReset ? '本当にやり直す' : '最初からやり直す', { cls: ui.confirmReset ? 'small danger' : 'small ghost', sfx: ui.confirmReset ? 'none' : 'tap' }) : ''}</div>
+      ${platformOn() ? `<div class="actions one settings-more">${btn('chat', '全体チャット（bearko.games）', { cls: 'small', sfx: 'open' })}</div>` : ''}
     </div>
     <div class="actions one">${btn('modal-close', '閉じる', { cls: 'primary' })}</div>
   </div></div>`;

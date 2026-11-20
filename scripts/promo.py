@@ -7,7 +7,7 @@ screens change.
   python3 scripts/promo.py <out-dir>
 
 Writes (1200x630): thumb-a (the shop, with the logo over it), thumb-b (a key visual: logo, cast and goods),
-and shot-1..3 (PC screens in a 9:16 frame, for the portal's detail sheet).
+shot-1..3 (PC screens, 1280x720, for the portal's detail sheet), and the app icons.
 Needs Python Playwright, Pillow, and Chrome at /usr/bin/google-chrome.
 """
 import asyncio, json, pathlib, subprocess, sys
@@ -82,6 +82,25 @@ async def main(out):
         }""", [[heroes[h] for h in CAST], goods, COPY])
         await pg.wait_for_timeout(1200)
         await pg.screenshot(path=str(out / 'thumb-b.png'))
+        # the portal's screenshots (16:9, PC screens as they are): the counter, the five houses, the night shop
+        sc = await b.new_context(viewport={'width': 1280, 'height': 720}, device_scale_factor=1)
+        sg = await sc.new_page()
+        await shop(sg, save)
+        await sg.screenshot(path=str(out / 'shot-1.png'))
+        await sg.keyboard.press('b')  # (the customer is seen off, so the slip is not over the wall)
+        await sg.wait_for_timeout(2500)
+        await sg.evaluate("document.querySelector('#hud-rep').click()")
+        await sg.wait_for_timeout(1200)
+        await sg.screenshot(path=str(out / 'shot-2.png'))
+        night = json.loads(save)
+        night.update({'phase': 'evening', 'wentOut': False, 'mchc': 240})
+        await shop(sg, json.dumps(night))
+        await sg.evaluate("document.querySelector('#door').click()")
+        await sg.wait_for_timeout(900)
+        await sg.locator('[data-act=go-shop]').click(force=True)
+        await sg.wait_for_timeout(5000)
+        await sg.screenshot(path=str(out / 'shot-3.png'))
+
         # the app icon: the coin on the shop's ink, a band of the logo's yellow behind it
         ic = await b.new_context(viewport={'width': 512, 'height': 512}, device_scale_factor=1)
         ig = await ic.new_page()
@@ -100,6 +119,9 @@ async def main(out):
     icon = Image.open(out / 'icon-512.png').convert('RGB')
     icon.resize((192, 192), Image.LANCZOS).save(out / 'icon-192.png')
     icon.resize((180, 180), Image.LANCZOS).save(out / 'apple-touch-icon.png')
+    for name in ['shot-1', 'shot-2', 'shot-3']:
+        Image.open(out / f'{name}.png').convert('RGB').save(out / f'{name}.webp', quality=84)
+        (out / f'{name}.png').unlink()
     for name in ['thumb-a', 'thumb-b']:
         im = Image.open(out / f'{name}.png').convert('RGB').resize((W, H), Image.LANCZOS)
         im.save(out / f'{name}.webp', quality=86)
