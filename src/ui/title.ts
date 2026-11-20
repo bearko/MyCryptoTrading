@@ -3,6 +3,7 @@ import { catalog as cat } from '../game/catalog';
 import * as store from '../game/save';
 import { btn } from './html';
 import { canInstall } from './install';
+import { platformOn } from './platform';
 
 /** heroes picked once per visit, so the parade does not reshuffle on every redraw */
 let parade: { img: string; lane: number; dur: number; delay: number; size: number }[] | null = null;
@@ -41,7 +42,7 @@ export function title(): string {
       ${saved ? btn('resume', `つづきから<em>${saved.day}日目</em>`, { cls: 'primary big pulse', sfx: 'none' }) : ''}
       ${btn('new', 'はじめから', { cls: saved ? 'big' : 'primary big pulse', sfx: 'none' })}
       <div class="actions two">${btn('help', '遊びかた', { cls: 'ghost small', sfx: 'open' })}${btn('settings', '設定', { cls: 'ghost small', sfx: 'open' })}</div>
-      <div class="actions ${canInstall() ? 'two' : 'one'}">${canInstall() ? btn('install', 'アプリとして入れる', { cls: 'ghost small', sfx: 'open', id: 'install' }) : ''}${btn('about', 'このゲームについて', { cls: 'ghost small', sfx: 'open' })}</div>
+      <div class="actions ${canInstall() || platformOn() ? 'two' : 'one'}">${canInstall() ? btn('install', 'アプリとして入れる', { cls: 'ghost small', sfx: 'open', id: 'install' }) : ''}${btn('about', 'このゲームについて', { cls: 'ghost small', sfx: 'open' })}${platformOn() ? btn('chat', '全体チャット', { cls: 'ghost small', sfx: 'open', id: 'chat-open' }) : ''}</div>
     </div>
     <p class="credit">ver ${version}　非公式の二次創作です。<br />素材：My Crypto Heroes（© MCH Co.,Ltd.）</p>
   </div>`;

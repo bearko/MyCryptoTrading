@@ -26,6 +26,7 @@ import { bubbleShake, custHop, custShake, custThink, hushBubble, OPEN_MS, pipBre
 import { display } from './settings';
 import { note } from './toast';
 import { install } from './install';
+import { openChat } from './platform';
 import { BEAT_MS, restoreWindow } from './window';
 
 /** the pending walk-out before the next customer comes in (after the bell) */
@@ -1385,6 +1386,10 @@ export function act(name: string, arg: string | undefined, el: HTMLElement | nul
       break;
     case 'about':
       ui.modal = 'about';
+      break;
+    case 'chat':
+      closeModal();
+      openChat();
       break;
     case 'install':
       void install().then((done) => done && note('アプリとして入れました。次からは、アプリの一覧から開けます'));

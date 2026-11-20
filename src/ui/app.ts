@@ -27,6 +27,7 @@ import { questEffects, questScreen } from './quest';
 import { bubbleHtml, sceneEffects } from './scene';
 import { display } from './settings';
 import { watchInstall } from './install';
+import { startPlatform, trackGuide } from './platform';
 import { shopScreen } from './shop';
 import { title } from './title';
 import { clampWindow, customerWindow } from './window';
@@ -75,6 +76,7 @@ function screenHtml(): string {
   if (ui.modal === 'forecast' && ctx.s) html += forecastModal(ctx.s);
   if (ui.modal === 'casetold') html += caseToldModal();
   if (ui.modal === 'spill') html += spillModal();
+  trackGuide(ui.screen === 'game' ? ctx.s : null, ui.modal !== 'intro');
   if (ui.modal === 'help') html += helpModal();
   if (ui.modal === 'about') html += aboutModal();
   if (ui.modal === 'settings') html += settingsModal();
@@ -182,6 +184,7 @@ export function mount(el: HTMLElement): void {
   ctx.act = (name, arg) => act(name, arg);
   display.init();
   watchInstall();
+  startPlatform();
   fx.mount(el);
 
   // sound is allowed only after a gesture
